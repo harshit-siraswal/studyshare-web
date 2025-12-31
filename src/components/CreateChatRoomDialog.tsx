@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Copy, Lock, Globe } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Copy, Lock, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -12,117 +14,182 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { supabase } from "../supabase";
+import { useAuth } from "@/context/AuthContext";
+import bcrypt from "bcryptjs";
 
 interface CreateChatRoomDialogProps {
   trigger: React.ReactNode;
 }
 
 const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [roomName, setRoomName] = useState("");
+  const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
-  const [roomCode, setRoomCode] = useState("");
-  const [isCreated, setIsCreated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const generateRoomCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  };
-
-  const handleCreate = () => {
-    if (!roomName.trim()) {
-      toast({
-        title: "Room name required",
-        description: "Please enter a name for your chat room.",
-        variant: "destructive",
-      });
+  const handleCreate = async () => {
+    if (!user) {
+      toast.error("Please login to create a room");
       return;
     }
 
-    const code = generateRoomCode();
-    setRoomCode(code);
-    setIsCreated(true);
-    toast({
-      title: "Chat room created!",
-      description: isPrivate ? "Share the code with friends to invite them." : "Your public room is now live.",
-    });
-  };
+    if (!roomName.trim()) {
+      toast.error("Please enter a room name");
+      return;
+    }
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    toast({
-      title: "Code copied!",
-      description: "Room code copied to clipboard.",
-    });
+    if (isPrivate && !password.trim()) {
+      toast.error("Please set a password for private room");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Check if room name already exists
+      const { data: existing } = await supabase
+        .from('chat_rooms')
+        .select('id')
+        .eq('name', roomName.trim())
+        .maybeSingle();
+
+      if (existing) {
+        toast.error("Room name already taken. Please choose another name.");
+        setCreating(false);
+        return;
+      }
+
+      // Create the room
+      const hashedPassword = isPrivate && password ? await bcrypt.hash(password, 10) : null;
+
+      const { data: room, error: roomError } = await supabase
+        .from('chat_rooms')
+        .insert([{
+          name: roomName.trim(),
+          description: description.trim() || null,
+          created_by: user.displayName || user.email?.split('@')[0] || 'User',
+          created_by_email: user.email,
+          is_private: isPrivate,
+          password: hashedPassword,
+          member_count: 1,
+        }])
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      // Add creator as first member
+      const { error: memberError } = await supabase
+        .from('room_members')
+        .insert([{
+          room_id: room.id,
+          user_email: user.email,
+          user_name: user.displayName || user.email?.split('@')[0] || 'User',
+        }]);
+
+      if (memberError) throw memberError;
+
+      toast.success("Room created successfully!");
+      setOpen(false);
+      handleReset();
+
+      // Navigate to the new room
+      navigate(`/chatroom/${room.id}`);
+    } catch (error: any) {
+      console.error('Error creating room:', error);
+      toast.error(error.message || "Failed to create room");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleReset = () => {
     setRoomName("");
+    setDescription("");
     setIsPrivate(false);
-    setRoomCode("");
-    setIsCreated(false);
+    setPassword("");
   };
 
   return (
-    <Dialog onOpenChange={(open) => !open && handleReset()}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      setOpen(newOpen);
+      if (!newOpen) handleReset();
+    }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Chat Room</DialogTitle>
           <DialogDescription>
-            Create a new chat room to study with friends.
+            Create a new room to discuss and share with others.
           </DialogDescription>
         </DialogHeader>
 
-        {!isCreated ? (
-          <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="room-name">Room Name *</Label>
+            <Input
+              id="room-name"
+              placeholder="e.g., DSA Study Group"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              maxLength={50}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea
+              id="description"
+              placeholder="What's this room about?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={200}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+            <div className="flex items-center gap-3">
+              {isPrivate ? <Lock className="w-4 h-4 text-primary" /> : <Globe className="w-4 h-4 text-primary" />}
+              <div>
+                <p className="text-sm font-medium">{isPrivate ? "Private Room" : "Public Room"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {isPrivate ? "Requires password to join" : "Anyone can join"}
+                </p>
+              </div>
+            </div>
+            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
+          </div>
+
+          {isPrivate && (
             <div className="space-y-2">
-              <Label htmlFor="room-name">Room Name</Label>
+              <Label htmlFor="password">Password *</Label>
               <Input
-                id="room-name"
-                placeholder="e.g., DSA Study Group"
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
+                id="password"
+                type="password"
+                placeholder="Set a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+          )}
 
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-3">
-                {isPrivate ? <Lock className="w-4 h-4 text-primary" /> : <Globe className="w-4 h-4 text-primary" />}
-                <div>
-                  <p className="text-sm font-medium">{isPrivate ? "Private Room" : "Public Room"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPrivate ? "Only people with code can join" : "Anyone from college can join"}
-                  </p>
-                </div>
-              </div>
-              <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
-            </div>
-
-            <Button onClick={handleCreate} className="w-full">
-              Create Room
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 text-center">
-              <p className="text-sm text-muted-foreground mb-2">Your room is ready!</p>
-              <p className="text-2xl font-mono font-bold text-primary tracking-wider">{roomCode}</p>
-            </div>
-
-            {isPrivate && (
-              <Button variant="outline" onClick={copyCode} className="w-full">
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Room Code
-              </Button>
+          <Button onClick={handleCreate} className="w-full" disabled={creating}>
+            {creating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Room"
             )}
-
-            <p className="text-xs text-center text-muted-foreground">
-              {isPrivate 
-                ? "Share this code with friends so they can join your private room."
-                : "Your public room is now visible to everyone in your college."}
-            </p>
-          </div>
-        )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

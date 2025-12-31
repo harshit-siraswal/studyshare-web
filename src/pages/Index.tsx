@@ -31,8 +31,15 @@ const Index = () => {
   );
 
   const handleCollegeSelect = (collegeId: number) => {
-    localStorage.setItem("selectedCollege", JSON.stringify(colleges.find(c => c.id === collegeId)));
-    navigate("/auth");
+    // Only allow KIET (id 9) to proceed
+    if (collegeId === 9) {
+      localStorage.setItem("selectedCollege", JSON.stringify(colleges.find(c => c.id === collegeId)));
+      navigate("/auth");
+    } else {
+      // Show work in progress for other colleges
+      const college = colleges.find(c => c.id === collegeId);
+      alert(`🚧 Work in Progress\n\n${college?.name} will be available soon!\n\nCurrently, only Krishna Institute of Engineering and Technology (KIET) is accessible.`);
+    }
   };
 
   return (

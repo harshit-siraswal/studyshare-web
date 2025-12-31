@@ -1,109 +1,234 @@
 import { useState, useEffect } from "react";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { FileText, Download, ExternalLink, Filter } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import PDFViewer from "./PDFViewer";
-import { cn } from "@/lib/utils";
+import { supabase } from "../supabase";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const syllabusPDFs: Record<string, string> = {
-  "Data Structures": "https://www.cs.usfca.edu/~galles/cs245/lecture/lecture0.pdf",
-  "Algorithms": "https://jeffe.cs.illinois.edu/teaching/algorithms/book/01-recursion.pdf",
-  "Operating Systems": "https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-intro.pdf",
-  "DBMS": "https://www.db-book.com/slides-dir/PDF-dir/ch1.pdf",
-  "Computer Networks": "https://intronetworks.cs.luc.edu/current2/ComputerNetworks.pdf",
-  "Machine Learning": "https://see.stanford.edu/materials/aimlcs229/cs229-notes1.pdf",
-  "Digital Electronics": "https://www.iare.ac.in/sites/default/files/lecture_notes/IARE_DE_LECTURE_NOTES.pdf",
-  "Analog Circuits": "https://www.africau.edu/images/default/sample.pdf",
-  "Signal Processing": "https://www.africau.edu/images/default/sample.pdf",
-  "VLSI": "https://www.africau.edu/images/default/sample.pdf",
-  "Embedded Systems": "https://www.africau.edu/images/default/sample.pdf",
-  "Thermodynamics": "https://www.africau.edu/images/default/sample.pdf",
-  "Fluid Mechanics": "https://www.africau.edu/images/default/sample.pdf",
-  "Machine Design": "https://www.africau.edu/images/default/sample.pdf",
-  "Manufacturing": "https://www.africau.edu/images/default/sample.pdf",
-  "Heat Transfer": "https://www.africau.edu/images/default/sample.pdf",
-  "Structural Analysis": "https://www.africau.edu/images/default/sample.pdf",
-  "Concrete Technology": "https://www.africau.edu/images/default/sample.pdf",
-  "Geotechnical": "https://www.africau.edu/images/default/sample.pdf",
-  "Surveying": "https://www.africau.edu/images/default/sample.pdf",
-  "Hydrology": "https://www.africau.edu/images/default/sample.pdf",
-  "Power Systems": "https://www.africau.edu/images/default/sample.pdf",
-  "Control Systems": "https://www.africau.edu/images/default/sample.pdf",
-  "Electrical Machines": "https://www.africau.edu/images/default/sample.pdf",
-  "Power Electronics": "https://www.africau.edu/images/default/sample.pdf",
-  "Mass Transfer": "https://www.africau.edu/images/default/sample.pdf",
-  "Reaction Engineering": "https://www.africau.edu/images/default/sample.pdf",
-  "Process Control": "https://www.africau.edu/images/default/sample.pdf",
-};
+interface SyllabusItem {
+  id: string;
+  title: string;
+  semester: string;
+  branch: string;
+  subject: string;
+  pdf_url: string;
+  description: string | null;
+  file_size: number | null;
+  created_at: string;
+}
 
 interface SyllabusSectionProps {
-  availableSubjects: string[];
-  selectedBranch: string;
+  selectedSemester?: string;
+  selectedBranch?: string;
   selectedSubject?: string;
 }
 
-const SyllabusSection = ({ availableSubjects, selectedBranch, selectedSubject }: SyllabusSectionProps) => {
-  const [openedSubject, setOpenedSubject] = useState<string | null>(null);
-  const [visibleSubjects, setVisibleSubjects] = useState<string[]>([]);
+const SyllabusSection = ({
+  selectedSemester = "all",
+  selectedBranch = "all",
+  selectedSubject = "all",
+}: SyllabusSectionProps) => {
+  const [syllabusItems, setSyllabusItems] = useState<SyllabusItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState<{ url: string; title: string } | null>(null);
 
-  // Filter to show only selected subject if one is selected
+  // Fetch syllabus when filters change
   useEffect(() => {
-    if (selectedSubject) {
-      setVisibleSubjects([selectedSubject]);
+    if (selectedSemester !== "all" && selectedBranch !== "all" && selectedSubject !== "all") {
+      fetchSyllabus();
     } else {
-      setVisibleSubjects(availableSubjects);
+      setSyllabusItems([]);
     }
-  }, [selectedSubject, availableSubjects]);
+  }, [selectedSemester, selectedBranch, selectedSubject]);
 
-  const handleOpenPDF = (subject: string) => {
-    setOpenedSubject(subject);
+  const fetchSyllabus = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('syllabus')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (selectedSemester !== "all") {
+        query = query.eq('semester', selectedSemester);
+      }
+      if (selectedBranch !== "all") {
+        query = query.eq('branch', selectedBranch);
+      }
+      if (selectedSubject !== "all") {
+        query = query.eq('subject', selectedSubject);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      setSyllabusItems(data || []);
+    } catch (error) {
+      console.error('Error fetching syllabus:', error);
+      toast.error('Failed to load syllabus');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleDownload = async (url: string, title: string) => {
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${title}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download');
+    }
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return 'Unknown size';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
+
+  // Show message when filters are not selected
+  if (selectedSemester === "all" || selectedBranch === "all" || selectedSubject === "all") {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Alert className="max-w-md">
+          <Filter className="h-4 w-4" />
+          <AlertDescription className="ml-2">
+            Please select <strong>Semester</strong>, <strong>Branch</strong>, and <strong>Subject</strong> to view syllabus
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="p-6">
+            <div className="flex items-start gap-4">
+              <Skeleton className="w-16 h-16 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  // No syllabus found
+  if (syllabusItems.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Alert className="max-w-md">
+          <FileText className="h-4 w-4" />
+          <AlertDescription className="ml-2">
+            No syllabus available for <strong>{selectedSubject}</strong> in Semester <strong>{selectedSemester}</strong>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="space-y-3">
-        {visibleSubjects.length > 0 ? (
-          visibleSubjects.map((subject, index) => (
-            <div 
-              key={subject}
-              onClick={() => handleOpenPDF(subject)}
-              className={cn(
-                "p-4 border border-border rounded-lg hover:border-primary/50 transition-all duration-300 cursor-pointer bg-card group",
-                "animate-fade-in"
-              )}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">{subject}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Click to view syllabus PDF
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-16">
-            <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-            <p className="text-muted-foreground">
-              {selectedBranch 
-                ? "Select a subject to view its syllabus"
-                : "Select a branch to view available subjects"
-              }
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold">Syllabus</h2>
+            <p className="text-sm text-muted-foreground">
+              {syllabusItems.length} syllabus document{syllabusItems.length !== 1 ? 's' : ''} found
             </p>
           </div>
-        )}
+        </div>
+
+        <div className="grid gap-4">
+          {syllabusItems.map((item) => (
+            <Card key={item.id} className="p-6 hover:shadow-lg transition-shadow">
+              <div className="flex items-start gap-4">
+                {/* Icon */}
+                <div className="w-16 h-16 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-8 h-8 text-blue-500" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                  
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {item.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge variant="outline">Semester {item.semester}</Badge>
+                    <Badge variant="outline">{item.branch.toUpperCase()}</Badge>
+                    <Badge variant="outline">{item.subject}</Badge>
+                    {item.file_size && (
+                      <Badge variant="secondary">{formatFileSize(item.file_size)}</Badge>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => setSelectedPdf({ url: item.pdf_url, title: item.title })}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      View PDF
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownload(item.pdf_url, item.title)}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      asChild
+                    >
+                      <a href={item.pdf_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open in New Tab
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
 
-      {openedSubject && (
+      {/* PDF Viewer */}
+      {selectedPdf && (
         <PDFViewer
-          isOpen={!!openedSubject}
-          onClose={() => setOpenedSubject(null)}
-          title={`${openedSubject} - Syllabus`}
-          pdfUrl={syllabusPDFs[openedSubject] || "https://www.africau.edu/images/default/sample.pdf"}
+          isOpen={true}
+          onClose={() => setSelectedPdf(null)}
+          title={selectedPdf.title}
+          pdfUrl={selectedPdf.url}
         />
       )}
     </>

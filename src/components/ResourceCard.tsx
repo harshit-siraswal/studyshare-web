@@ -2,24 +2,37 @@ import { ThumbsUp, ThumbsDown, Bookmark, Play, FileText, HelpCircle } from "luci
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PDFViewer from "./PDFViewer";
+import VideoPlayer from "./VideoPlayer";
+import FollowButton from './FollowButton';
 import { toast } from "sonner";
+import { supabase } from "../supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export type ResourceType = "video" | "notes" | "pyq";
 
 interface ResourceCardProps {
-  id: number;
+  id: number | string;
   title: string;
   type: ResourceType;
   author: string;
   authorType: "teacher" | "student";
-  votes: number;
+  votes?: number;
+  upvotes?: number;
+  downvotes?: number;
   subject: string;
   chapter: string;
   thumbnail?: string;
-  onBookmark?: (id: number, isBookmarked: boolean) => void;
+  pdfUrl?: string;
+  videoUrl?: string;
+  semester?: string;
+  branch?: string;
+  uploaded_by_email?: string;
+  created_at?: string;
+  onBookmark?: (id: number | string, isBookmarked: boolean) => void;
 }
 
 const typeIcons = {
@@ -40,73 +53,208 @@ const ResourceCard = ({
   type,
   author,
   authorType,
-  votes: initialVotes,
+  votes: initialVotes = 0,
+  upvotes: initialUpvotes = 0,
+  downvotes: initialDownvotes = 0,
   subject,
   chapter,
+  pdfUrl,
+  videoUrl,
+  uploaded_by_email,
+  created_at,
   onBookmark,
 }: ResourceCardProps) => {
-  const [votes, setVotes] = useState(initialVotes);
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(() => {
-    const bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    return bookmarks.some((b: any) => b.id === id);
-  });
+  const { user } = useAuth();
+  const [localUpvotes, setLocalUpvotes] = useState(initialUpvotes);
+  const [localDownvotes, setLocalDownvotes] = useState(initialDownvotes);
+  const [userVote, setUserVote] = useState<"upvote" | "downvote" | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const Icon = typeIcons[type];
 
-  const handleVote = (voteType: "up" | "down", e: React.MouseEvent) => {
+  // Fetch user's bookmark and vote status on mount
+  useEffect(() => {
+    if (user?.uid) {
+      fetchUserInteractions();
+    }
+  }, [user, id]);
+
+  const fetchUserInteractions = async () => {
+    if (!user?.uid) return;
+
+    try {
+      // Check if bookmarked
+      const { data: bookmarkData, error: bookmarkError } = await supabase
+        .from('bookmarks')
+        .select('id')
+        .eq('user_id', user.uid)
+        .eq('resource_id', id.toString())
+        .maybeSingle();
+
+      if (!bookmarkError) {
+        setIsBookmarked(!!bookmarkData);
+      }
+
+      // Check vote status
+      const { data: voteData, error: voteError } = await supabase
+        .from('votes')
+        .select('vote_type')
+        .eq('user_id', user.uid)
+        .eq('resource_id', id.toString())
+        .maybeSingle();
+
+      if (!voteError && voteData) {
+        setUserVote(voteData.vote_type as 'upvote' | 'downvote');
+      }
+    } catch (error) {
+      // Silently handle errors
+    }
+  };
+
+  const handleVote = async (voteType: "upvote" | "downvote", e: React.MouseEvent) => {
     e.stopPropagation();
-    if (userVote === voteType) {
-      setVotes(voteType === "up" ? votes - 1 : votes + 1);
-      setUserVote(null);
-    } else {
-      let change = 0;
-      if (userVote === "up") change = -2;
-      else if (userVote === "down") change = 2;
-      else change = voteType === "up" ? 1 : -1;
+    
+    if (!user?.uid) {
+      toast.error('Please login to vote');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (userVote === voteType) {
+        // Remove vote
+        const { error } = await supabase
+          .from('votes')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('resource_id', id.toString());
+
+        if (error) throw error;
+
+        if (voteType === 'upvote') {
+          setLocalUpvotes(prev => prev - 1);
+        } else {
+          setLocalDownvotes(prev => prev - 1);
+        }
+        setUserVote(null);
+        toast.success('Vote removed');
+      } else if (userVote) {
+        // Change vote
+        const { error } = await supabase
+          .from('votes')
+          .update({ vote_type: voteType })
+          .eq('user_id', user.uid)
+          .eq('resource_id', id.toString());
+
+        if (error) throw error;
+
+        if (voteType === 'upvote') {
+          setLocalUpvotes(prev => prev + 1);
+          setLocalDownvotes(prev => prev - 1);
+        } else {
+          setLocalUpvotes(prev => prev - 1);
+          setLocalDownvotes(prev => prev + 1);
+        }
+        setUserVote(voteType);
+      } else {
+        // New vote
+        const { error } = await supabase
+          .from('votes')
+          .insert([{
+            user_id: user.uid,
+            resource_id: id.toString(),
+            vote_type: voteType,
+          }]);
+
+        if (error) throw error;
+
+        if (voteType === 'upvote') {
+          setLocalUpvotes(prev => prev + 1);
+        } else {
+          setLocalDownvotes(prev => prev + 1);
+        }
+        setUserVote(voteType);
+      }
+    } catch (error: any) {
+      console.error('Vote error:', error);
+      toast.error('Failed to update vote');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBookmark = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user?.uid) {
+      toast.error('Please login to bookmark');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isBookmarked) {
+        // Remove bookmark
+        const { error } = await supabase
+          .from('bookmarks')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('resource_id', id.toString());
+
+        if (error) throw error;
+
+        setIsBookmarked(false);
+        toast.success('Removed from bookmarks');
+
+        // Update localStorage
+        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+        const updated = bookmarks.filter((b: any) => b.id !== id);
+        localStorage.setItem('bookmarks', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } else {
+        // Add bookmark
+        const { error } = await supabase
+          .from('bookmarks')
+          .insert([{
+            user_id: user.uid,
+            resource_id: id.toString(),
+          }]);
+
+        if (error) throw error;
+
+        setIsBookmarked(true);
+        toast.success('Bookmarked!');
+
+        // Update localStorage
+        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+        bookmarks.push({ id, title, type, subject, chapter });
+        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        window.dispatchEvent(new Event('storage'));
+      }
       
-      setVotes(votes + change);
-      setUserVote(voteType);
+      onBookmark?.(id, !isBookmarked);
+    } catch (error: any) {
+      console.error('Bookmark error:', error);
+      toast.error('Failed to update bookmark');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleBookmark = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-    
-    if (isBookmarked) {
-      const updated = bookmarks.filter((b: any) => b.id !== id);
-      localStorage.setItem("bookmarks", JSON.stringify(updated));
-      setIsBookmarked(false);
-      toast.success("Removed from bookmarks");
-    } else {
-      const newBookmark = { id, title, type, author, subject, chapter };
-      localStorage.setItem("bookmarks", JSON.stringify([...bookmarks, newBookmark]));
-      setIsBookmarked(true);
-      toast.success("Added to bookmarks");
-    }
-    
-    onBookmark?.(id, !isBookmarked);
-  };
-
-  // Sample PDFs for different resources
-  const samplePDFs: Record<number, string> = {
-    2: "https://www.cs.usfca.edu/~galles/cs245/lecture/lecture0.pdf",
-    3: "https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-intro.pdf",
-    5: "https://intronetworks.cs.luc.edu/current2/ComputerNetworks.pdf",
-    6: "https://jeffe.cs.illinois.edu/teaching/algorithms/book/01-recursion.pdf",
   };
 
   const handleCardClick = () => {
-    if (type === "notes" || type === "pyq") {
+    if (type === "video" && videoUrl) {
+      setShowVideoPlayer(true);
+    } else if ((type === "notes" || type === "pyq") && pdfUrl) {
       setShowPdfViewer(true);
     } else {
-      window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "_blank");
+      toast.error("No file or video URL available");
     }
   };
 
-  const getPdfUrl = () => samplePDFs[id] || "https://www.africau.edu/images/default/sample.pdf";
+  const netVotes = localUpvotes - localDownvotes;
 
   return (
     <>
@@ -138,18 +286,18 @@ const ResourceCard = ({
                 <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors text-sm md:text-base">
                   {title}
                 </h3>
-                <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-                  by {author} 
+                <div className="text-xs md:text-sm text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                  <span>by {author}</span>
                   <Badge 
                     variant="outline" 
                     className={cn(
-                      "ml-2 text-xs",
+                      "text-xs",
                       authorType === "teacher" ? "border-primary/50 text-primary" : "border-accent/50 text-accent"
                     )}
                   >
                     {authorType}
                   </Badge>
-                </p>
+                </div>
               </div>
               <Badge variant="secondary" className="shrink-0 text-xs">
                 {typeLabels[type]}
@@ -162,29 +310,35 @@ const ResourceCard = ({
               <span>{chapter}</span>
             </div>
 
-            {/* Actions */}
+            {/* Actions - SIMPLIFIED WITH ONLY NET VOTES */}
             <div className="flex items-center gap-2 mt-3">
               <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-7 w-7", userVote === "up" && "text-green-500 bg-green-500/10")}
-                  onClick={(e) => handleVote("up", e)}
+                  className={cn("h-7 w-7", userVote === "upvote" && "text-green-500 bg-green-500/10")}
+                  onClick={(e) => handleVote("upvote", e)}
+                  disabled={loading}
                 >
                   <ThumbsUp className="w-3.5 h-3.5" />
                 </Button>
+                
+                {/* ONLY NET VOTES - SINGLE NUMBER */}
                 <span className={cn(
                   "text-sm font-medium min-w-[2rem] text-center",
-                  votes > 0 && "text-green-500",
-                  votes < 0 && "text-red-500"
+                  netVotes > 0 && "text-green-500",
+                  netVotes < 0 && "text-red-500",
+                  netVotes === 0 && "text-muted-foreground"
                 )}>
-                  {votes}
+                  {netVotes > 0 ? `+${netVotes}` : netVotes}
                 </span>
+                
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-7 w-7", userVote === "down" && "text-red-500 bg-red-500/10")}
-                  onClick={(e) => handleVote("down", e)}
+                  className={cn("h-7 w-7", userVote === "downvote" && "text-red-500 bg-red-500/10")}
+                  onClick={(e) => handleVote("downvote", e)}
+                  disabled={loading}
                 >
                   <ThumbsDown className="w-3.5 h-3.5" />
                 </Button>
@@ -195,24 +349,66 @@ const ResourceCard = ({
                 size="icon"
                 className={cn("h-7 w-7", isBookmarked && "text-amber-500")}
                 onClick={handleBookmark}
+                disabled={loading}
               >
                 <Bookmark className={cn("w-3.5 h-3.5", isBookmarked && "fill-current")} />
               </Button>
 
               <span className="ml-auto text-xs text-muted-foreground hidden md:inline">
-                Click to open
+                Click to {type === "video" ? "watch" : "view"}
               </span>
             </div>
+
+            {/* Uploader Info with Follow Button */}
+            {uploaded_by_email && (
+              <div className="flex items-center justify-between pt-3 mt-3 border-t">
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
+                      {author?.charAt(0).toUpperCase() || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{author || 'Anonymous'}</p>
+                    {created_at && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(created_at).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <FollowButton 
+                  targetUserEmail={uploaded_by_email}
+                  targetUserName={author}
+                  size="sm"
+                  variant="outline"
+                />
+              </div>
+            )}
           </div>
         </div>
       </Card>
 
-      <PDFViewer
-        isOpen={showPdfViewer}
-        onClose={() => setShowPdfViewer(false)}
-        title={title}
-        pdfUrl={getPdfUrl()}
-      />
+      {/* PDF Viewer */}
+      {pdfUrl && (
+        <PDFViewer
+          isOpen={showPdfViewer}
+          onClose={() => setShowPdfViewer(false)}
+          title={title}
+          pdfUrl={pdfUrl}
+        />
+      )}
+
+      {/* Video Player */}
+      {videoUrl && (
+        <VideoPlayer
+          isOpen={showVideoPlayer}
+          onClose={() => setShowVideoPlayer(false)}
+          videoUrl={videoUrl}
+          title={title}
+        />
+      )}
     </>
   );
 };
