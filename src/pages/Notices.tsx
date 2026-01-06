@@ -15,6 +15,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import FollowButton from "@/components/FollowButton";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 
 interface Comment {
   id: number;
@@ -67,6 +68,7 @@ const Notices = () => {
   const navigate = useNavigate();
   const { accountHandle } = useParams();
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentSearch, setDepartmentSearch] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
@@ -110,10 +112,14 @@ const Notices = () => {
       // Get user's department
       const userDepartment = user?.branch || 'cse';
 
+      // Policy: Filter by college_id for data isolation
+      const collegeId = selectedCollege?.id || 'kiet';
+
       let query = supabase
         .from('notices')
         .select('*')
         .eq('is_active', true)
+        .eq('college_id', collegeId) // Policy: College data isolation
         .or(`department.eq.all,department.eq.${userDepartment}`)
         .order('created_at', { ascending: false });
 

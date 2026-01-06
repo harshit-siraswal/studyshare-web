@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import bcrypt from "bcryptjs";
 
 interface CreateChatRoomDialogProps {
@@ -26,6 +27,7 @@ interface CreateChatRoomDialogProps {
 const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
   const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -77,6 +79,7 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
           is_private: isPrivate,
           password: hashedPassword,
           member_count: 1,
+          college_id: selectedCollege?.id || 'kiet', // Policy: College data isolation
         }])
         .select()
         .single();

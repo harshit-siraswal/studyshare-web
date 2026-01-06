@@ -17,6 +17,8 @@ import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
 import NotificationButton from '@/components/NotificationButton';
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { useBookmarkSync } from "@/hooks/useBookmarkSync";
@@ -52,8 +54,10 @@ const Study = () => {
   /* HOOKS (MUST BE FIRST) */
   /* ---------------------------------------------------------------- */
   const { user, loading } = useAuth();
+  const { selectedCollege } = useCollege();
+  const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
-  
+
   // Sync bookmarks from database to localStorage
   useBookmarkSync();
 
@@ -90,11 +94,15 @@ const Study = () => {
   const fetchResources = async () => {
     setLoadingResources(true);
     try {
+      // Policy: Filter by college_id for data isolation
+      const collegeId = selectedCollege?.id || 'kiet';
+
       let query = supabase
         .from('resources')
         .select('*')
         .eq('status', 'approved') // Only show approved resources
-        .order('created_at', { ascending: false});
+        .eq('college_id', collegeId) // Policy: College data isolation
+        .order('created_at', { ascending: false });
 
       // Apply filters (skip if value is 'all')
       if (selectedSemester && selectedSemester !== 'all') {
@@ -139,13 +147,13 @@ const Study = () => {
   const filteredResources = resources
     .filter((resource) => {
       const query = searchQuery.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         resource.title.toLowerCase().includes(query) ||
         (resource.description || '').toLowerCase().includes(query) ||
         resource.subject.toLowerCase().includes(query) ||
         (resource.chapter || '').toLowerCase().includes(query);
       const matchesType = filterType === "all" || resource.type === filterType;
-      
+
       return matchesSearch && matchesType;
     })
     .sort((a, b) => {
@@ -294,8 +302,8 @@ const Study = () => {
                 </SelectContent>
               </Select>
 
-              <Select 
-                value={selectedSubject} 
+              <Select
+                value={selectedSubject}
                 onValueChange={setSelectedSubject}
                 disabled={!selectedBranch}
               >
@@ -428,11 +436,11 @@ const Study = () => {
           ) : searchMode === "following" ? (
             <FollowingFeed />
           ) : (
-          <SyllabusSection 
-            selectedSemester={selectedSemester}
-            selectedBranch={selectedBranch}
-            selectedSubject={selectedSubject}
-           />
+            <SyllabusSection
+              selectedSemester={selectedSemester}
+              selectedBranch={selectedBranch}
+              selectedSubject={selectedSubject}
+            />
           )}
         </div>
 

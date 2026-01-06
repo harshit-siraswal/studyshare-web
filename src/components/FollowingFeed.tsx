@@ -1,5 +1,6 @@
 // src/components/FollowingFeed.tsx
 // Feed showing resources from users you follow
+// Policy: Filter resources by college_id for data isolation
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
@@ -7,6 +8,8 @@ import ResourceCard from './ResourceCard';
 import { Card } from '@/components/ui/card';
 import { Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCollege } from '@/context/CollegeContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Resource {
   id: string;
@@ -31,15 +34,21 @@ const FollowingFeed = () => {
   const [loading, setLoading] = useState(true);
   const [followingCount, setFollowingCount] = useState(0);
 
+  const { selectedCollege } = useCollege();
+  const { canViewFollowing, isReadOnly } = usePermissions();
+
   useEffect(() => {
     fetchFollowingResources();
-  }, []);
+  }, [selectedCollege]);
 
   const fetchFollowingResources = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) return;
+
+      // Policy: Filter by college_id for data isolation
+      const collegeId = selectedCollege?.id || 'kiet';
 
       // Get list of people user is following
       const { data: followingData, error: followingError } = await supabase
@@ -58,10 +67,12 @@ const FollowingFeed = () => {
       }
 
       // Fetch resources from followed users
+      // Policy: Only fetch resources from the current college
       const { data: resourcesData, error: resourcesError } = await supabase
         .from('resources')
         .select('*')
         .in('uploaded_by_email', followingEmails)
+        .eq('college_id', collegeId) // Policy: College data isolation
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -81,6 +92,19 @@ const FollowingFeed = () => {
       setLoading(false);
     }
   };
+
+  // Policy: Only FULL access users can view following feed
+  if (isReadOnly) {
+    return (
+      <Card className="p-12 text-center">
+        <Users className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+        <h3 className="text-xl font-semibold mb-2">Following Feed</h3>
+        <p className="text-slate-600">
+          Sign in with your college email to access this feature
+        </p>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (

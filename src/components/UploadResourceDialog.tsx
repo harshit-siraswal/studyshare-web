@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, Video, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import { supabase } from "../supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
@@ -61,8 +62,9 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -87,7 +89,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
         toast.error("Please upload a PDF or DOC/DOCX file");
         return;
       }
-      
+
       // Validate file size (10MB max)
       if (file.size > 10 * 1024 * 1024) {
         toast.error("File size must be less than 10MB");
@@ -111,7 +113,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
 
       console.log('✅ Upload successful:', fileUrl);
       return fileUrl;
-      
+
     } catch (error: unknown) {
       console.error('❌ Upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload file to Cloudinary';
@@ -122,7 +124,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.title.trim()) {
       toast.error("Please enter a title");
@@ -156,7 +158,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
 
     try {
       let fileUrl = "";
-      
+
       // Upload file to Cloudinary if it's a notes/document
       if (type === "notes" && selectedFile) {
         setUploadProgress(10);
@@ -180,7 +182,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
         uploaded_by_name: user?.displayName || user?.email?.split('@')[0] || "Anonymous",
         uploaded_by_email: user?.email || "",
         status: "pending",      // Changed to pending for approval workflow
-        college_id: "all",      // Added for multi-college support
+        college_id: selectedCollege?.id || 'kiet',  // Policy: Use user's selected college
         upvotes: 0,             // Changed from votes to upvotes
         downvotes: 0,           // Added downvotes
       };
@@ -214,7 +216,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
       setUploadProgress(100);
 
       toast.success("✅ Resource shared! Waiting for admin approval.");
-      
+
       // Reset form
       setFormData({
         title: "",
@@ -230,10 +232,10 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
       setSelectedFile(null);
       setOpen(false);
       setUploadProgress(0);
-      
+
       // Refresh the page to show new resource
       window.location.reload();
-      
+
     } catch (error: unknown) {
       console.error("Error uploading resource:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload resource. Please try again.";
@@ -259,7 +261,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
     setUploadProgress(0);
   };
 
-  const availableSubjects = formData.branch 
+  const availableSubjects = formData.branch
     ? SUBJECTS[formData.branch as keyof typeof SUBJECTS] || []
     : [];
 
@@ -271,7 +273,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      
+
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Share a Resource</DialogTitle>

@@ -1,11 +1,14 @@
 // src/components/FollowButton.tsx
 // Follow/Unfollow button component
+// Policy: Only visible to FULL access users, notifications include college_id
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { toast } from 'sonner';
+import { useCollege } from '@/context/CollegeContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface FollowButtonProps {
   targetUserEmail: string;
@@ -14,8 +17,8 @@ interface FollowButtonProps {
   variant?: 'default' | 'outline' | 'ghost';
 }
 
-const FollowButton = ({ 
-  targetUserEmail, 
+const FollowButton = ({
+  targetUserEmail,
   targetUserName,
   size = 'md',
   variant = 'default'
@@ -24,6 +27,9 @@ const FollowButton = ({
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  const { selectedCollege } = useCollege();
+  const { canFollow, isReadOnly } = usePermissions();
 
   useEffect(() => {
     checkFollowStatus();
@@ -67,6 +73,12 @@ const FollowButton = ({
       return;
     }
 
+    // Policy: Only FULL access users can follow
+    if (!canFollow) {
+      toast.error('Following requires a verified college email account.');
+      return;
+    }
+
     setActionLoading(true);
     try {
       if (isFollowing) {
@@ -96,6 +108,7 @@ const FollowButton = ({
         toast.success(`Following ${targetUserName || 'user'}!`);
 
         // Create notification for the user being followed
+        // Policy: Include college_id for data isolation
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (currentUser?.email) {
           await supabase.from('notifications').insert([{
@@ -104,6 +117,7 @@ const FollowButton = ({
             title: 'New Follower',
             message: `${currentUser.email.split('@')[0]} started following you`,
             read: false,
+            college_id: selectedCollege?.id || 'kiet', // Policy: College data isolation
           }]);
         }
       }
@@ -119,6 +133,11 @@ const FollowButton = ({
     }
   };
 
+  // Policy: Don't show for readonly users
+  if (isReadOnly) {
+    return null;
+  }
+
   // Don't show button for own profile
   if (currentUserEmail === targetUserEmail) {
     return null;
@@ -126,9 +145,9 @@ const FollowButton = ({
 
   if (loading) {
     return (
-      <Button 
-        variant={variant} 
-        size={size} 
+      <Button
+        variant={variant}
+        size={size}
         disabled
       >
         <Loader2 className="w-4 h-4 animate-spin" />
