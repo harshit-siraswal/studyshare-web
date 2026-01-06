@@ -22,7 +22,13 @@ import {
 import { toast } from "sonner";
 
 import { auth, db } from "../firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 
@@ -51,42 +57,45 @@ const Auth = () => {
   /* ---------------------------------------------------------------- */
   /* 🔵 GOOGLE LOGIN — FIREBASE ONLY */
   /* ---------------------------------------------------------------- */
- const handleGoogleLogin = async () => {
-  try {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
 
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-    const selectedCollege = JSON.parse(
-      localStorage.getItem("selectedCollege") || "{}"
-    );
+      const selectedCollege = JSON.parse(
+        localStorage.getItem("selectedCollege") || "{}"
+      );
 
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        name: user.displayName || "",
-        email: user.email || "",
-        photoURL: user.photoURL || "",
-        college: selectedCollege?.name || "",
-        createdAt: new Date(),
-      },
-      { merge: true }
-    );
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          name: user.displayName || "",
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          college: selectedCollege?.name || "",
+          createdAt: new Date(),
+        },
+        { merge: true }
+      );
 
-    toast.success("Signed in with Google");
-  } catch (err) {
-    console.error(err);
-    toast.error("Google sign-in failed");
-  }
-};
+      toast.success("Signed in with Google");
+    } catch (err) {
+      console.error(err);
+      toast.error("Google sign-in failed");
+    }
+  };
 
 
   /* ---------------------------------------------------------------- */
   /* 🔴 EMAIL LOGIN (STILL MOCK — SAFE) */
   /* ---------------------------------------------------------------- */
-  const handleSubmit = (e: React.FormEvent) => {
+  /* ---------------------------------------------------------------- */
+  /* 🔵 EMAIL LOGIN — FIREBASE AUTH */
+  /* ---------------------------------------------------------------- */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.email || !formData.password) {
@@ -99,7 +108,58 @@ const Auth = () => {
       return;
     }
 
-    toast.success(isLogin ? "Logged in (mock)" : "Account created (mock)");
+    try {
+      if (isLogin) {
+        // LOGIN
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        toast.success("Welcome back!");
+      } else {
+        // SIGN UP
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+        const user = userCredential.user;
+
+        // Update profile name
+        await updateProfile(user, {
+          displayName: formData.name,
+        });
+
+        // Save to Firestore (matching Google Login pattern)
+        const selectedCollege = JSON.parse(
+          localStorage.getItem("selectedCollege") || "{}"
+        );
+
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            name: formData.name,
+            email: user.email || "",
+            photoURL: "",
+            college: selectedCollege?.name || "",
+            createdAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        toast.success("Account created successfully!");
+      }
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      if (error.code === "auth/email-already-in-use") {
+        toast.error("Email is already registered");
+      } else if (error.code === "auth/wrong-password") {
+        toast.error("Invalid password");
+      } else if (error.code === "auth/user-not-found") {
+        toast.error("Account not found");
+      } else if (error.code === "auth/weak-password") {
+        toast.error("Password should be at least 6 characters");
+      } else {
+        toast.error(error.message || "Authentication failed");
+      }
+    }
   };
 
   return (
