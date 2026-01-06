@@ -12,6 +12,7 @@ import StudySidebar from "@/components/StudySidebar";
 import MusicPlayer from "@/components/MusicPlayer";
 import StudyTimer from "@/components/StudyTimer";
 import ResourceCard, { ResourceType } from "@/components/ResourceCard";
+import ResourceCardSkeleton from "@/components/ResourceCardSkeleton";
 import UploadResourceDialog from "@/components/UploadResourceDialog";
 import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
@@ -393,8 +394,8 @@ const Study = () => {
 
               {loadingResources ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-32 bg-muted/50 rounded-lg animate-pulse" />
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <ResourceCardSkeleton key={i} />
                   ))}
                 </div>
               ) : filteredResources.length === 0 ? (
@@ -449,13 +450,13 @@ const Study = () => {
         </div>
 
         {/* Mobile Bottom Tools */}
-        <div className="lg:hidden fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+        <div className="lg:hidden fixed bottom-24 right-4 flex flex-col gap-2 z-40">
           <Button
             size="icon"
-            className="w-12 h-12 rounded-full shadow-lg"
+            className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
             onClick={() => setShowMobileTools(!showMobileTools)}
           >
-            <Music className="w-5 h-5" />
+            <Music className="w-6 h-6" />
           </Button>
         </div>
       </div>

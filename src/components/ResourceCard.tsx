@@ -116,7 +116,7 @@ const ResourceCard = ({
 
   const handleVote = async (voteType: "upvote" | "downvote", e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!user?.uid) {
       toast.error('Please login to vote');
       return;
@@ -188,7 +188,7 @@ const ResourceCard = ({
 
   const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!user?.uid) {
       toast.error('Please login to bookmark');
       return;
@@ -234,7 +234,7 @@ const ResourceCard = ({
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
         window.dispatchEvent(new Event('storage'));
       }
-      
+
       onBookmark?.(id, !isBookmarked);
     } catch (error: any) {
       console.error('Bookmark error:', error);
@@ -258,8 +258,8 @@ const ResourceCard = ({
 
   return (
     <>
-      <Card 
-        variant="interactive" 
+      <Card
+        variant="interactive"
         className="p-4 group cursor-pointer"
         onClick={handleCardClick}
       >
@@ -288,8 +288,8 @@ const ResourceCard = ({
                 </h3>
                 <div className="text-xs md:text-sm text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
                   <span>by {author}</span>
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={cn(
                       "text-xs",
                       authorType === "teacher" ? "border-primary/50 text-primary" : "border-accent/50 text-accent"
@@ -316,13 +316,13 @@ const ResourceCard = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-7 w-7", userVote === "upvote" && "text-green-500 bg-green-500/10")}
+                  className={cn("h-10 w-10", userVote === "upvote" && "text-green-500 bg-green-500/10")}
                   onClick={(e) => handleVote("upvote", e)}
                   disabled={loading}
                 >
-                  <ThumbsUp className="w-3.5 h-3.5" />
+                  <ThumbsUp className="w-4 h-4" />
                 </Button>
-                
+
                 {/* ONLY NET VOTES - SINGLE NUMBER */}
                 <span className={cn(
                   "text-sm font-medium min-w-[2rem] text-center",
@@ -332,26 +332,26 @@ const ResourceCard = ({
                 )}>
                   {netVotes > 0 ? `+${netVotes}` : netVotes}
                 </span>
-                
+
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-7 w-7", userVote === "downvote" && "text-red-500 bg-red-500/10")}
+                  className={cn("h-10 w-10", userVote === "downvote" && "text-red-500 bg-red-500/10")}
                   onClick={(e) => handleVote("downvote", e)}
                   disabled={loading}
                 >
-                  <ThumbsDown className="w-3.5 h-3.5" />
+                  <ThumbsDown className="w-4 h-4" />
                 </Button>
               </div>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-7 w-7", isBookmarked && "text-amber-500")}
+                className={cn("h-10 w-10", isBookmarked && "text-amber-500")}
                 onClick={handleBookmark}
                 disabled={loading}
               >
-                <Bookmark className={cn("w-3.5 h-3.5", isBookmarked && "fill-current")} />
+                <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-current")} />
               </Button>
 
               <span className="ml-auto text-xs text-muted-foreground hidden md:inline">
@@ -377,8 +377,8 @@ const ResourceCard = ({
                     )}
                   </div>
                 </div>
-                
-                <FollowButton 
+
+                <FollowButton
                   targetUserEmail={uploaded_by_email}
                   targetUserName={author}
                   size="sm"
