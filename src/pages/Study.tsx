@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import StudySidebar from "@/components/StudySidebar";
+import MobileSidebar from "@/components/mobile/MobileSidebar";
 import MusicPlayer from "@/components/MusicPlayer";
 import StudyTimer from "@/components/StudyTimer";
 import ResourceCard, { ResourceType } from "@/components/ResourceCard";
@@ -179,7 +180,7 @@ const Study = () => {
       {/* Mobile Sidebar */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="p-0 w-72">
-          <StudySidebar isOpen={true} onToggle={() => setMobileMenuOpen(false)} />
+          <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
         </SheetContent>
       </Sheet>
 
