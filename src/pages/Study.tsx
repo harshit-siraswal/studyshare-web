@@ -17,6 +17,7 @@ import ResourceCardSkeleton from "@/components/ResourceCardSkeleton";
 import UploadResourceDialog from "@/components/UploadResourceDialog";
 import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
+import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -68,7 +69,7 @@ const Study = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchMode, setSearchMode] =
-    useState<"resources" | "syllabus" | "following">("resources");
+    useState<"resources" | "syllabus" | "following" | "bookmarks">("resources");
   const [sortBy, setSortBy] = useState<SortOption>("votes");
   const [showMobileTools, setShowMobileTools] = useState(false);
 
@@ -84,12 +85,11 @@ const Study = () => {
     } else if (tab === "following") {
       setSearchMode("following");
     } else if (tab === "bookmarks") {
-      // Navigate to profile bookmarks section
-      navigate("/profile?tab=bookmarks");
+      setSearchMode("bookmarks");
     } else {
       setSearchMode("resources");
     }
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   /* ---------------------------------------------------------------- */
   /* AUTH GUARD (SAFE & STABLE) */
@@ -448,6 +448,8 @@ const Study = () => {
             </div>
           ) : searchMode === "following" ? (
             <FollowingFeed />
+          ) : searchMode === "bookmarks" ? (
+            <BookmarkedResources />
           ) : (
             <SyllabusSection
               selectedSemester={selectedSemester}
