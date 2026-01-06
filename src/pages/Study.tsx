@@ -253,21 +253,12 @@ const Study = () => {
               {/* Policy: Hide Upload buttons for readonly users */}
               {isFullAccess && (
                 <>
-                  {/* Upload Button */}
+                  {/* Upload Button - Desktop only (mobile uses bottom nav) */}
                   <UploadResourceDialog
                     trigger={
                       <Button className="hidden md:flex shrink-0">
                         <Plus className="w-4 h-4 mr-2" />
                         Share Resource
-                      </Button>
-                    }
-                  />
-
-                  {/* Mobile Upload */}
-                  <UploadResourceDialog
-                    trigger={
-                      <Button size="icon" className="md:hidden shrink-0">
-                        <Plus className="w-5 h-5" />
                       </Button>
                     }
                   />

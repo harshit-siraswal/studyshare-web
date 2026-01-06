@@ -29,10 +29,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     const { user, logout } = useAuth();
     const { theme, setTheme } = useTheme();
 
-    // Close sidebar on route change
-    useEffect(() => {
-        onClose();
-    }, [location.pathname]);
+    // Note: Route-based closing is handled by parent Sheet component
 
     // Prevent body scroll when sidebar is open
     useEffect(() => {
