@@ -1,10 +1,11 @@
 // src/components/FollowButton.tsx
-// Follow/Unfollow button component
-// Policy: Only visible to FULL access users, notifications include college_id
+// Follow Request button component
+// FIX: Changed from instant follow to request-based approval flow
+// States: not-following → pending → following
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
+import { UserPlus, UserMinus, Loader2, Clock, UserCheck } from 'lucide-react';
 import { supabase } from '../supabase';
 import { toast } from 'sonner';
 import { useCollege } from '@/context/CollegeContext';
@@ -13,17 +14,19 @@ import { usePermissions } from '@/hooks/usePermissions';
 interface FollowButtonProps {
   targetUserEmail: string;
   targetUserName?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'default' | 'lg';
   variant?: 'default' | 'outline' | 'ghost';
 }
+
+type FollowStatus = 'not-following' | 'pending' | 'following';
 
 const FollowButton = ({
   targetUserEmail,
   targetUserName,
-  size = 'md',
+  size = 'default',
   variant = 'default'
 }: FollowButtonProps) => {
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [followStatus, setFollowStatus] = useState<FollowStatus>('not-following');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
@@ -47,19 +50,36 @@ const FollowButton = ({
         return;
       }
 
-      const { data, error } = await supabase
+      // First: Check if already following (in follows table)
+      const { data: followData } = await supabase
         .from('follows')
         .select('id')
         .eq('follower_email', user.email)
         .eq('following_email', targetUserEmail)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking follow status:', error);
+      if (followData) {
+        setFollowStatus('following');
+        setLoading(false);
         return;
       }
 
-      setIsFollowing(!!data);
+      // Second: Check for pending request (in follow_requests table)
+      const { data: requestData } = await supabase
+        .from('follow_requests')
+        .select('id, status')
+        .eq('requester_email', user.email)
+        .eq('target_email', targetUserEmail)
+        .eq('status', 'pending')
+        .single();
+
+      if (requestData) {
+        setFollowStatus('pending');
+        setLoading(false);
+        return;
+      }
+
+      setFollowStatus('not-following');
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -67,7 +87,7 @@ const FollowButton = ({
     }
   };
 
-  const handleFollow = async () => {
+  const handleFollowAction = async () => {
     if (!currentUserEmail) {
       toast.error('Please login to follow users');
       return;
@@ -81,8 +101,8 @@ const FollowButton = ({
 
     setActionLoading(true);
     try {
-      if (isFollowing) {
-        // Unfollow
+      if (followStatus === 'following') {
+        // Unfollow - remove from follows table
         const { error } = await supabase
           .from('follows')
           .delete()
@@ -91,43 +111,56 @@ const FollowButton = ({
 
         if (error) throw error;
 
-        setIsFollowing(false);
+        setFollowStatus('not-following');
         toast.success(`Unfollowed ${targetUserName || 'user'}`);
-      } else {
-        // Follow
+      } else if (followStatus === 'pending') {
+        // Cancel pending request
         const { error } = await supabase
-          .from('follows')
-          .insert([{
-            follower_email: currentUserEmail,
-            following_email: targetUserEmail,
-          }]);
+          .from('follow_requests')
+          .delete()
+          .eq('requester_email', currentUserEmail)
+          .eq('target_email', targetUserEmail)
+          .eq('status', 'pending');
 
         if (error) throw error;
 
-        setIsFollowing(true);
-        toast.success(`Following ${targetUserName || 'user'}!`);
-
-        // Create notification for the user being followed
-        // Policy: Include college_id for data isolation
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (currentUser?.email) {
-          await supabase.from('notifications').insert([{
-            user_email: targetUserEmail,
-            type: 'follow',
-            title: 'New Follower',
-            message: `${currentUser.email.split('@')[0]} started following you`,
-            read: false,
-            college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
+        setFollowStatus('not-following');
+        toast.success('Follow request cancelled');
+      } else {
+        // Send follow request (not instant follow!)
+        const { error } = await supabase
+          .from('follow_requests')
+          .insert([{
+            requester_email: currentUserEmail,
+            target_email: targetUserEmail,
+            status: 'pending',
+            college_id: selectedCollege?.domain || 'kiet.edu',
           }]);
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('Request already sent');
+            return;
+          }
+          throw error;
         }
+
+        setFollowStatus('pending');
+        toast.success(`Follow request sent to ${targetUserName || 'user'}!`);
+
+        // Create notification for the target user
+        await supabase.from('notifications').insert([{
+          user_email: targetUserEmail,
+          type: 'follow_request',
+          title: 'Follow Request',
+          message: `${currentUserEmail.split('@')[0]} wants to follow you`,
+          read: false,
+          college_id: selectedCollege?.domain || 'kiet.edu',
+        }]);
       }
     } catch (error: any) {
       console.error('Follow error:', error);
-      if (error.code === '23505') {
-        toast.error('Already following this user');
-      } else {
-        toast.error('Failed to update follow status');
-      }
+      toast.error('Failed to update follow status');
     } finally {
       setActionLoading(false);
     }
@@ -145,32 +178,58 @@ const FollowButton = ({
 
   if (loading) {
     return (
-      <Button
-        variant={variant}
-        size={size}
-        disabled
-      >
+      <Button variant={variant} size={size} disabled>
         <Loader2 className="w-4 h-4 animate-spin" />
       </Button>
     );
   }
 
+  const getButtonContent = () => {
+    if (actionLoading) {
+      return <Loader2 className="w-4 h-4 mr-2 animate-spin" />;
+    }
+
+    switch (followStatus) {
+      case 'following':
+        return (
+          <>
+            <UserCheck className="w-4 h-4 mr-2" />
+            Following
+          </>
+        );
+      case 'pending':
+        return (
+          <>
+            <Clock className="w-4 h-4 mr-2" />
+            Requested
+          </>
+        );
+      default:
+        return (
+          <>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Follow
+          </>
+        );
+    }
+  };
+
+  const getButtonVariant = () => {
+    if (followStatus === 'following' || followStatus === 'pending') {
+      return 'outline';
+    }
+    return variant;
+  };
+
   return (
     <Button
-      variant={isFollowing ? 'outline' : variant}
+      variant={getButtonVariant()}
       size={size}
-      onClick={handleFollow}
+      onClick={handleFollowAction}
       disabled={actionLoading}
-      className={isFollowing ? 'border-slate-600 text-slate-300' : ''}
+      className={followStatus !== 'not-following' ? 'border-slate-600 text-slate-300' : ''}
     >
-      {actionLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : isFollowing ? (
-        <UserMinus className="w-4 h-4 mr-2" />
-      ) : (
-        <UserPlus className="w-4 h-4 mr-2" />
-      )}
-      {isFollowing ? 'Following' : 'Follow'}
+      {getButtonContent()}
     </Button>
   );
 };

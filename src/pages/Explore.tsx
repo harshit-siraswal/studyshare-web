@@ -1,14 +1,21 @@
+// src/pages/Explore.tsx
+// Explore page - discover users from same college domain
+// FIX: Filter users by college email domain, use FollowButton for request-based flow
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, UserPlus, Users as UsersIcon, TrendingUp } from "lucide-react";
+import { Search, Users as UsersIcon, TrendingUp, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
+import FollowButton from "@/components/FollowButton";
 
 interface User {
     id: string;
@@ -23,25 +30,34 @@ interface User {
 const Explore = () => {
     const navigate = useNavigate();
     const { user: authUser } = useAuth();
+    const { selectedCollege, isReadOnly } = useCollege();
+    const { canFollow } = usePermissions();
+
     const [searchQuery, setSearchQuery] = useState("");
     const [users, setUsers] = useState<User[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
+    const [followingCount, setFollowingCount] = useState(0);
 
-    // Fetch all users
+    // Fetch users from same college domain ONLY
     useEffect(() => {
-        fetchUsers();
-        if (authUser?.email) {
-            fetchFollowedUsers();
+        if (selectedCollege) {
+            fetchUsersFromSameDomain();
+            fetchFollowingCount();
         }
-    }, [authUser]);
+    }, [authUser, selectedCollege]);
 
-    const fetchUsers = async () => {
+    const fetchUsersFromSameDomain = async () => {
+        if (!selectedCollege) return;
+
         try {
+            // FIX: Filter by email domain to show only same-college users
+            const domain = selectedCollege.domain;
+
             const { data, error } = await supabase
                 .from('users')
                 .select('id, email, display_name, username, profile_photo_url, college, bio')
+                .ilike('email', `%@${domain}`) // Only users with matching domain
                 .limit(50);
 
             if (error) throw error;
@@ -58,66 +74,20 @@ const Explore = () => {
         }
     };
 
-    const fetchFollowedUsers = async () => {
+    const fetchFollowingCount = async () => {
         if (!authUser?.email) return;
 
         try {
-            const { data, error } = await supabase
+            const { count, error } = await supabase
                 .from('follows')
-                .select('following_email')
+                .select('*', { count: 'exact', head: true })
                 .eq('follower_email', authUser.email);
 
-            if (error) throw error;
-
-            const followed = new Set(data?.map(f => f.following_email) || []);
-            setFollowedUsers(followed);
-        } catch (error) {
-            console.error('Error fetching followed users:', error);
-        }
-    };
-
-    const handleFollow = async (userEmail: string) => {
-        if (!authUser?.email) {
-            toast.error('Please login to follow users');
-            return;
-        }
-
-        try {
-            const isFollowing = followedUsers.has(userEmail);
-
-            if (isFollowing) {
-                // Unfollow
-                const { error } = await supabase
-                    .from('follows')
-                    .delete()
-                    .eq('follower_email', authUser.email)
-                    .eq('following_email', userEmail);
-
-                if (error) throw error;
-
-                setFollowedUsers(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(userEmail);
-                    return newSet;
-                });
-                toast.success('Unfollowed user');
-            } else {
-                // Follow
-                const { error } = await supabase
-                    .from('follows')
-                    .insert([{
-                        follower_email: authUser.email,
-                        following_email: userEmail
-                    }]);
-
-                if (error) throw error;
-
-                setFollowedUsers(prev => new Set([...prev, userEmail]));
-                toast.success('Following user!');
+            if (!error) {
+                setFollowingCount(count || 0);
             }
         } catch (error) {
-            console.error('Error following user:', error);
-            toast.error('Failed to follow user');
+            console.error('Error fetching following count:', error);
         }
     };
 
@@ -130,11 +100,29 @@ const Explore = () => {
             const filtered = users.filter(user =>
                 user.display_name.toLowerCase().includes(query) ||
                 user.username.toLowerCase().includes(query) ||
-                user.college.toLowerCase().includes(query)
+                user.bio?.toLowerCase().includes(query)
             );
             setFilteredUsers(filtered);
         }
     }, [searchQuery, users]);
+
+    // Policy: Show message for readonly users
+    if (isReadOnly) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="text-center p-8">
+                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                    <h2 className="text-xl font-semibold mb-2">Explore Students</h2>
+                    <p className="text-muted-foreground mb-4">
+                        Sign in with your college email to discover and connect with students
+                    </p>
+                    <Button onClick={() => navigate('/study')}>
+                        Back to Study
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -149,19 +137,28 @@ const Explore = () => {
                         </Button>
                         <div className="flex-1">
                             <h1 className="text-xl font-bold text-foreground">Explore</h1>
-                            <p className="text-sm text-muted-foreground">Discover students from your college</p>
+                            <p className="text-sm text-muted-foreground">
+                                Discover students from {selectedCollege?.name || 'your college'}
+                            </p>
                         </div>
                     </div>
                 </div>
             </header>
 
             <div className="max-w-4xl mx-auto p-4">
+                {/* Domain Filter Notice */}
+                <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <p className="text-sm text-primary">
+                        Showing students with <strong>@{selectedCollege?.domain}</strong> email addresses
+                    </p>
+                </div>
+
                 {/* Search Bar */}
                 <div className="mb-6">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                         <Input
-                            placeholder="Search by name, username, or college..."
+                            placeholder="Search by name or username..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"
@@ -188,7 +185,7 @@ const Explore = () => {
                                 <TrendingUp className="w-5 h-5 text-green-500" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{followedUsers.size}</p>
+                                <p className="text-2xl font-bold">{followingCount}</p>
                                 <p className="text-sm text-muted-foreground">Following</p>
                             </div>
                         </div>
@@ -200,12 +197,14 @@ const Explore = () => {
                     {loading ? (
                         <div className="text-center py-12">
                             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-                            <p className="text-muted-foreground mt-4">Loading users...</p>
+                            <p className="text-muted-foreground mt-4">Loading students...</p>
                         </div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="text-center py-12">
                             <UsersIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-muted-foreground">No users found</p>
+                            <p className="text-muted-foreground">
+                                {searchQuery ? "No students found matching your search" : "No students found from your college"}
+                            </p>
                         </div>
                     ) : (
                         filteredUsers.map((user) => (
@@ -220,7 +219,7 @@ const Explore = () => {
                                     >
                                         <AvatarImage src={user.profile_photo_url || undefined} />
                                         <AvatarFallback className="bg-primary/10 text-primary">
-                                            {user.display_name[0]}
+                                            {user.display_name?.[0] || user.email[0].toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
 
@@ -229,10 +228,10 @@ const Explore = () => {
                                         onClick={() => navigate(`/profile/${user.username}`)}
                                     >
                                         <h3 className="font-semibold text-foreground truncate">
-                                            {user.display_name}
+                                            {user.display_name || user.email.split('@')[0]}
                                         </h3>
                                         <p className="text-sm text-muted-foreground truncate">
-                                            @{user.username}
+                                            @{user.username || user.email.split('@')[0]}
                                         </p>
                                         {user.bio && (
                                             <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
@@ -240,27 +239,16 @@ const Explore = () => {
                                             </p>
                                         )}
                                         <Badge variant="outline" className="mt-2 text-xs">
-                                            {user.college}
+                                            {user.college || selectedCollege?.name}
                                         </Badge>
                                     </div>
 
-                                    <Button
-                                        variant={followedUsers.has(user.email) ? "outline" : "default"}
+                                    {/* FIX: Use FollowButton component for request-based follow */}
+                                    <FollowButton
+                                        targetUserEmail={user.email}
+                                        targetUserName={user.display_name}
                                         size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleFollow(user.email);
-                                        }}
-                                    >
-                                        {followedUsers.has(user.email) ? (
-                                            <>Following</>
-                                        ) : (
-                                            <>
-                                                <UserPlus className="w-4 h-4 mr-1" />
-                                                Follow
-                                            </>
-                                        )}
-                                    </Button>
+                                    />
                                 </div>
                             </Card>
                         ))

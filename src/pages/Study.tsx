@@ -21,7 +21,6 @@ import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
-import { useBookmarkSync } from "@/hooks/useBookmarkSync";
 
 const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const branches = ["cse", "ece", "me", "ce", "eee", "aiml", "ds", "it"];
@@ -57,9 +56,6 @@ const Study = () => {
   const { selectedCollege } = useCollege();
   const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
-
-  // Sync bookmarks from database to localStorage
-  useBookmarkSync();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("all");

@@ -1,6 +1,7 @@
 // src/context/CollegeContext.tsx
 // College selection context with two-tier access system
 // Policy: College domain email = FULL access, any other email = READ-ONLY
+// FIX: Auto-detect college from user email domain
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
@@ -38,18 +39,52 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
     const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
 
-    // Initialize from localStorage
+    // FIX: Auto-detect college from user email domain FIRST
+    // Then fallback to localStorage for users with non-college emails
     useEffect(() => {
-        const savedCollegeId = localStorage.getItem(STORAGE_KEY);
-        if (savedCollegeId) {
-            const college = COLLEGES.find(c => c.id === savedCollegeId);
-            if (college) {
-                setSelectedCollege(college);
+        if (user?.email) {
+            const userDomain = user.email.split('@')[1]?.toLowerCase();
+
+            // First: Try to match college by email domain
+            const matchedCollege = COLLEGES.find(c => c.domain.toLowerCase() === userDomain);
+
+            if (matchedCollege) {
+                // User has college email - auto-select and grant full access
+                setSelectedCollege(matchedCollege);
+                localStorage.setItem(STORAGE_KEY, matchedCollege.id);
+                console.log(`[CollegeContext] Auto-detected college: ${matchedCollege.name} from email domain: ${userDomain}`);
+                return;
+            }
+
+            // Second: For non-college emails, try to load from localStorage
+            const savedCollegeId = localStorage.getItem(STORAGE_KEY);
+            if (savedCollegeId) {
+                const savedCollege = COLLEGES.find(c => c.id === savedCollegeId);
+                if (savedCollege) {
+                    setSelectedCollege(savedCollege);
+                    console.log(`[CollegeContext] Loaded from localStorage: ${savedCollege.name} (readonly mode)`);
+                    return;
+                }
+            }
+
+            // Third: Default to first college for users without selection
+            // This ensures they can at least view content (readonly)
+            setSelectedCollege(COLLEGES[0]);
+            localStorage.setItem(STORAGE_KEY, COLLEGES[0].id);
+            console.log(`[CollegeContext] Defaulting to: ${COLLEGES[0].name} (readonly mode)`);
+        } else {
+            // No user logged in - try localStorage or default
+            const savedCollegeId = localStorage.getItem(STORAGE_KEY);
+            if (savedCollegeId) {
+                const savedCollege = COLLEGES.find(c => c.id === savedCollegeId);
+                if (savedCollege) {
+                    setSelectedCollege(savedCollege);
+                }
             }
         }
-    }, []);
+    }, [user]);
 
-    // Set college by ID
+    // Set college by ID (for manual selection by readonly users)
     const setCollege = (collegeId: string) => {
         const college = COLLEGES.find(c => c.id === collegeId);
         if (college) {
