@@ -3,7 +3,7 @@
 // Hidden on auth and college selection pages
 
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Plus, Bell, User } from 'lucide-react';
+import { Home, Search, Plus, Bell, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import UploadResourceDialog from '@/components/UploadResourceDialog';
@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
     { icon: <Search className="w-5 h-5" />, label: 'Explore', path: '/explore' },
     { icon: <Plus className="w-6 h-6" />, label: 'Share', path: '', isCenter: true, action: 'upload' },
     { icon: <Bell className="w-5 h-5" />, label: 'Notices', path: '/notices' },
-    { icon: <User className="w-5 h-5" />, label: 'Profile', path: '/profile' },
+    { icon: <MessageCircle className="w-5 h-5" />, label: 'Chat', path: '/chatroom' },
 ];
 
 // Routes where bottom nav should be hidden

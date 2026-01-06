@@ -198,8 +198,8 @@ const Study = () => {
                 </SheetTrigger>
               </Sheet>
 
-              {/* Search Tabs */}
-              <div className="flex gap-1 bg-secondary/50 rounded-lg p-1 flex-shrink-0">
+              {/* Search Tabs - Hidden on mobile (available in sidebar) */}
+              <div className="hidden md:flex gap-1 bg-secondary/50 rounded-lg p-1 flex-shrink-0">
                 <Button
                   variant={searchMode === "resources" ? "default" : "ghost"}
                   size="sm"
