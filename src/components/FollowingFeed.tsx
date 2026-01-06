@@ -10,6 +10,7 @@ import { Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCollege } from '@/context/CollegeContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/context/AuthContext';
 
 interface Resource {
   id: string;
@@ -34,19 +35,25 @@ const FollowingFeed = () => {
   const [loading, setLoading] = useState(true);
   const [followingCount, setFollowingCount] = useState(0);
 
+  // FIX: Use Firebase Auth instead of Supabase Auth
+  const { user: authUser } = useAuth();
   const { selectedCollege } = useCollege();
-  const { canViewFollowing, isReadOnly } = usePermissions();
+  const { isReadOnly } = usePermissions();
 
   useEffect(() => {
-    fetchFollowingResources();
-  }, [selectedCollege]);
+    if (authUser?.email) {
+      fetchFollowingResources();
+    }
+  }, [selectedCollege, authUser]);
 
   const fetchFollowingResources = async () => {
+    if (!authUser?.email) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return;
-
       // Policy: Filter by college_id for data isolation
       const collegeId = selectedCollege?.domain || 'kiet.edu';
 
@@ -54,7 +61,7 @@ const FollowingFeed = () => {
       const { data: followingData, error: followingError } = await supabase
         .from('follows')
         .select('following_email')
-        .eq('follower_email', user.email);
+        .eq('follower_email', authUser.email);
 
       if (followingError) throw followingError;
 
@@ -63,6 +70,7 @@ const FollowingFeed = () => {
 
       if (followingEmails.length === 0) {
         setResources([]);
+        setLoading(false);
         return;
       }
 
@@ -73,6 +81,7 @@ const FollowingFeed = () => {
         .select('*')
         .in('uploaded_by_email', followingEmails)
         .eq('college_id', collegeId) // Policy: College data isolation
+        .eq('status', 'approved') // Only approved resources
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -156,10 +165,21 @@ const FollowingFeed = () => {
         {resources.map((resource) => (
           <ResourceCard
             key={resource.id}
-            {...resource}
+            id={resource.id}
+            title={resource.title}
+            type={resource.type as any}
+            author={resource.uploaded_by_name || 'Anonymous'}
+            authorType="student"
+            upvotes={resource.upvotes}
+            downvotes={resource.downvotes}
+            subject={resource.subject}
+            chapter={resource.chapter || 'General'}
+            pdfUrl={resource.file_url}
+            videoUrl={resource.video_url}
             semester={resource.semester}
             branch={resource.branch}
-            onUpdate={fetchFollowingResources}
+            uploaded_by_email={resource.uploaded_by_email}
+            created_at={resource.created_at}
           />
         ))}
       </div>
