@@ -439,6 +439,24 @@ const Chatroom = () => {
     msg.author_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Policy: Hide chat for readonly users
+  if (isReadOnly) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center p-8">
+          <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">Chat Rooms</h2>
+          <p className="text-muted-foreground mb-4">
+            Sign in with your college email to access chat rooms
+          </p>
+          <Button onClick={() => navigate('/study')}>
+            Back to Study
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!roomId) {
     return (
       <div className="min-h-screen bg-background">

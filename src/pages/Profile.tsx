@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import { ArrowLeft, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, ExternalLink, MessageCircle, MoreVertical, Trash2, Bookmark, Moon, Sun, Loader2 } from "lucide-react";
@@ -131,6 +132,7 @@ const Profile = () => {
 
   /* 🔐 AUTH */
   const { user: authUser, loading, logout } = useAuth();
+  const { selectedCollege } = useCollege();
 
   /* 🧠 STATE */
   const [isEditing, setIsEditing] = useState(false);
@@ -468,6 +470,7 @@ const Profile = () => {
             title: 'New Follower',
             message: `${authUser.email.split('@')[0]} started following you`,
             read: false,
+            college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
           }]);
 
           if (notifError) console.error('Error creating notification:', notifError);
@@ -1248,6 +1251,7 @@ const Profile = () => {
                                         resource_id: contribution.id,
                                         resource_title: contribution.title,
                                         read: false,
+                                        college_id: selectedCollege?.domain || 'kiet.edu', // Policy
                                       }]);
 
                                       toast.success('Resource approved!');
@@ -1281,6 +1285,7 @@ const Profile = () => {
                                         resource_id: contribution.id,
                                         resource_title: contribution.title,
                                         read: false,
+                                        college_id: selectedCollege?.domain || 'kiet.edu', // Policy
                                       }]);
 
                                       toast.success('Resource rejected');

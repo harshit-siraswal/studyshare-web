@@ -221,15 +221,18 @@ const Study = () => {
                   <BookOpen className="w-3.5 h-3.5 mr-1.5" />
                   Syllabus
                 </Button>
-                <Button
-                  variant={searchMode === "following" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setSearchMode("following")}
-                  className="text-xs h-8"
-                >
-                  <Users className="w-3.5 h-3.5 mr-1.5" />
-                  Following
-                </Button>
+                {/* Policy: Hide Following tab for readonly users */}
+                {canViewFollowing && (
+                  <Button
+                    variant={searchMode === "following" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSearchMode("following")}
+                    className="text-xs h-8"
+                  >
+                    <Users className="w-3.5 h-3.5 mr-1.5" />
+                    Following
+                  </Button>
+                )}
               </div>
 
               {/* Search Bar - only show for resources */}
@@ -249,24 +252,29 @@ const Study = () => {
               {/* Notification Button */}
               <NotificationButton />
 
-              {/* Upload Button */}
-              <UploadResourceDialog
-                trigger={
-                  <Button className="hidden md:flex shrink-0">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Share Resource
-                  </Button>
-                }
-              />
+              {/* Policy: Hide Upload buttons for readonly users */}
+              {isFullAccess && (
+                <>
+                  {/* Upload Button */}
+                  <UploadResourceDialog
+                    trigger={
+                      <Button className="hidden md:flex shrink-0">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Share Resource
+                      </Button>
+                    }
+                  />
 
-              {/* Mobile Upload */}
-              <UploadResourceDialog
-                trigger={
-                  <Button size="icon" className="md:hidden shrink-0">
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                }
-              />
+                  {/* Mobile Upload */}
+                  <UploadResourceDialog
+                    trigger={
+                      <Button size="icon" className="md:hidden shrink-0">
+                        <Plus className="w-5 h-5" />
+                      </Button>
+                    }
+                  />
+                </>
+              )}
             </div>
 
             {/* Filters - Show for both Resources and Syllabus */}
