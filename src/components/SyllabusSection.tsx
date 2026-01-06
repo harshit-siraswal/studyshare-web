@@ -161,17 +161,17 @@ const SyllabusSection = ({
 
         <div className="grid gap-4">
           {syllabusItems.map((item) => (
-            <Card key={item.id} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start gap-4">
+            <Card key={item.id} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                 {/* Icon */}
-                <div className="w-16 h-16 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <FileText className="w-8 h-8 text-blue-500" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                  
+
                   {item.description && (
                     <p className="text-sm text-muted-foreground mb-3">
                       {item.description}
@@ -188,17 +188,19 @@ const SyllabusSection = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
+                      className="flex-1 sm:flex-none"
                       onClick={() => setSelectedPdf({ url: item.pdf_url, title: item.title })}
                     >
                       <FileText className="w-4 h-4 mr-2" />
-                      View PDF
+                      View
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
+                      className="flex-1 sm:flex-none"
                       onClick={() => handleDownload(item.pdf_url, item.title)}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -208,6 +210,7 @@ const SyllabusSection = ({
                       size="sm"
                       variant="ghost"
                       asChild
+                      className="hidden sm:flex"
                     >
                       <a href={item.pdf_url} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="w-4 h-4 mr-2" />
