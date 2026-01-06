@@ -10,6 +10,7 @@ import { supabase } from '../supabase';
 import { toast } from 'sonner';
 import { useCollege } from '@/context/CollegeContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/context/AuthContext';
 
 interface FollowButtonProps {
   targetUserEmail: string;
@@ -33,20 +34,21 @@ const FollowButton = ({
 
   const { selectedCollege } = useCollege();
   const { canFollow, isReadOnly } = usePermissions();
+  const { user: authUser } = useAuth(); // FIX: Use Firebase Auth
 
   useEffect(() => {
-    checkFollowStatus();
-  }, [targetUserEmail]);
+    if (authUser?.email) {
+      setCurrentUserEmail(authUser.email);
+      checkFollowStatus(authUser.email);
+    }
+  }, [targetUserEmail, authUser]);
 
-  const checkFollowStatus = async () => {
+  const checkFollowStatus = async (userEmail: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return;
-
-      setCurrentUserEmail(user.email);
+      if (!userEmail) return;
 
       // Don't show follow button for yourself
-      if (user.email === targetUserEmail) {
+      if (userEmail === targetUserEmail) {
         return;
       }
 
@@ -54,7 +56,7 @@ const FollowButton = ({
       const { data: followData } = await supabase
         .from('follows')
         .select('id')
-        .eq('follower_email', user.email)
+        .eq('follower_email', userEmail)
         .eq('following_email', targetUserEmail)
         .single();
 
@@ -68,7 +70,7 @@ const FollowButton = ({
       const { data: requestData } = await supabase
         .from('follow_requests')
         .select('id, status')
-        .eq('requester_email', user.email)
+        .eq('requester_email', userEmail)
         .eq('target_email', targetUserEmail)
         .eq('status', 'pending')
         .single();
