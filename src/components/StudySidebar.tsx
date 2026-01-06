@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { 
-  Bookmark, MessageSquare, Bell, ChevronDown, ChevronRight, Hash, Users, LogOut, 
-  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User
+import {
+  Bookmark, MessageSquare, Bell, ChevronDown, ChevronRight, Hash, Users, LogOut,
+  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,14 +57,14 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user?.uid) return;
-      
+
       try {
         const { data } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.uid)
           .single();
-        
+
         if (data) {
           setUserProfile(data);
         }
@@ -72,7 +72,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
         console.error('Error fetching user profile:', error);
       }
     };
-    
+
     fetchUserProfile();
   }, [user?.uid]);
 
@@ -86,7 +86,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     };
 
     window.addEventListener("storage", handleStorageChange);
-    
+
     const interval = setInterval(() => {
       const current = JSON.parse(localStorage.getItem("bookmarks") || "[]");
       if (JSON.stringify(current) !== JSON.stringify(bookmarks)) {
@@ -111,11 +111,11 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     try {
       // Logout from Firebase
       await logout();
-      
+
       // Clear local storage
       localStorage.removeItem("user");
       localStorage.removeItem("selectedCollege");
-      
+
       // Navigate to college selection
       navigate("/", { replace: true });
       toast.success("Logged out successfully");
@@ -163,9 +163,9 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   >
                     <Avatar className="h-8 w-8">
                       {userProfile?.profile_photo_url ? (
-                        <AvatarImage 
-                          src={userProfile.profile_photo_url} 
-                          alt={userProfile.display_name || user.displayName} 
+                        <AvatarImage
+                          src={userProfile.profile_photo_url}
+                          alt={userProfile.display_name || user.displayName}
                         />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
@@ -261,15 +261,15 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     <div className="h-screen bg-sidebar border-r border-sidebar-border flex flex-col w-72 transition-all duration-300 overflow-hidden">
       {/* Header with toggle */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-        <button 
+        <button
           onClick={() => navigate("/profile")}
           className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
         >
           <Avatar className="w-10 h-10 shrink-0">
             {userProfile?.profile_photo_url ? (
-              <AvatarImage 
-                src={userProfile.profile_photo_url} 
-                alt={userProfile.display_name || user.name} 
+              <AvatarImage
+                src={userProfile.profile_photo_url}
+                alt={userProfile.display_name || user.name}
               />
             ) : (
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
@@ -340,6 +340,18 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
               <span>College Notices</span>
               <span className="ml-auto w-2 h-2 bg-destructive rounded-full" />
               <ExternalLink className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+
+          {/* Explore - Now a button */}
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
+              onClick={() => navigate("/explore")}
+            >
+              <Search className="w-4 h-4" />
+              <span>Explore Students</span>
             </Button>
           </div>
 

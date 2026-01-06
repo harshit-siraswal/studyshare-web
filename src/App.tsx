@@ -40,7 +40,7 @@ const App = () => (
             <Route path="/chatroom/:roomId" element={<Chatroom />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/explore" element={<Explore />} />
+            <Route path="/explore" element={<Explore />} /> {/* Explore Page */}
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:username" element={<Messages />} />
             <Route path="*" element={<NotFound />} />
