@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ const Study = () => {
   const { selectedCollege } = useCollege();
   const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("all");
@@ -74,6 +75,21 @@ const Study = () => {
   // Supabase state
   const [resources, setResources] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState(true);
+
+  // Read tab from URL and sync with searchMode
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "syllabus") {
+      setSearchMode("syllabus");
+    } else if (tab === "following") {
+      setSearchMode("following");
+    } else if (tab === "bookmarks") {
+      // Navigate to profile bookmarks section
+      navigate("/profile?tab=bookmarks");
+    } else {
+      setSearchMode("resources");
+    }
+  }, [searchParams, navigate]);
 
   /* ---------------------------------------------------------------- */
   /* AUTH GUARD (SAFE & STABLE) */
