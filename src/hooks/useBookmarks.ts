@@ -1,11 +1,11 @@
 // src/hooks/useBookmarks.ts
-// NEW: Simple DB-first bookmark hook
-// Replaces flawed useBookmarkSync.tsx
+// MIGRATED: Now uses backend API instead of direct Supabase calls
+// All bookmark operations go through authenticated backend endpoints
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import * as api from '@/lib/api';
 
 interface Bookmark {
     id: string;
@@ -30,7 +30,7 @@ export const useBookmarks = (): UseBookmarksReturn => {
     const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
-    // Fetch all bookmarks for current user
+    // Fetch all bookmarks via backend API
     const fetchBookmarks = useCallback(async () => {
         if (!user?.email) {
             setBookmarks([]);
@@ -40,15 +40,12 @@ export const useBookmarks = (): UseBookmarksReturn => {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('bookmarks')
-                .select('id, resource_id, created_at')
-                .eq('user_email', user.email)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            const bookmarkData = data || [];
+            const response = await api.getBookmarks();
+            const bookmarkData = response.bookmarks.map(b => ({
+                id: b.id,
+                resource_id: b.resourceId,
+                created_at: b.createdAt,
+            }));
             setBookmarks(bookmarkData);
             setBookmarkedIds(new Set(bookmarkData.map(b => b.resource_id)));
         } catch (error) {
@@ -63,7 +60,7 @@ export const useBookmarks = (): UseBookmarksReturn => {
         fetchBookmarks();
     }, [fetchBookmarks]);
 
-    // Add bookmark
+    // Add bookmark via backend API
     const addBookmark = useCallback(async (resourceId: string): Promise<boolean> => {
         if (!user?.email) {
             toast.error('Please login to bookmark');
@@ -71,44 +68,30 @@ export const useBookmarks = (): UseBookmarksReturn => {
         }
 
         try {
-            const { error } = await supabase
-                .from('bookmarks')
-                .insert([{
-                    user_email: user.email,
-                    resource_id: resourceId,
-                }]);
-
-            if (error) {
-                if (error.code === '23505') {
-                    // Already bookmarked - not an error
-                    return true;
-                }
-                throw error;
-            }
+            await api.addBookmark(resourceId);
 
             // Update local state
             setBookmarkedIds(prev => new Set([...prev, resourceId]));
             toast.success('Bookmarked!');
             return true;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding bookmark:', error);
+            if (error.message?.includes('already')) {
+                // Already bookmarked - not an error
+                setBookmarkedIds(prev => new Set([...prev, resourceId]));
+                return true;
+            }
             toast.error('Failed to bookmark');
             return false;
         }
     }, [user?.email]);
 
-    // Remove bookmark
+    // Remove bookmark via backend API
     const removeBookmark = useCallback(async (resourceId: string): Promise<boolean> => {
         if (!user?.email) return false;
 
         try {
-            const { error } = await supabase
-                .from('bookmarks')
-                .delete()
-                .eq('user_email', user.email)
-                .eq('resource_id', resourceId);
-
-            if (error) throw error;
+            await api.removeBookmarkByResource(resourceId);
 
             // Update local state
             setBookmarkedIds(prev => {

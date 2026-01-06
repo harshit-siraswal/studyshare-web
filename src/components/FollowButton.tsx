@@ -1,16 +1,15 @@
 // src/components/FollowButton.tsx
-// Follow Request button component
-// FIX: Changed from instant follow to request-based approval flow
+// MIGRATED: Now uses backend API instead of direct Supabase calls
 // States: not-following → pending → following
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserPlus, UserMinus, Loader2, Clock, UserCheck } from 'lucide-react';
+import { UserPlus, Loader2, Clock, UserCheck } from 'lucide-react';
 import { supabase } from '../supabase';
 import { toast } from 'sonner';
-import { useCollege } from '@/context/CollegeContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
+import * as api from '@/lib/api';
 
 interface FollowButtonProps {
   targetUserEmail: string;
@@ -20,6 +19,9 @@ interface FollowButtonProps {
 }
 
 type FollowStatus = 'not-following' | 'pending' | 'following';
+
+// Store pending request IDs for cancel functionality
+const pendingRequestIds = new Map<string, string>();
 
 const FollowButton = ({
   targetUserEmail,
@@ -32,9 +34,8 @@ const FollowButton = ({
   const [actionLoading, setActionLoading] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  const { selectedCollege } = useCollege();
   const { canFollow, isReadOnly } = usePermissions();
-  const { user: authUser } = useAuth(); // FIX: Use Firebase Auth
+  const { user: authUser } = useAuth();
 
   useEffect(() => {
     if (authUser?.email) {
@@ -43,6 +44,7 @@ const FollowButton = ({
     }
   }, [targetUserEmail, authUser]);
 
+  // Check current follow status (reads can still use Supabase for now)
   const checkFollowStatus = async (userEmail: string) => {
     try {
       if (!userEmail) return;
@@ -76,6 +78,7 @@ const FollowButton = ({
         .single();
 
       if (requestData) {
+        pendingRequestIds.set(targetUserEmail, requestData.id);
         setFollowStatus('pending');
         setLoading(false);
         return;
@@ -104,65 +107,35 @@ const FollowButton = ({
     setActionLoading(true);
     try {
       if (followStatus === 'following') {
-        // Unfollow - remove from follows table
-        const { error } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_email', currentUserEmail)
-          .eq('following_email', targetUserEmail);
-
-        if (error) throw error;
-
+        // Unfollow via backend API
+        await api.unfollowUser(targetUserEmail);
         setFollowStatus('not-following');
         toast.success(`Unfollowed ${targetUserName || 'user'}`);
+
       } else if (followStatus === 'pending') {
-        // Cancel pending request
-        const { error } = await supabase
-          .from('follow_requests')
-          .delete()
-          .eq('requester_email', currentUserEmail)
-          .eq('target_email', targetUserEmail)
-          .eq('status', 'pending');
-
-        if (error) throw error;
-
+        // Cancel pending request via backend API
+        const requestId = pendingRequestIds.get(targetUserEmail);
+        if (requestId) {
+          await api.cancelFollowRequest(requestId);
+          pendingRequestIds.delete(targetUserEmail);
+        }
         setFollowStatus('not-following');
         toast.success('Follow request cancelled');
+
       } else {
-        // Send follow request (not instant follow!)
-        const { error } = await supabase
-          .from('follow_requests')
-          .insert([{
-            requester_email: currentUserEmail,
-            target_email: targetUserEmail,
-            status: 'pending',
-            college_id: selectedCollege?.domain || 'kiet.edu',
-          }]);
+        // Send follow request via backend API
+        // Note: reCAPTCHA token needed - for now we'll skip if not available
+        // In production, integrate reCAPTCHA v3 here
+        const recaptchaToken = await getRecaptchaToken();
 
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('Request already sent');
-            return;
-          }
-          throw error;
-        }
-
+        const response = await api.sendFollowRequest(targetUserEmail, recaptchaToken);
+        pendingRequestIds.set(targetUserEmail, response.request.id);
         setFollowStatus('pending');
         toast.success(`Follow request sent to ${targetUserName || 'user'}!`);
-
-        // Create notification for the target user
-        await supabase.from('notifications').insert([{
-          user_email: targetUserEmail,
-          type: 'follow_request',
-          title: 'Follow Request',
-          message: `${currentUserEmail.split('@')[0]} wants to follow you`,
-          read: false,
-          college_id: selectedCollege?.domain || 'kiet.edu',
-        }]);
       }
     } catch (error: any) {
       console.error('Follow error:', error);
-      toast.error('Failed to update follow status');
+      toast.error(error.message || 'Failed to update follow status');
     } finally {
       setActionLoading(false);
     }
@@ -235,5 +208,27 @@ const FollowButton = ({
     </Button>
   );
 };
+
+/**
+ * Get reCAPTCHA v3 token
+ * In production, ensure grecaptcha is loaded and use your site key
+ */
+async function getRecaptchaToken(): Promise<string> {
+  // Check if grecaptcha is available (reCAPTCHA v3 loaded)
+  if (typeof window !== 'undefined' && (window as any).grecaptcha) {
+    try {
+      const token = await (window as any).grecaptcha.execute(
+        import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6Ld7RUAsAAAAAKlJBKqsXHXnmP6PXRYvYhYjhsJF',
+        { action: 'follow_request' }
+      );
+      return token;
+    } catch (error) {
+      console.warn('reCAPTCHA execution failed:', error);
+    }
+  }
+
+  // Fallback for development - backend should handle missing token gracefully
+  return 'dev-token-not-verified';
+}
 
 export default FollowButton;
