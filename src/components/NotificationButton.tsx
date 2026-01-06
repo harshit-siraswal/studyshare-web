@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '../supabase';
+import { useCollege } from '@/context/CollegeContext';
 import { toast } from 'sonner';
 
 interface Notification {
@@ -26,6 +27,7 @@ interface Notification {
 }
 
 const NotificationButton = () => {
+  const { selectedCollege } = useCollege();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ const NotificationButton = () => {
 
   useEffect(() => {
     fetchNotifications();
-    
+
     // Set up real-time subscription
     const subscription = supabase
       .channel('notifications')
@@ -65,6 +67,7 @@ const NotificationButton = () => {
         .from('notifications')
         .select('*')
         .eq('user_email', user.email)
+        .eq('college_id', selectedCollege?.domain || 'kiet.edu') // Policy: College data isolation
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -155,7 +158,7 @@ const NotificationButton = () => {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <Badge 
+            <Badge
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -163,7 +166,7 @@ const NotificationButton = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      
+
       <DropdownMenuContent align="end" className="w-80 max-h-[500px] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b">
@@ -194,9 +197,8 @@ const NotificationButton = () => {
           notifications.map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className={`p-3 cursor-pointer border-b last:border-b-0 ${
-                !notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
-              }`}
+              className={`p-3 cursor-pointer border-b last:border-b-0 ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+                }`}
               onClick={() => markAsRead(notification.id)}
             >
               <div className="flex gap-3 w-full">
@@ -225,9 +227,9 @@ const NotificationButton = () => {
         {/* Footer */}
         {notifications.length > 0 && (
           <div className="p-2 border-t">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="w-full text-xs"
               onClick={() => setOpen(false)}
             >

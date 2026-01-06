@@ -210,6 +210,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
           resource_id: data[0].id,
           resource_title: formData.title,
           read: false,
+          college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
         }]);
       }
 
