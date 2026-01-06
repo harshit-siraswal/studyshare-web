@@ -2,7 +2,7 @@
 // Slide-in drawer menu for mobile
 
 import { useState, useEffect } from 'react';
-import { X, Home, Search, Bell, User, MessageCircle, Moon, Sun, LogOut, Settings } from 'lucide-react';
+import { X, Bookmark, Moon, Sun, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -15,12 +15,9 @@ interface MobileSidebarProps {
     onClose: () => void;
 }
 
+// Per user request: Only show Bookmarks in sidebar
 const menuItems = [
-    { icon: Home, label: 'Home', path: '/study' },
-    { icon: Search, label: 'Explore', path: '/explore' },
-    { icon: Bell, label: 'Notifications', path: '/notices' },
-    { icon: MessageCircle, label: 'Messages', path: '/messages' },
-    { icon: User, label: 'Profile', path: '/profile' },
+    { icon: Bookmark, label: 'Bookmarks', path: '/study?view=bookmarks' },
 ];
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {

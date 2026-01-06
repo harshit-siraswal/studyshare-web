@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { uploadChatImage } from "@/lib/uploadChatImage";
 import CreateChatRoomDialog from "@/components/CreateChatRoomDialog";
 import JoinChatRoomDialog from "@/components/JoinChatRoomDialog";
@@ -43,6 +45,8 @@ const Chatroom = () => {
   const navigate = useNavigate();
   const { roomId } = useParams();
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
+  const { canChat, isReadOnly } = usePermissions();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
@@ -95,10 +99,14 @@ const Chatroom = () => {
       const roomIds = memberData?.map(m => m.room_id) || [];
 
       if (roomIds.length > 0) {
+        // Policy: Filter rooms by college_id for data isolation
+        const collegeId = selectedCollege?.id || 'kiet';
+
         const { data: roomsData, error: roomsError } = await supabase
           .from('chat_rooms')
           .select('*')
           .in('id', roomIds)
+          .eq('college_id', collegeId) // Policy: College data isolation
           .order('created_at', { ascending: false });
 
         if (roomsError) throw roomsError;

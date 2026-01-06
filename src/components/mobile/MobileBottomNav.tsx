@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
     { icon: <Home className="w-5 h-5" />, label: 'Home', path: '/study' },
     { icon: <Search className="w-5 h-5" />, label: 'Explore', path: '/explore' },
     { icon: <Plus className="w-6 h-6" />, label: 'Post', path: '/study?upload=true', isCenter: true },
-    { icon: <Bell className="w-5 h-5" />, label: 'Alerts', path: '/notices' },
+    { icon: <Bell className="w-5 h-5" />, label: 'Notices', path: '/notices' },
     { icon: <User className="w-5 h-5" />, label: 'Profile', path: '/profile' },
 ];
 

@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import bcrypt from "bcryptjs";
 
 interface JoinChatRoomDialogProps {
@@ -36,6 +37,7 @@ interface ChatRoom {
 const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
   const [open, setOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,9 +55,13 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
   const fetchRooms = async () => {
     setLoading(true);
     try {
+      // Policy: Filter by college_id for data isolation
+      const collegeId = selectedCollege?.id || 'kiet';
+
       const { data, error } = await supabase
         .from('chat_rooms')
         .select('*')
+        .eq('college_id', collegeId) // Policy: College data isolation
         .order('created_at', { ascending: false });
 
       if (error) throw error;
