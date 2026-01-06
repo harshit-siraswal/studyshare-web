@@ -79,7 +79,7 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
           is_private: isPrivate,
           password: hashedPassword,
           member_count: 1,
-          college_id: selectedCollege?.id || 'kiet', // Policy: College data isolation
+          college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
         }])
         .select()
         .single();

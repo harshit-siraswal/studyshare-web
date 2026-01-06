@@ -100,7 +100,7 @@ const Chatroom = () => {
 
       if (roomIds.length > 0) {
         // Policy: Filter rooms by college_id for data isolation
-        const collegeId = selectedCollege?.id || 'kiet';
+        const collegeId = selectedCollege?.domain || 'kiet.edu';
 
         const { data: roomsData, error: roomsError } = await supabase
           .from('chat_rooms')

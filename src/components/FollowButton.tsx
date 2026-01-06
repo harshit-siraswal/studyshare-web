@@ -117,7 +117,7 @@ const FollowButton = ({
             title: 'New Follower',
             message: `${currentUser.email.split('@')[0]} started following you`,
             read: false,
-            college_id: selectedCollege?.id || 'kiet', // Policy: College data isolation
+            college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
           }]);
         }
       }

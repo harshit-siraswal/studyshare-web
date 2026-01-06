@@ -56,7 +56,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
     setLoading(true);
     try {
       // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.id || 'kiet';
+      const collegeId = selectedCollege?.domain || 'kiet.edu';
 
       const { data, error } = await supabase
         .from('chat_rooms')

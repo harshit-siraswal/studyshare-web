@@ -182,7 +182,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
         uploaded_by_name: user?.displayName || user?.email?.split('@')[0] || "Anonymous",
         uploaded_by_email: user?.email || "",
         status: "pending",      // Changed to pending for approval workflow
-        college_id: selectedCollege?.id || 'kiet',  // Policy: Use user's selected college
+        college_id: selectedCollege?.domain || 'kiet.edu',  // Policy: Use user's selected college
         upvotes: 0,             // Changed from votes to upvotes
         downvotes: 0,           // Added downvotes
       };

@@ -95,7 +95,7 @@ const Study = () => {
     setLoadingResources(true);
     try {
       // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.id || 'kiet';
+      const collegeId = selectedCollege?.domain || 'kiet.edu';
 
       let query = supabase
         .from('resources')

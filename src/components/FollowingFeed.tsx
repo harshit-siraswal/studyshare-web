@@ -48,7 +48,7 @@ const FollowingFeed = () => {
       if (!user?.email) return;
 
       // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.id || 'kiet';
+      const collegeId = selectedCollege?.domain || 'kiet.edu';
 
       // Get list of people user is following
       const { data: followingData, error: followingError } = await supabase
