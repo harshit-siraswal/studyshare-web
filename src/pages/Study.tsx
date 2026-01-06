@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Music } from "lucide-react";
+import { Timer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -449,16 +449,22 @@ const Study = () => {
           )}
         </div>
 
-        {/* Mobile Bottom Tools */}
-        <div className="lg:hidden fixed bottom-24 right-4 flex flex-col gap-2 z-40">
-          <Button
-            size="icon"
-            className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-            onClick={() => setShowMobileTools(!showMobileTools)}
-          >
-            <Music className="w-6 h-6" />
-          </Button>
-        </div>
+        {/* Mobile Floating Timer Button */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              size="icon"
+              className="lg:hidden fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-40"
+            >
+              <Timer className="w-6 h-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-auto max-h-[60vh] rounded-t-2xl">
+            <div className="py-4">
+              <StudyTimer />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Right Sidebar - Desktop Only - Fixed */}

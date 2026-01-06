@@ -14,7 +14,9 @@ import { supabase } from "../supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface UploadResourceDialogProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Configuration data
@@ -56,8 +58,12 @@ const RESOURCE_TYPES = [
   { value: "pyq", label: "PYQ (Previous Year Questions)" },
 ];
 
-const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
-  const [open, setOpen] = useState(false);
+const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: UploadResourceDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Support both controlled and uncontrolled modes
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
   const [type, setType] = useState<"notes" | "video">("notes");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -231,7 +237,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
         videoUrl: "",
       });
       setSelectedFile(null);
-      setOpen(false);
+      setIsOpen(false);
       setUploadProgress(0);
 
       // Refresh the page to show new resource
@@ -267,14 +273,15 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
     : [];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
-      if (!isOpen) resetForm();
+    <Dialog open={isOpen} onOpenChange={(val) => {
+      setIsOpen(val);
+      if (!val) resetForm();
     }}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Share a Resource</DialogTitle>
@@ -526,7 +533,7 @@ const UploadResourceDialog = ({ trigger }: UploadResourceDialogProps) => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => setIsOpen(false)}
               disabled={uploading}
             >
               Cancel
