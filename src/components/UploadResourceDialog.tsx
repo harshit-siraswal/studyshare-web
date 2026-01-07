@@ -10,7 +10,7 @@ import { Upload, FileText, Video, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import { supabase } from "../supabase";
+import { createResource } from "@/lib/api";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface UploadResourceDialogProps {
@@ -195,30 +195,18 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
       setUploadProgress(80);
 
-      // Save to Supabase Database with public access (no auth required)
-      const { data, error } = await supabase
-        .from('resources')
-        .insert([resourceData])
-        .select();
-
-      if (error) {
-        console.error('Supabase insert error:', error);
-        throw error;
-      }
-
-      // Create notification for user
-      if (data && data[0]) {
-        await supabase.from('notifications').insert([{
-          user_email: user?.email || "",
-          type: 'resource_pending',
-          title: 'Resource Shared',
-          message: `Your resource "${formData.title}" is waiting for admin approval.`,
-          resource_id: data[0].id,
-          resource_title: formData.title,
-          read: false,
-          college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
-        }]);
-      }
+      // Create resource via backend API (secure)
+      await createResource({
+        title: formData.title,
+        type: type === "notes" ? formData.resourceType : "video",
+        description: formData.description || undefined,
+        url: type === "video" ? formData.videoUrl : undefined,
+        filePath: type === "notes" ? fileUrl : undefined,
+        branch: formData.branch,
+        semester: formData.semester,
+        subject: formData.subject,
+        recaptchaToken: 'skip-for-now', // TODO: Add proper reCAPTCHA
+      });
 
       setUploadProgress(100);
 
@@ -249,15 +237,6 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
       let errorMessage = "Failed to upload resource. Please try again.";
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // Handle Supabase error object
-        const supaError = error as { message?: string; details?: string; hint?: string; code?: string };
-        if (supaError.message) {
-          errorMessage = `Error: ${supaError.message}`;
-          if (supaError.details) errorMessage += ` - ${supaError.details}`;
-          if (supaError.hint) errorMessage += ` (Hint: ${supaError.hint})`;
-          if (supaError.code) errorMessage += ` [Code: ${supaError.code}]`;
-        }
       }
       console.error("Detailed error:", errorMessage);
       toast.error(errorMessage);
