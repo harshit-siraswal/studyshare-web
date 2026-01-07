@@ -106,7 +106,7 @@ const Notices = () => {
   const fetchNotices = async () => {
     try {
       setLoading(true);
-      const userDepartment = user?.branch || 'cse';
+      const userDepartment = (user as any)?.branch || 'cse';
       const collegeId = selectedCollege?.domain || 'kiet.edu';
 
       let query = supabase
@@ -246,214 +246,442 @@ const Notices = () => {
     </div>
   );
 
+  // Department accounts for sidebar
+  const departmentAccounts = DEPARTMENTS.filter(d => d.value !== 'all').map(dept => ({
+    ...dept,
+    handle: `@${dept.label.toLowerCase()}`,
+    avatar: dept.label[0],
+    noticeCount: notices.filter(n => n.department === dept.value || n.department === 'all').length
+  }));
+
+  // Filter departments by search
+  const [deptSearchQuery, setDeptSearchQuery] = useState("");
+  const filteredDepartments = departmentAccounts.filter(dept =>
+    dept.label.toLowerCase().includes(deptSearchQuery.toLowerCase()) ||
+    dept.handle.toLowerCase().includes(deptSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
-      {/* Mobile Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/study')} className="h-9 w-9">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-lg font-bold">Notices</h1>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setShowSearch(!showSearch)} className="h-9 w-9">
-            <Search className="w-5 h-5" />
-          </Button>
-        </div>
+      {/* Desktop Layout */}
+      <div className="hidden md:flex max-w-6xl mx-auto">
+        {/* Left Sidebar - Department Accounts */}
+        <aside className="w-72 shrink-0 border-r border-border sticky top-0 h-screen overflow-auto">
+          <div className="p-4">
+            <h2 className="text-lg font-bold mb-4">Departments</h2>
 
-        {/* Search Bar (collapsible) */}
-        {showSearch && (
-          <div className="px-4 pb-3">
-            <div className="relative">
+            {/* Department Search */}
+            <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search notices..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search departments..."
+                value={deptSearchQuery}
+                onChange={(e) => setDeptSearchQuery(e.target.value)}
                 className="pl-9 h-9"
-                autoFocus
               />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
             </div>
-          </div>
-        )}
 
-        {/* Department Filter Pills */}
-        <div className="px-4 pb-3 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2">
-            {DEPARTMENTS.map((dept) => (
-              <button
-                key={dept.value}
-                onClick={() => setSelectedDepartment(dept.value)}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                  selectedDepartment === dept.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {dept.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+            {/* All Notices Option */}
+            <button
+              onClick={() => setSelectedDepartment("all")}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg transition-colors mb-2",
+                selectedDepartment === "all"
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted"
+              )}
+            >
+              <Avatar className="w-10 h-10">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                  <Bell className="w-5 h-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-left">
+                <p className="font-medium">All Notices</p>
+                <p className="text-xs text-muted-foreground">{notices.length} notices</p>
+              </div>
+            </button>
 
-      {/* Notices Feed */}
-      <main>
-        {loading ? (
-          <div>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <NoticeCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : filteredNotices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4">
-            <Bell className="w-16 h-16 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">No notices found</p>
-            <p className="text-sm text-muted-foreground text-center mt-1">
-              {searchQuery ? "Try a different search" : "Check back later for updates"}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filteredNotices.map((notice) => (
-              <article
-                key={notice.id}
-                className="p-4 hover:bg-muted/30 transition-colors active:bg-muted/50"
-                onClick={() => setSelectedNotice(notice)}
-              >
-                <div className="flex gap-3">
-                  {/* Author Avatar */}
-                  <Avatar className="w-10 h-10 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                      {notice.author?.[0] || 'A'}
+            {/* Department List */}
+            <div className="space-y-1">
+              {filteredDepartments.map((dept) => (
+                <button
+                  key={dept.value}
+                  onClick={() => {
+                    setSelectedDepartment(dept.value);
+                    // Navigate to department profile if desired
+                    // navigate(`/department/${dept.value}`);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-lg transition-colors",
+                    selectedDepartment === dept.value
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
+                      {dept.avatar}
                     </AvatarFallback>
                   </Avatar>
+                  <div className="text-left flex-1">
+                    <p className="font-medium">{dept.label} Department</p>
+                    <p className="text-xs text-muted-foreground">{dept.handle}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {dept.noticeCount}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
 
-                  <div className="flex-1 min-w-0">
-                    {/* Author Info */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold truncate">{notice.author}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">{notice.time}</span>
-                      {notice.important && (
-                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                          Urgent
-                        </Badge>
-                      )}
-                    </div>
+        {/* Main Content */}
+        <main className="flex-1 border-r border-border">
+          {/* Desktop Header */}
+          <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold">Notices</h1>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search notices..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            {selectedDepartment !== "all" && (
+              <Badge variant="outline" className="gap-1">
+                <Building className="w-3 h-3" />
+                {getDepartmentLabel(selectedDepartment)}
+                <button onClick={() => setSelectedDepartment("all")} className="ml-1 hover:text-destructive">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
 
-                    {/* Department Badge */}
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <Building className="w-3 h-3" />
-                      <span>{getDepartmentLabel(notice.department)}</span>
-                    </div>
-
-                    {/* Title */}
-                    {notice.title && (
-                      <h3 className="font-semibold text-base mt-2">{notice.title}</h3>
-                    )}
-
-                    {/* Content */}
-                    <p className="text-sm text-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
-                      {notice.content}
-                    </p>
-
-                    {/* Image Preview */}
-                    {notice.image && (
-                      <div
-                        className="mt-3 rounded-xl overflow-hidden"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImageViewer({ isOpen: true, url: notice.image!, title: notice.title || 'Image' });
-                        }}
-                      >
-                        <img
-                          src={notice.image}
-                          alt="Notice"
-                          className="w-full h-48 object-cover"
-                        />
-                      </div>
-                    )}
-
-                    {/* Attachment Badges */}
-                    {notice.file_url && notice.file_type === 'pdf' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(notice.file_url!, '_blank');
-                        }}
-                      >
-                        <FileText className="w-3.5 h-3.5 mr-1.5" />
-                        View PDF
-                      </Button>
-                    )}
-
-                    {notice.file_url && notice.file_type === 'video' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setVideoPlayer({ isOpen: true, url: notice.file_url!, title: notice.title || 'Video' });
-                        }}
-                      >
-                        <VideoIcon className="w-3.5 h-3.5 mr-1.5" />
-                        Watch Video
-                      </Button>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-8 mt-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedNotice(notice);
-                        }}
-                        className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-xs">{notice.comments.length}</span>
-                      </button>
-                      <button
-                        onClick={(e) => toggleLike(notice.id, e)}
-                        className={cn(
-                          "flex items-center gap-1.5 transition-colors",
-                          likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
+          {/* Notices Feed */}
+          {loading ? (
+            <div>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <NoticeCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filteredNotices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <Bell className="w-16 h-16 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">No notices found</p>
+              <p className="text-sm text-muted-foreground text-center mt-1">
+                {searchQuery ? "Try a different search" : "Check back later for updates"}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredNotices.map((notice) => (
+                <article
+                  key={notice.id}
+                  className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => setSelectedNotice(notice)}
+                >
+                  <div className="flex gap-3">
+                    <Avatar className="w-10 h-10 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {notice.author?.[0] || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold truncate">{notice.author}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">{notice.time}</span>
+                        {notice.important && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            Urgent
+                          </Badge>
                         )}
-                      >
-                        <Heart className={cn("w-4 h-4", likedNotices.includes(notice.id) && "fill-current")} />
-                        <span className="text-xs">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
-                      </button>
-                      <button
-                        onClick={(e) => handleShare(notice, e)}
-                        className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <Share className="w-4 h-4" />
-                      </button>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                        <Building className="w-3 h-3" />
+                        <span>{getDepartmentLabel(notice.department)}</span>
+                      </div>
+                      {notice.title && (
+                        <h3 className="font-semibold text-base mt-2">{notice.title}</h3>
+                      )}
+                      <p className="text-sm text-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
+                        {notice.content}
+                      </p>
+                      {notice.image && (
+                        <div
+                          className="mt-3 rounded-xl overflow-hidden max-w-md"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageViewer({ isOpen: true, url: notice.image!, title: notice.title || 'Image' });
+                          }}
+                        >
+                          <img src={notice.image} alt="Notice" className="w-full h-48 object-cover" />
+                        </div>
+                      )}
+                      {notice.file_url && notice.file_type === 'pdf' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 h-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(notice.file_url!, '_blank');
+                          }}
+                        >
+                          <FileText className="w-3.5 h-3.5 mr-1.5" />
+                          View PDF
+                        </Button>
+                      )}
+                      <div className="flex items-center gap-8 mt-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedNotice(notice); }}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-xs">{notice.comments.length}</span>
+                        </button>
+                        <button
+                          onClick={(e) => toggleLike(notice.id, e)}
+                          className={cn(
+                            "flex items-center gap-1.5 transition-colors",
+                            likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
+                          )}
+                        >
+                          <Heart className={cn("w-4 h-4", likedNotices.includes(notice.id) && "fill-current")} />
+                          <span className="text-xs">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleShare(notice, e)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Share className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Mobile Layout (unchanged) */}
+      <div className="md:hidden">
+        {/* Mobile Header */}
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+          <div className="flex items-center justify-between px-4 h-14">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/study')} className="h-9 w-9">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="text-lg font-bold">Notices</h1>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setShowSearch(!showSearch)} className="h-9 w-9">
+              <Search className="w-5 h-5" />
+            </Button>
           </div>
-        )}
-      </main>
+
+          {/* Search Bar (collapsible) */}
+          {showSearch && (
+            <div className="px-4 pb-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search notices..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Department Filter Pills */}
+          <div className="px-4 pb-3 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2">
+              {DEPARTMENTS.map((dept) => (
+                <button
+                  key={dept.value}
+                  onClick={() => setSelectedDepartment(dept.value)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                    selectedDepartment === dept.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {dept.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Notices Feed */}
+        <main>
+          {loading ? (
+            <div>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <NoticeCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filteredNotices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <Bell className="w-16 h-16 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">No notices found</p>
+              <p className="text-sm text-muted-foreground text-center mt-1">
+                {searchQuery ? "Try a different search" : "Check back later for updates"}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredNotices.map((notice) => (
+                <article
+                  key={notice.id}
+                  className="p-4 hover:bg-muted/30 transition-colors active:bg-muted/50"
+                  onClick={() => setSelectedNotice(notice)}
+                >
+                  <div className="flex gap-3">
+                    {/* Author Avatar */}
+                    <Avatar className="w-10 h-10 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {notice.author?.[0] || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 min-w-0">
+                      {/* Author Info */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold truncate">{notice.author}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">{notice.time}</span>
+                        {notice.important && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            Urgent
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Department Badge */}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                        <Building className="w-3 h-3" />
+                        <span>{getDepartmentLabel(notice.department)}</span>
+                      </div>
+
+                      {/* Title */}
+                      {notice.title && (
+                        <h3 className="font-semibold text-base mt-2">{notice.title}</h3>
+                      )}
+
+                      {/* Content */}
+                      <p className="text-sm text-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
+                        {notice.content}
+                      </p>
+
+                      {/* Image Preview */}
+                      {notice.image && (
+                        <div
+                          className="mt-3 rounded-xl overflow-hidden"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageViewer({ isOpen: true, url: notice.image!, title: notice.title || 'Image' });
+                          }}
+                        >
+                          <img
+                            src={notice.image}
+                            alt="Notice"
+                            className="w-full h-48 object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Attachment Badges */}
+                      {notice.file_url && notice.file_type === 'pdf' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 h-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(notice.file_url!, '_blank');
+                          }}
+                        >
+                          <FileText className="w-3.5 h-3.5 mr-1.5" />
+                          View PDF
+                        </Button>
+                      )}
+
+                      {notice.file_url && notice.file_type === 'video' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 h-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVideoPlayer({ isOpen: true, url: notice.file_url!, title: notice.title || 'Video' });
+                          }}
+                        >
+                          <VideoIcon className="w-3.5 h-3.5 mr-1.5" />
+                          Watch Video
+                        </Button>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-8 mt-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNotice(notice);
+                          }}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-xs">{notice.comments.length}</span>
+                        </button>
+                        <button
+                          onClick={(e) => toggleLike(notice.id, e)}
+                          className={cn(
+                            "flex items-center gap-1.5 transition-colors",
+                            likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
+                          )}
+                        >
+                          <Heart className={cn("w-4 h-4", likedNotices.includes(notice.id) && "fill-current")} />
+                          <span className="text-xs">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleShare(notice, e)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Share className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Comments Dialog (Bottom Sheet on Mobile) */}
       <Sheet open={!!selectedNotice} onOpenChange={() => setSelectedNotice(null)}>
@@ -534,3 +762,4 @@ const Notices = () => {
 };
 
 export default Notices;
+

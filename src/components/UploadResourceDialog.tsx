@@ -245,7 +245,21 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
     } catch (error: unknown) {
       console.error("Error uploading resource:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload resource. Please try again.";
+      // Show more detailed error message
+      let errorMessage = "Failed to upload resource. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle Supabase error object
+        const supaError = error as { message?: string; details?: string; hint?: string; code?: string };
+        if (supaError.message) {
+          errorMessage = `Error: ${supaError.message}`;
+          if (supaError.details) errorMessage += ` - ${supaError.details}`;
+          if (supaError.hint) errorMessage += ` (Hint: ${supaError.hint})`;
+          if (supaError.code) errorMessage += ` [Code: ${supaError.code}]`;
+        }
+      }
+      console.error("Detailed error:", errorMessage);
       toast.error(errorMessage);
     } finally {
       setUploading(false);
