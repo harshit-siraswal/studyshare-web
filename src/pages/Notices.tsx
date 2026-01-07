@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Heart, Share, Search,
-  Bell, FileText, Play,
-  Home, User, Bookmark, MoreHorizontal
+  Bell, FileText, Play, Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
@@ -168,46 +167,7 @@ const Notices = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1265px] flex">
-
-        {/* --- LEFT SIDEBAR (Navigation) --- */}
-        <div className="hidden md:flex w-[275px] flex-col sticky top-0 h-screen p-4 border-r border-border/50 justify-between">
-          <div className="space-y-6">
-            {/* Logo or Title */}
-            <div className="px-3 py-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">StudySpace</h1>
-            </div>
-
-            {/* Nav Items */}
-            <nav className="space-y-2">
-              <NavItem icon={Home} label="Home" active={location.pathname === '/notices'} onClick={() => navigate('/notices')} />
-              <NavItem icon={Search} label="Explore" onClick={() => navigate('/explore')} />
-              <NavItem icon={Bell} label="Notifications" onClick={() => { }} />
-              <NavItem icon={FileText} label="Resources" onClick={() => navigate('/study')} />
-              <NavItem icon={Bookmark} label="Bookmarks" onClick={() => navigate('/study?tab=bookmarks')} />
-              <NavItem icon={User} label="Profile" onClick={() => navigate('/profile')} />
-            </nav>
-
-            <Button className="w-full rounded-full h-12 text-lg font-bold shadow-lg">
-              Post
-            </Button>
-          </div>
-
-          {/* Profile Snippet at bottom */}
-          {user && (
-            <div className="flex items-center gap-3 p-3 rounded-full hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => navigate('/profile')}>
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={user.photoURL || undefined} />
-                <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 overflow-hidden">
-                <p className="font-bold truncate text-sm">{user.displayName || 'User'}</p>
-                <p className="text-muted-foreground truncate text-sm">@{user.email?.split('@')[0]}</p>
-              </div>
-              <MoreHorizontal className="w-4 h-4" />
-            </div>
-          )}
-        </div>
+      <div className="w-full max-w-[1000px] flex">
 
         {/* --- MIDDLE COLUMN (Feed) --- */}
         <main className="flex-1 min-w-[350px] max-w-[600px] border-r border-border/50">
