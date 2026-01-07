@@ -172,27 +172,6 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
         setUploadProgress(60);
       }
 
-      // Prepare resource data - NO auth check needed!
-      const resourceData = {
-        title: formData.title,
-        semester: formData.semester,
-        branch: formData.branch,
-        subject: formData.subject,
-        chapter: formData.chapter || null,
-        topic: formData.topic || null,
-        description: formData.description || null,
-        type: type === "notes" ? formData.resourceType : "video",
-        file_url: type === "notes" ? fileUrl : null,
-        video_url: type === "video" ? formData.videoUrl : null,
-        uploaded_by: user?.uid || 'anonymous',
-        uploaded_by_name: user?.displayName || user?.email?.split('@')[0] || "Anonymous",
-        uploaded_by_email: user?.email || "",
-        status: "pending",      // Changed to pending for approval workflow
-        college_id: selectedCollege?.domain || 'kiet.edu',  // Policy: Use user's selected college
-        upvotes: 0,             // Changed from votes to upvotes
-        downvotes: 0,           // Added downvotes
-      };
-
       setUploadProgress(80);
 
       // Create resource via backend API (secure)
