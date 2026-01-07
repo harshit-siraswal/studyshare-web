@@ -1,35 +1,23 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Heart, Share, Send, Search, Image as ImageIcon, Bell, FileText, Video as VideoIcon, Calendar, Building, X, Filter } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  ArrowLeft, MessageCircle, Heart, Share, Search,
+  Bell, FileText, Play,
+  Home, User, Bookmark, MoreHorizontal
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
-import FollowButton from "@/components/FollowButton";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
-import { useCollege } from "@/context/CollegeContext";
+import { cn } from "@/lib/utils";
 
-interface Comment {
-  id: number;
-  author: string;
-  authorEmail?: string;
-  content: string;
-  time: string;
-  date: string;
-  likes: number;
-  replies?: Comment[];
-}
-
+// --- Types ---
 interface Notice {
   id: string;
   title: string;
@@ -42,43 +30,34 @@ interface Notice {
   created_at: string;
   expires_at: string | null;
   is_active: boolean;
-  author?: string;
-  authorEmail?: string;
-  handle?: string;
-  time?: string;
-  date?: string;
   likes: number;
-  comments: Comment[];
-  important?: boolean;
-  image?: string;
-  video?: string;
+  comments: number;
 }
 
+// --- Constants ---
 const DEPARTMENTS = [
-  { value: 'all', label: 'All' },
-  { value: 'cse', label: 'CSE' },
-  { value: 'ece', label: 'ECE' },
-  { value: 'me', label: 'ME' },
-  { value: 'ce', label: 'CE' },
-  { value: 'eee', label: 'EEE' },
-  { value: 'aiml', label: 'AI/ML' },
-  { value: 'ds', label: 'DS' },
-  { value: 'it', label: 'IT' },
+  { value: 'all', label: 'All Departments', icon: '🏛️' },
+  { value: 'cse', label: 'Computer Science', icon: '💻' },
+  { value: 'ece', label: 'Electronics', icon: '⚡' },
+  { value: 'me', label: 'Mechanical', icon: '⚙️' },
+  { value: 'ce', label: 'Civil', icon: '🏗️' },
+  { value: 'eee', label: 'Electrical', icon: '🔌' },
+  { value: 'aiml', label: 'AI & ML', icon: '🤖' },
+  { value: 'ds', label: 'Data Science', icon: '📊' },
+  { value: 'it', label: 'Information Technology', icon: '🌐' },
 ];
 
 const Notices = () => {
   const navigate = useNavigate();
-  const { accountHandle } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+
+  // State
+  const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou');
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
   const [likedNotices, setLikedNotices] = useState<string[]>([]);
-  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
   const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false, url: "", title: ""
   });
@@ -86,64 +65,94 @@ const Notices = () => {
     isOpen: false, url: "", title: ""
   });
 
-  // Fetch notices from database
+  // Fetch logic
   useEffect(() => {
     fetchNotices();
-
-    const subscription = supabase
-      .channel('notices_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'notices' },
-        () => fetchNotices()
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    if (user?.email) {
+      fetchFollowedDepartments();
+    }
   }, [user]);
 
   const fetchNotices = async () => {
     try {
       setLoading(true);
-      const userDepartment = (user as any)?.branch || 'cse';
-      const collegeId = selectedCollege?.domain || 'kiet.edu';
-
-      let query = supabase
+      const { data, error } = await supabase
         .from('notices')
         .select('*')
         .eq('is_active', true)
-        .eq('college_id', collegeId)
-        .or(`department.eq.all,department.eq.${userDepartment}`)
         .order('created_at', { ascending: false });
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
-      const activeNotices = (data || [])
-        .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
-        .map(notice => ({
-          ...notice,
-          author: notice.created_by,
-          authorEmail: `${notice.created_by.toLowerCase().replace(/\s+/g, '')}@admin.edu`,
-          handle: `@${notice.created_by.toLowerCase().replace(/\s+/g, '')}`,
-          time: formatTimeAgo(notice.created_at),
-          date: notice.created_at,
-          likes: 0,
-          comments: [],
-          important: notice.priority === 'urgent' || notice.priority === 'high',
-          image: notice.file_type === 'image' ? notice.file_url : undefined,
-          video: notice.file_type === 'video' ? notice.file_url : undefined,
-        }));
+      const validNotices = (data || []).map(n => ({
+        ...n,
+        likes: n.likes || 0, // Fallback if column missing/null
+        comments: n.comments || 0
+      }));
 
-      setNotices(activeNotices);
+      setNotices(validNotices);
     } catch (error) {
       console.error('Error fetching notices:', error);
-      toast.error('Failed to load notices');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFollowedDepartments = async () => {
+    if (!user?.email) return;
+    try {
+      const { data } = await supabase
+        .from('department_followers')
+        .select('department_id')
+        .eq('follower_email', user.email);
+
+      if (data) {
+        setFollowedDeptIds(data.map(d => d.department_id));
+      }
+    } catch (error) {
+      console.error('Error fetching followed departments:', error);
+    }
+  };
+
+  const handleFollowDept = async (deptId: string) => {
+    if (!user?.email) {
+      toast.error("Login to follow departments");
+      return;
+    }
+
+    try {
+      if (followedDeptIds.includes(deptId)) {
+        // Unfollow
+        await supabase
+          .from('department_followers')
+          .delete()
+          .eq('department_id', deptId)
+          .eq('follower_email', user.email);
+
+        setFollowedDeptIds(prev => prev.filter(id => id !== deptId));
+        toast.success(`Unfollowed`);
+      } else {
+        // Follow
+        await supabase
+          .from('department_followers')
+          .insert([{ department_id: deptId, follower_email: user.email }]);
+
+        setFollowedDeptIds(prev => [...prev, deptId]);
+        toast.success(`Following`);
+      }
+    } catch (error) {
+      toast.error("Failed to update follow status");
+    }
+  };
+
+  const toggleLike = (noticeId: string) => {
+    setLikedNotices(prev =>
+      prev.includes(noticeId) ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
+    );
+  };
+
+  const getDeptInfo = (deptCode: string) => {
+    return DEPARTMENTS.find(d => d.value === deptCode) || { label: 'Unknown', icon: '❓', value: deptCode };
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -163,586 +172,249 @@ const Notices = () => {
     }
   };
 
-  const getDepartmentLabel = (dept: string) => {
-    return DEPARTMENTS.find(d => d.value === dept)?.label || dept.toUpperCase();
-  };
-
   // Filter notices
-  const filteredNotices = (() => {
-    let filtered = accountHandle
-      ? notices.filter(n => n.handle === accountHandle.replace('@', ''))
-      : notices;
-
-    if (selectedDepartment && selectedDepartment !== 'all') {
-      filtered = filtered.filter(n =>
-        n.department === selectedDepartment || n.department === 'all'
-      );
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(n =>
-        n.title?.toLowerCase().includes(query) ||
-        n.content.toLowerCase().includes(query) ||
-        n.author?.toLowerCase().includes(query)
-      );
-    }
-
-    return filtered;
-  })();
-
-  const toggleLike = (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setLikedNotices((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  const handleShare = async (notice: Notice, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    const shareText = `${notice.title}\n\n${notice.content}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: notice.title,
-          text: shareText,
-          url: window.location.href,
-        });
-      } catch {
-        // User cancelled
-      }
-    } else {
-      await navigator.clipboard.writeText(shareText);
-      toast.success("Copied to clipboard!");
-    }
-  };
-
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    toast.success("Comment posted!");
-    setNewComment("");
-  };
-
-  // Notice Card Skeleton
-  const NoticeCardSkeleton = () => (
-    <div className="p-4 border-b border-border">
-      <div className="flex gap-3">
-        <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-16" />
-          </div>
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <div className="flex gap-6 mt-3">
-            <Skeleton className="h-6 w-12" />
-            <Skeleton className="h-6 w-12" />
-            <Skeleton className="h-6 w-12" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Department accounts for sidebar
-  const departmentAccounts = DEPARTMENTS.filter(d => d.value !== 'all').map(dept => ({
-    ...dept,
-    handle: `@${dept.label.toLowerCase()}`,
-    avatar: dept.label[0],
-    noticeCount: notices.filter(n => n.department === dept.value || n.department === 'all').length
-  }));
-
-  // Filter departments by search
-  const [deptSearchQuery, setDeptSearchQuery] = useState("");
-  const filteredDepartments = departmentAccounts.filter(dept =>
-    dept.label.toLowerCase().includes(deptSearchQuery.toLowerCase()) ||
-    dept.handle.toLowerCase().includes(deptSearchQuery.toLowerCase())
-  );
+  const displayedNotices = activeTab === 'following'
+    ? notices.filter(n => followedDeptIds.includes(n.department))
+    : notices;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
-      {/* Desktop Layout */}
-      <div className="hidden md:flex max-w-6xl mx-auto">
-        {/* Left Sidebar - Department Accounts */}
-        <aside className="w-72 shrink-0 border-r border-border sticky top-0 h-screen overflow-auto">
-          <div className="p-4">
-            <h2 className="text-lg font-bold mb-4">Departments</h2>
+    <div className="min-h-screen bg-background text-foreground flex justify-center">
+      <div className="w-full max-w-[1265px] flex">
 
-            {/* Department Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search departments..."
-                value={deptSearchQuery}
-                onChange={(e) => setDeptSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
+        {/* --- LEFT SIDEBAR (Navigation) --- */}
+        <div className="hidden md:flex w-[275px] flex-col sticky top-0 h-screen p-4 border-r border-border/50 justify-between">
+          <div className="space-y-6">
+            {/* Logo or Title */}
+            <div className="px-3 py-2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">StudySpace</h1>
             </div>
 
-            {/* All Notices Option */}
-            <button
-              onClick={() => setSelectedDepartment("all")}
-              className={cn(
-                "w-full flex items-center gap-3 p-3 rounded-lg transition-colors mb-2",
-                selectedDepartment === "all"
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-muted"
-              )}
-            >
-              <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                  <Bell className="w-5 h-5" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-left">
-                <p className="font-medium">All Notices</p>
-                <p className="text-xs text-muted-foreground">{notices.length} notices</p>
-              </div>
-            </button>
+            {/* Nav Items */}
+            <nav className="space-y-2">
+              <NavItem icon={Home} label="Home" active={location.pathname === '/notices'} onClick={() => navigate('/notices')} />
+              <NavItem icon={Search} label="Explore" onClick={() => navigate('/explore')} />
+              <NavItem icon={Bell} label="Notifications" onClick={() => { }} />
+              <NavItem icon={FileText} label="Resources" onClick={() => navigate('/study')} />
+              <NavItem icon={Bookmark} label="Bookmarks" onClick={() => navigate('/study?tab=bookmarks')} />
+              <NavItem icon={User} label="Profile" onClick={() => navigate('/profile')} />
+            </nav>
 
-            {/* Department List */}
-            <div className="space-y-1">
-              {filteredDepartments.map((dept) => (
-                <button
-                  key={dept.value}
-                  onClick={() => {
-                    setSelectedDepartment(dept.value);
-                    // Navigate to department profile if desired
-                    // navigate(`/department/${dept.value}`);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-lg transition-colors",
-                    selectedDepartment === dept.value
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
-                      {dept.avatar}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-left flex-1">
-                    <p className="font-medium">{dept.label} Department</p>
-                    <p className="text-xs text-muted-foreground">{dept.handle}</p>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {dept.noticeCount}
-                  </Badge>
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 border-r border-border">
-          {/* Desktop Header */}
-          <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold">Notices</h1>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search notices..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            {selectedDepartment !== "all" && (
-              <Badge variant="outline" className="gap-1">
-                <Building className="w-3 h-3" />
-                {getDepartmentLabel(selectedDepartment)}
-                <button onClick={() => setSelectedDepartment("all")} className="ml-1 hover:text-destructive">
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            )}
-          </div>
-
-          {/* Notices Feed */}
-          {loading ? (
-            <div>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <NoticeCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : filteredNotices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-4">
-              <Bell className="w-16 h-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">No notices found</p>
-              <p className="text-sm text-muted-foreground text-center mt-1">
-                {searchQuery ? "Try a different search" : "Check back later for updates"}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {filteredNotices.map((notice) => (
-                <article
-                  key={notice.id}
-                  className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => setSelectedNotice(notice)}
-                >
-                  <div className="flex gap-3">
-                    <Avatar className="w-10 h-10 shrink-0">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {notice.author?.[0] || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-semibold truncate">{notice.author}</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-muted-foreground">{notice.time}</span>
-                        {notice.important && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            Urgent
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <Building className="w-3 h-3" />
-                        <span>{getDepartmentLabel(notice.department)}</span>
-                      </div>
-                      {notice.title && (
-                        <h3 className="font-semibold text-base mt-2">{notice.title}</h3>
-                      )}
-                      <p className="text-sm text-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
-                        {notice.content}
-                      </p>
-                      {notice.image && (
-                        <div
-                          className="mt-3 rounded-xl overflow-hidden max-w-md"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImageViewer({ isOpen: true, url: notice.image!, title: notice.title || 'Image' });
-                          }}
-                        >
-                          <img src={notice.image} alt="Notice" className="w-full h-48 object-cover" />
-                        </div>
-                      )}
-                      {notice.file_url && notice.file_type === 'pdf' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 h-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(notice.file_url!, '_blank');
-                          }}
-                        >
-                          <FileText className="w-3.5 h-3.5 mr-1.5" />
-                          View PDF
-                        </Button>
-                      )}
-                      <div className="flex items-center gap-8 mt-3">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedNotice(notice); }}
-                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-xs">{notice.comments.length}</span>
-                        </button>
-                        <button
-                          onClick={(e) => toggleLike(notice.id, e)}
-                          className={cn(
-                            "flex items-center gap-1.5 transition-colors",
-                            likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
-                          )}
-                        >
-                          <Heart className={cn("w-4 h-4", likedNotices.includes(notice.id) && "fill-current")} />
-                          <span className="text-xs">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
-                        </button>
-                        <button
-                          onClick={(e) => handleShare(notice, e)}
-                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Share className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Mobile Layout (unchanged) */}
-      <div className="md:hidden">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-          <div className="flex items-center justify-between px-4 h-14">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/study')} className="h-9 w-9">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-lg font-bold">Notices</h1>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setShowSearch(!showSearch)} className="h-9 w-9">
-              <Search className="w-5 h-5" />
+            <Button className="w-full rounded-full h-12 text-lg font-bold shadow-lg">
+              Post
             </Button>
           </div>
 
-          {/* Search Bar (collapsible) */}
-          {showSearch && (
-            <div className="px-4 pb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search notices..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
+          {/* Profile Snippet at bottom */}
+          {user && (
+            <div className="flex items-center gap-3 p-3 rounded-full hover:bg-secondary/50 cursor-pointer transition-colors" onClick={() => navigate('/profile')}>
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={user.photoURL || undefined} />
+                <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="font-bold truncate text-sm">{user.displayName || 'User'}</p>
+                <p className="text-muted-foreground truncate text-sm">@{user.email?.split('@')[0]}</p>
               </div>
+              <MoreHorizontal className="w-4 h-4" />
             </div>
           )}
+        </div>
 
-          {/* Department Filter Pills */}
-          <div className="px-4 pb-3 overflow-x-auto no-scrollbar">
-            <div className="flex gap-2">
-              {DEPARTMENTS.map((dept) => (
-                <button
-                  key={dept.value}
-                  onClick={() => setSelectedDepartment(dept.value)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                    selectedDepartment === dept.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  {dept.label}
-                </button>
-              ))}
+        {/* --- MIDDLE COLUMN (Feed) --- */}
+        <main className="flex-1 min-w-[350px] max-w-[600px] border-r border-border/50">
+          {/* Header / Tabs */}
+          <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
+            <div className="px-4 py-3 cursor-pointer md:hidden" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-5 h-5" />
+            </div>
+            <div className="flex w-full">
+              <div
+                className={cn(
+                  "flex-1 text-center py-4 cursor-pointer hover:bg-secondary/30 transition-colors relative font-medium",
+                  activeTab === 'foryou' ? "font-bold" : "text-muted-foreground"
+                )}
+                onClick={() => setActiveTab('foryou')}
+              >
+                For You
+                {activeTab === 'foryou' && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-primary rounded-full"></div>}
+              </div>
+              <div
+                className={cn(
+                  "flex-1 text-center py-4 cursor-pointer hover:bg-secondary/30 transition-colors relative font-medium",
+                  activeTab === 'following' ? "font-bold" : "text-muted-foreground"
+                )}
+                onClick={() => setActiveTab('following')}
+              >
+                Following
+                {activeTab === 'following' && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-primary rounded-full"></div>}
+              </div>
             </div>
           </div>
-        </header>
 
-        {/* Mobile Notices Feed */}
-        <main>
-          {loading ? (
-            <div>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <NoticeCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : filteredNotices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-4">
-              <Bell className="w-16 h-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">No notices found</p>
-              <p className="text-sm text-muted-foreground text-center mt-1">
-                {searchQuery ? "Try a different search" : "Check back later for updates"}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {filteredNotices.map((notice) => (
-                <article
-                  key={notice.id}
-                  className="p-4 hover:bg-muted/30 transition-colors active:bg-muted/50"
-                  onClick={() => setSelectedNotice(notice)}
-                >
-                  <div className="flex gap-3">
-                    {/* Author Avatar */}
-                    <Avatar className="w-10 h-10 shrink-0">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {notice.author?.[0] || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      {/* Author Info */}
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-semibold truncate">{notice.author}</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-muted-foreground">{notice.time}</span>
-                        {notice.important && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            Urgent
-                          </Badge>
-                        )}
+          {/* Feed Content */}
+          <div className="pb-20 md:pb-0">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading notices...</div>
+            ) : displayedNotices.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <h3 className="text-lg font-bold mb-2">No notices yet</h3>
+                <p>Check back later or follow more departments!</p>
+              </div>
+            ) : (
+              displayedNotices.map((notice) => {
+                const dept = getDeptInfo(notice.department);
+                return (
+                  <div key={notice.id} className="p-4 border-b border-border/50 hover:bg-secondary/10 transition-colors cursor-pointer" onClick={() => navigate(`/department/${notice.department}`)}>
+                    <div className="flex gap-3">
+                      <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
+                        <Avatar className="w-10 h-10 border border-border">
+                          <AvatarFallback className="bg-secondary text-lg">{dept.icon}</AvatarFallback>
+                        </Avatar>
                       </div>
-
-                      {/* Department Badge */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <Building className="w-3 h-3" />
-                        <span>{getDepartmentLabel(notice.department)}</span>
-                      </div>
-
-                      {/* Title */}
-                      {notice.title && (
-                        <h3 className="font-semibold text-base mt-2">{notice.title}</h3>
-                      )}
-
-                      {/* Content */}
-                      <p className="text-sm text-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
-                        {notice.content}
-                      </p>
-
-                      {/* Image Preview */}
-                      {notice.image && (
-                        <div
-                          className="mt-3 rounded-xl overflow-hidden"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImageViewer({ isOpen: true, url: notice.image!, title: notice.title || 'Image' });
-                          }}
-                        >
-                          <img
-                            src={notice.image}
-                            alt="Notice"
-                            className="w-full h-48 object-cover"
-                          />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold hover:underline cursor-pointer" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
+                            {dept.label}
+                          </span>
+                          <span className="text-muted-foreground text-sm">@{dept.value}</span>
+                          <span className="text-muted-foreground text-sm">·</span>
+                          <span className="text-muted-foreground text-sm hover:underline">{formatTimeAgo(notice.created_at)}</span>
+                          {notice.priority === 'urgent' && <Badge variant="destructive" className="ml-auto h-5 text-[10px]">Urgent</Badge>}
                         </div>
-                      )}
 
-                      {/* Attachment Badges */}
-                      {notice.file_url && notice.file_type === 'pdf' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 h-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(notice.file_url!, '_blank');
-                          }}
-                        >
-                          <FileText className="w-3.5 h-3.5 mr-1.5" />
-                          View PDF
-                        </Button>
-                      )}
+                        {notice.title && <h3 className="font-bold mt-1 text-base">{notice.title}</h3>}
+                        <div className="text-foreground/90 whitespace-pre-wrap mt-1 text-[15px] leading-normal">{notice.content}</div>
 
-                      {notice.file_url && notice.file_type === 'video' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 h-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setVideoPlayer({ isOpen: true, url: notice.file_url!, title: notice.title || 'Video' });
-                          }}
-                        >
-                          <VideoIcon className="w-3.5 h-3.5 mr-1.5" />
-                          Watch Video
-                        </Button>
-                      )}
+                        {/* Media */}
+                        {notice.file_url && (
+                          <div className="mt-3 rounded-2xl overflow-hidden border border-border/50 max-h-[400px]">
+                            {notice.file_type === 'image' && (
+                              <img
+                                src={notice.file_url}
+                                alt="Notice attachment"
+                                className="w-full h-full object-cover cursor-pointer hover:opacity-95"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setImageViewer({ isOpen: true, url: notice.file_url!, title: notice.title || "Image" });
+                                }}
+                              />
+                            )}
+                            {notice.file_type === 'pdf' && (
+                              <div className="p-4 bg-secondary/20 flex items-center gap-3">
+                                <FileText className="w-8 h-8 text-primary" />
+                                <span className="text-sm font-medium flex-1 truncate">View PDF Attachment</span>
+                                <Button variant="outline" size="sm" onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(notice.file_url!, '_blank');
+                                }}>Open</Button>
+                              </div>
+                            )}
+                            {notice.file_type === 'video' && (
+                              <div className="relative group cursor-pointer bg-black h-64 flex items-center justify-center" onClick={(e) => {
+                                e.stopPropagation();
+                                setVideoPlayer({ isOpen: true, url: notice.file_url!, title: notice.title || "Video" });
+                              }}>
+                                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all scale-100 group-hover:scale-110">
+                                  <Play className="w-6 h-6 text-white fill-white ml-1" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-8 mt-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedNotice(notice);
-                          }}
-                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-xs">{notice.comments.length}</span>
-                        </button>
-                        <button
-                          onClick={(e) => toggleLike(notice.id, e)}
-                          className={cn(
-                            "flex items-center gap-1.5 transition-colors",
-                            likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
-                          )}
-                        >
-                          <Heart className={cn("w-4 h-4", likedNotices.includes(notice.id) && "fill-current")} />
-                          <span className="text-xs">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
-                        </button>
-                        <button
-                          onClick={(e) => handleShare(notice, e)}
-                          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Share className="w-4 h-4" />
-                        </button>
+                        {/* Action Bar */}
+                        <div className="flex items-center justify-between mt-3 max-w-[400px] text-muted-foreground">
+                          <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-blue-400 hover:bg-blue-400/10 rounded-full group">
+                            <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "w-8 h-8 hover:text-pink-500 hover:bg-pink-500/10 rounded-full group",
+                              likedNotices.includes(notice.id) && "text-pink-500"
+                            )}
+                            onClick={(e) => { e.stopPropagation(); toggleLike(notice.id); }}
+                          >
+                            <Heart className={cn("w-4 h-4 group-hover:scale-110 transition-transform", likedNotices.includes(notice.id) && "fill-current")} />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-green-500 hover:bg-green-500/10 rounded-full group">
+                            <Share className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </main>
+
+        {/* --- RIGHT SIDEBAR (Who to follow) --- */}
+        <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto">
+          {/* Search */}
+          <div className="sticky top-0 bg-background pb-3 z-10">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input placeholder="Search notices..." className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background" />
+            </div>
+          </div>
+
+          {/* Who to follow card */}
+          <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
+            <h2 className="font-bold text-xl px-2">Who to follow</h2>
+            <div className="space-y-4">
+              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, 5).map(dept => {
+                const isFollowing = followedDeptIds.includes(dept.value);
+                return (
+                  <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 border border-border/50">
+                        <AvatarFallback className="bg-background text-lg">{dept.icon}</AvatarFallback>
+                      </Avatar>
+                      <div className="leading-tight">
+                        <div className="font-bold hover:underline">{dept.label}</div>
+                        <div className="text-muted-foreground text-sm">@{dept.value}</div>
+                      </div>
+                    </div>
+                    <Button
+                      className={cn(
+                        "rounded-full font-bold h-8 transition-all duration-200",
+                        isFollowing
+                          ? "bg-transparent border border-border text-foreground hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 w-24"
+                          : "bg-foreground text-background hover:bg-foreground/90 w-20"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); handleFollowDept(dept.value); }}
+                      onMouseEnter={(e) => {
+                        if (isFollowing) e.currentTarget.textContent = "Unfollow";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isFollowing) e.currentTarget.textContent = "Following";
+                      }}
+                    >
+                      {isFollowing ? "Following" : "Follow"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-2 text-primary text-sm cursor-pointer hover:underline">Show more</div>
+          </Card>
+
+          <div className="mt-6 px-4 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span className="hover:underline cursor-pointer">Terms of Service</span>
+            <span className="hover:underline cursor-pointer">Privacy Policy</span>
+            <span className="hover:underline cursor-pointer">Cookie Policy</span>
+            <span className="hover:underline cursor-pointer">Accessibility</span>
+            <span className="hover:underline cursor-pointer">Ads info</span>
+            <span>© 2026 Studyspace</span>
+          </div>
+        </div>
+
       </div>
 
-      {/* Comments Dialog (Bottom Sheet on Mobile) */}
-      <Sheet open={!!selectedNotice} onOpenChange={() => setSelectedNotice(null)}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
-          <SheetHeader className="text-left pb-4 border-b">
-            <SheetTitle>Comments</SheetTitle>
-          </SheetHeader>
-
-          {selectedNotice && (
-            <div className="flex flex-col h-full">
-              {/* Original Notice Preview */}
-              <div className="p-4 bg-muted/30 rounded-lg my-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Avatar className="w-6 h-6">
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {selectedNotice.author?.[0] || 'A'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium text-sm">{selectedNotice.author}</span>
-                  <span className="text-xs text-muted-foreground">{selectedNotice.time}</span>
-                </div>
-                {selectedNotice.title && (
-                  <p className="font-semibold text-sm">{selectedNotice.title}</p>
-                )}
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{selectedNotice.content}</p>
-              </div>
-
-              {/* Comments Area */}
-              <ScrollArea className="flex-1 -mx-6 px-6">
-                {selectedNotice.comments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <MessageCircle className="w-12 h-12 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No comments yet</p>
-                    <p className="text-sm text-muted-foreground">Be the first to comment!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Comments would render here */}
-                  </div>
-                )}
-              </ScrollArea>
-
-              {/* Comment Input */}
-              <div className="flex gap-2 pt-4 border-t mt-auto">
-                <Input
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  className="flex-1"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-                />
-                <Button size="icon" onClick={handleAddComment}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Image Viewer */}
+      {/* Media Viewers */}
       <ImageViewer
         isOpen={imageViewer.isOpen}
         onClose={() => setImageViewer({ isOpen: false, url: "", title: "" })}
@@ -750,7 +422,6 @@ const Notices = () => {
         title={imageViewer.title}
       />
 
-      {/* Video Player */}
       <VideoPlayer
         isOpen={videoPlayer.isOpen}
         onClose={() => setVideoPlayer({ isOpen: false, url: "", title: "" })}
@@ -761,5 +432,13 @@ const Notices = () => {
   );
 };
 
-export default Notices;
+// Helper components
+const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+  <div className={cn("inline-flex items-center gap-4 px-4 py-3 rounded-full hover:bg-secondary/50 cursor-pointer transition-colors text-xl w-auto pr-8", active && "font-bold")} onClick={onClick}>
+    <Icon className={cn("w-7 h-7", active ? "stroke-[2.5px]" : "stroke-2")} />
+    <span className="hidden xl:inline">{label}</span>
+    <span className="xl:hidden md:inline">{label}</span>
+  </div>
+);
 
+export default Notices;
