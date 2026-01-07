@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, Video, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { createResource } from "@/lib/api";
@@ -71,6 +72,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
   const { user } = useAuth();
   const { selectedCollege } = useCollege();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -174,6 +176,16 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
       setUploadProgress(80);
 
+      // Get reCAPTCHA token
+      let recaptchaToken = '';
+      if (executeRecaptcha) {
+        try {
+          recaptchaToken = await executeRecaptcha('upload_resource');
+        } catch (recaptchaError) {
+          console.warn('reCAPTCHA failed, proceeding without token:', recaptchaError);
+        }
+      }
+
       // Create resource via backend API (secure)
       await createResource({
         title: formData.title,
@@ -184,7 +196,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
         branch: formData.branch,
         semester: formData.semester,
         subject: formData.subject,
-        recaptchaToken: 'skip-for-now', // TODO: Add proper reCAPTCHA
+        recaptchaToken,
       });
 
       setUploadProgress(100);

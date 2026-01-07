@@ -16,7 +16,7 @@ router.use(verifyToken, resolveUserRole);
 /**
  * POST /api/resources
  * Create a new resource
- * Requires: COLLEGE_USER, optionalRecaptcha (TODO: enforce in production)
+ * Requires: COLLEGE_USER, rate limit, optional reCAPTCHA
  */
 router.post(
     '/',

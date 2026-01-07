@@ -34,8 +34,8 @@ const RATE_CONFIGS: Record<string, RateLimitConfig> = {
         windowMs: 60000, // 1 minute
     },
     write: {
-        maxTokens: 20,
-        refillRate: 20,
+        maxTokens: 100,  // Increased for dev testing (was 20)
+        refillRate: 100,
         windowMs: 60000,
     },
     auth: {
