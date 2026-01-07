@@ -88,9 +88,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     </Button>
                 </div>
 
-                {/* User Profile */}
+                {/* User Profile - Clickable to go to profile */}
                 {user && (
-                    <div className="p-4 border-b border-border">
+                    <div
+                        className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleNavigate('/profile')}
+                    >
                         <div className="flex items-center gap-3">
                             <Avatar className="w-12 h-12">
                                 <AvatarImage src={user.photoURL || undefined} />
@@ -99,6 +102,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium truncate">{user.displayName || 'User'}</p>
                                 <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                                <p className="text-xs text-primary">View Profile →</p>
                             </div>
                         </div>
                     </div>
@@ -108,7 +112,11 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 <nav className="p-2">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname === item.path;
+                        // Fix: Check both pathname and search params for active state
+                        const currentFullPath = location.pathname + location.search;
+                        const isActive = item.path.includes('?')
+                            ? currentFullPath === item.path || currentFullPath.startsWith(item.path)
+                            : location.pathname === item.path && !location.search;
                         return (
                             <button
                                 key={item.path}

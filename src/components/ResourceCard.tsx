@@ -11,6 +11,8 @@ import FollowButton from './FollowButton';
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useBookmarks } from "@/hooks/useBookmarks";
+
 
 export type ResourceType = "video" | "notes" | "pyq";
 
@@ -65,10 +67,15 @@ const ResourceCard = ({
   onBookmark,
 }: ResourceCardProps) => {
   const { user } = useAuth();
+  const { isBookmarked: checkIsBookmarked, toggleBookmark } = useBookmarks();
+  // Sync local status with global hook state
+  const isBookmarked = checkIsBookmarked(id.toString());
+
   const [localUpvotes, setLocalUpvotes] = useState(initialUpvotes);
   const [localDownvotes, setLocalDownvotes] = useState(initialDownvotes);
   const [userVote, setUserVote] = useState<"upvote" | "downvote" | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  // const [isBookmarked, setIsBookmarked] = useState(false); // Replaced by hook
+
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,18 +93,6 @@ const ResourceCard = ({
     if (!user?.uid) return;
 
     try {
-      // Check if bookmarked
-      const { data: bookmarkData, error: bookmarkError } = await supabase
-        .from('bookmarks')
-        .select('id')
-        .eq('user_id', user.uid)
-        .eq('resource_id', id.toString())
-        .maybeSingle();
-
-      if (!bookmarkError) {
-        setIsBookmarked(!!bookmarkData);
-      }
-
       // Check vote status
       const { data: voteData, error: voteError } = await supabase
         .from('votes')
@@ -194,53 +189,11 @@ const ResourceCard = ({
       return;
     }
 
-    setLoading(true);
-    try {
-      if (isBookmarked) {
-        // Remove bookmark
-        const { error } = await supabase
-          .from('bookmarks')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('resource_id', id.toString());
+    // Toggle bookmark using hook
+    const success = await toggleBookmark(id.toString());
 
-        if (error) throw error;
-
-        setIsBookmarked(false);
-        toast.success('Removed from bookmarks');
-
-        // Update localStorage
-        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-        const updated = bookmarks.filter((b: any) => b.id !== id);
-        localStorage.setItem('bookmarks', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } else {
-        // Add bookmark
-        const { error } = await supabase
-          .from('bookmarks')
-          .insert([{
-            user_id: user.uid,
-            resource_id: id.toString(),
-          }]);
-
-        if (error) throw error;
-
-        setIsBookmarked(true);
-        toast.success('Bookmarked!');
-
-        // Update localStorage
-        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-        bookmarks.push({ id, title, type, subject, chapter });
-        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-        window.dispatchEvent(new Event('storage'));
-      }
-
+    if (success) {
       onBookmark?.(id, !isBookmarked);
-    } catch (error: any) {
-      console.error('Bookmark error:', error);
-      toast.error('Failed to update bookmark');
-    } finally {
-      setLoading(false);
     }
   };
 

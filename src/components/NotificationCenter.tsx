@@ -215,6 +215,24 @@ const NotificationCenter = () => {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (!user?.email) return;
+
+    try {
+      // Delete all notifications for this user
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_email', user.email);
+
+      setNotifications([]);
+      toast.success('All notifications cleared');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      toast.error('Failed to clear notifications');
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length + followRequests.length;
   const totalItems = notifications.length + followRequests.length;
 
@@ -250,11 +268,18 @@ const NotificationCenter = () => {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b border-border">
           <h3 className="font-semibold text-foreground">Notifications</h3>
-          {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
-              Mark all read
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
+                Mark all read
+              </Button>
+            )}
+            {totalItems > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-xs text-destructive hover:text-destructive">
+                Clear All
+              </Button>
+            )}
+          </div>
         </div>
 
         <ScrollArea className="max-h-96">
