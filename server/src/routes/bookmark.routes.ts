@@ -31,21 +31,31 @@ router.post('/', rateLimit('write'), bookmarkController.addBookmark);
 router.delete('/:id', rateLimit('write'), bookmarkController.removeBookmark);
 
 /**
- * DELETE /api/bookmarks/resource/:resourceId
- * Remove bookmark by resource ID
+ * DELETE /api/bookmarks/item/:itemId
+ * Remove bookmark by Item ID (Notice or Resource)
  */
 router.delete(
-    '/resource/:resourceId',
+    '/item/:itemId',
     rateLimit('write'),
-    bookmarkController.removeByResource
+    bookmarkController.removeByItem
 );
 
 /**
- * GET /api/bookmarks/check/:resourceId
- * Check if a resource is bookmarked
+ * DELETE /api/bookmarks/resource/:resourceId
+ * Legacy endpoint support (mapped to generic handler)
+ */
+router.delete(
+    '/resource/:itemId',
+    rateLimit('write'),
+    bookmarkController.removeByItem
+);
+
+/**
+ * GET /api/bookmarks/check/:itemId
+ * Check if an item is bookmarked
  */
 router.get(
-    '/check/:resourceId',
+    '/check/:itemId',
     rateLimit('default'),
     bookmarkController.checkBookmark
 );

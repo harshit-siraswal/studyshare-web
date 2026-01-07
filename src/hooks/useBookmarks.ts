@@ -1,6 +1,6 @@
 // src/hooks/useBookmarks.ts
 // MIGRATED: Now uses backend API instead of direct Supabase calls
-// All bookmark operations go through authenticated backend endpoints
+// Supports both Resources AND Notices (Twitter-style bookmarks)
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -9,18 +9,21 @@ import * as api from '@/lib/api';
 
 interface Bookmark {
     id: string;
-    resource_id: string;
-    created_at: string;
+    resourceId?: string;
+    noticeId?: string;
+    type: 'resource' | 'notice';
+    createdAt: string;
+    content?: any;
 }
 
 interface UseBookmarksReturn {
     bookmarks: Bookmark[];
-    bookmarkedIds: Set<string>;
+    bookmarkedIds: Set<string>; // Contains both resource IDs and notice IDs
     loading: boolean;
-    addBookmark: (resourceId: string) => Promise<boolean>;
-    removeBookmark: (resourceId: string) => Promise<boolean>;
-    isBookmarked: (resourceId: string) => boolean;
-    toggleBookmark: (resourceId: string) => Promise<boolean>;
+    addBookmark: (itemId: string, type?: 'resource' | 'notice') => Promise<boolean>;
+    removeBookmark: (itemId: string) => Promise<boolean>;
+    isBookmarked: (itemId: string) => boolean;
+    toggleBookmark: (itemId: string, type?: 'resource' | 'notice') => Promise<boolean>;
     refresh: () => Promise<void>;
 }
 
@@ -41,13 +44,15 @@ export const useBookmarks = (): UseBookmarksReturn => {
 
         try {
             const response = await api.getBookmarks();
-            const bookmarkData = response.bookmarks.map(b => ({
-                id: b.id,
-                resource_id: b.resourceId,
-                created_at: b.createdAt,
-            }));
-            setBookmarks(bookmarkData);
-            setBookmarkedIds(new Set(bookmarkData.map(b => b.resource_id)));
+            setBookmarks(response.bookmarks);
+
+            // Build set of all bookmarked item IDs (resources + notices)
+            const ids = new Set<string>();
+            response.bookmarks.forEach(b => {
+                if (b.resourceId) ids.add(b.resourceId);
+                if (b.noticeId) ids.add(b.noticeId);
+            });
+            setBookmarkedIds(ids);
         } catch (error) {
             console.error('Error fetching bookmarks:', error);
         } finally {
@@ -61,24 +66,26 @@ export const useBookmarks = (): UseBookmarksReturn => {
     }, [fetchBookmarks]);
 
     // Add bookmark via backend API
-    const addBookmark = useCallback(async (resourceId: string): Promise<boolean> => {
+    const addBookmark = useCallback(async (
+        itemId: string,
+        type: 'resource' | 'notice' = 'resource'
+    ): Promise<boolean> => {
         if (!user?.email) {
             toast.error('Please login to bookmark');
             return false;
         }
 
         try {
-            await api.addBookmark(resourceId);
+            await api.addBookmark(itemId, type);
 
             // Update local state
-            setBookmarkedIds(prev => new Set([...prev, resourceId]));
+            setBookmarkedIds(prev => new Set([...prev, itemId]));
             toast.success('Bookmarked!');
             return true;
         } catch (error: any) {
             console.error('Error adding bookmark:', error);
-            if (error.message?.includes('already')) {
-                // Already bookmarked - not an error
-                setBookmarkedIds(prev => new Set([...prev, resourceId]));
+            if (error.message?.includes('already') || error.message?.includes('Already')) {
+                setBookmarkedIds(prev => new Set([...prev, itemId]));
                 return true;
             }
             toast.error('Failed to bookmark');
@@ -87,16 +94,16 @@ export const useBookmarks = (): UseBookmarksReturn => {
     }, [user?.email]);
 
     // Remove bookmark via backend API
-    const removeBookmark = useCallback(async (resourceId: string): Promise<boolean> => {
+    const removeBookmark = useCallback(async (itemId: string): Promise<boolean> => {
         if (!user?.email) return false;
 
         try {
-            await api.removeBookmarkByResource(resourceId);
+            await api.removeBookmarkByItem(itemId);
 
             // Update local state
             setBookmarkedIds(prev => {
                 const newSet = new Set(prev);
-                newSet.delete(resourceId);
+                newSet.delete(itemId);
                 return newSet;
             });
             toast.success('Bookmark removed');
@@ -109,16 +116,19 @@ export const useBookmarks = (): UseBookmarksReturn => {
     }, [user?.email]);
 
     // Check if bookmarked
-    const isBookmarked = useCallback((resourceId: string): boolean => {
-        return bookmarkedIds.has(resourceId);
+    const isBookmarked = useCallback((itemId: string): boolean => {
+        return bookmarkedIds.has(itemId);
     }, [bookmarkedIds]);
 
     // Toggle bookmark
-    const toggleBookmark = useCallback(async (resourceId: string): Promise<boolean> => {
-        if (isBookmarked(resourceId)) {
-            return removeBookmark(resourceId);
+    const toggleBookmark = useCallback(async (
+        itemId: string,
+        type: 'resource' | 'notice' = 'resource'
+    ): Promise<boolean> => {
+        if (isBookmarked(itemId)) {
+            return removeBookmark(itemId);
         } else {
-            return addBookmark(resourceId);
+            return addBookmark(itemId, type);
         }
     }, [isBookmarked, addBookmark, removeBookmark]);
 

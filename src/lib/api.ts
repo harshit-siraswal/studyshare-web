@@ -153,12 +153,15 @@ export async function getPendingFollowRequests(): Promise<{ requests: FollowRequ
 
 export interface Bookmark {
     id: string;
-    resourceId: string;
+    resourceId?: string;
+    noticeId?: string;
+    type: 'resource' | 'notice';
     createdAt: string;
+    content?: any; // Enriched content from backend join
 }
 
 /**
- * Get all bookmarks
+ * Get all bookmarks (Resources + Notices)
  */
 export async function getBookmarks(): Promise<{ bookmarks: Bookmark[] }> {
     return apiRequest('/api/bookmarks');
@@ -167,10 +170,13 @@ export async function getBookmarks(): Promise<{ bookmarks: Bookmark[] }> {
 /**
  * Add a bookmark
  */
-export async function addBookmark(resourceId: string): Promise<{ message: string; bookmark: Bookmark }> {
+export async function addBookmark(
+    itemId: string,
+    type: 'resource' | 'notice' = 'resource'
+): Promise<{ message: string; bookmark: Bookmark }> {
     return apiRequest('/api/bookmarks', {
         method: 'POST',
-        body: JSON.stringify({ resourceId }),
+        body: JSON.stringify({ itemId, type }),
     });
 }
 
@@ -182,17 +188,45 @@ export async function removeBookmark(bookmarkId: string): Promise<{ message: str
 }
 
 /**
- * Remove a bookmark by resource ID
+ * Remove a bookmark by Item ID (Resource or Notice)
  */
-export async function removeBookmarkByResource(resourceId: string): Promise<{ message: string }> {
-    return apiRequest(`/api/bookmarks/resource/${resourceId}`, { method: 'DELETE' });
+export async function removeBookmarkByItem(itemId: string): Promise<{ message: string }> {
+    return apiRequest(`/api/bookmarks/item/${itemId}`, { method: 'DELETE' });
 }
 
 /**
- * Check if a resource is bookmarked
+ * Check if an item is bookmarked
  */
-export async function isBookmarked(resourceId: string): Promise<{ isBookmarked: boolean }> {
-    return apiRequest(`/api/bookmarks/check/${resourceId}`);
+export async function isBookmarked(itemId: string): Promise<{ isBookmarked: boolean }> {
+    return apiRequest(`/api/bookmarks/check/${itemId}`);
+}
+
+// ============================================
+// DEPARTMENT ENDPOINTS
+// ============================================
+
+/**
+ * Follow a department
+ */
+export async function followDepartment(departmentId: string): Promise<{ message: string }> {
+    return apiRequest('/api/departments/follow', {
+        method: 'POST',
+        body: JSON.stringify({ id: departmentId }),
+    });
+}
+
+/**
+ * Unfollow a department
+ */
+export async function unfollowDepartment(departmentId: string): Promise<{ message: string }> {
+    return apiRequest(`/api/departments/follow/${departmentId}`, { method: 'DELETE' });
+}
+
+/**
+ * Get followed departments
+ */
+export async function getFollowedDepartments(): Promise<{ departments: string[] }> {
+    return apiRequest('/api/departments/following');
 }
 
 // ============================================

@@ -14,6 +14,7 @@ import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
+import * as api from "@/lib/api";
 
 const DEPARTMENTS = [
     { value: 'all', label: 'All Departments', icon: '🏛️' },
@@ -105,14 +106,8 @@ const DepartmentProfile = () => {
         if (!user?.email || !deptId) return;
 
         try {
-            const { data } = await supabase
-                .from('department_followers')
-                .select('id')
-                .eq('department_id', deptId)
-                .eq('follower_email', user.email)
-                .maybeSingle();
-
-            setIsFollowing(!!data);
+            const response = await api.getFollowedDepartments();
+            setIsFollowing(response.departments.includes(deptId));
         } catch (error) {
             console.error('Error checking follow status:', error);
         }
@@ -142,25 +137,12 @@ const DepartmentProfile = () => {
 
         try {
             if (isFollowing) {
-                const { error } = await supabase
-                    .from('department_followers')
-                    .delete()
-                    .eq('department_id', deptId)
-                    .eq('follower_email', user.email);
-
-                if (error) throw error;
+                await api.unfollowDepartment(deptId);
                 setIsFollowing(false);
                 setFollowerCount(prev => Math.max(0, prev - 1));
                 toast.success('Unfollowed department');
             } else {
-                const { error } = await supabase
-                    .from('department_followers')
-                    .insert([{
-                        department_id: deptId,
-                        follower_email: user.email,
-                    }]);
-
-                if (error) throw error;
+                await api.followDepartment(deptId);
                 setIsFollowing(true);
                 setFollowerCount(prev => prev + 1);
                 toast.success('Following department!');

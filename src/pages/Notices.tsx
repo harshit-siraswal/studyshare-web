@@ -16,6 +16,8 @@ import VideoPlayer from "@/components/VideoPlayer";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import * as api from "@/lib/api";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 // --- Types ---
 interface Notice {
@@ -65,6 +67,9 @@ const Notices = () => {
     isOpen: false, url: "", title: ""
   });
 
+  // Bookmarks hook
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+
   // Fetch logic
   useEffect(() => {
     fetchNotices();
@@ -101,14 +106,8 @@ const Notices = () => {
   const fetchFollowedDepartments = async () => {
     if (!user?.email) return;
     try {
-      const { data } = await supabase
-        .from('department_followers')
-        .select('department_id')
-        .eq('follower_email', user.email);
-
-      if (data) {
-        setFollowedDeptIds(data.map(d => d.department_id));
-      }
+      const response = await api.getFollowedDepartments();
+      setFollowedDeptIds(response.departments);
     } catch (error) {
       console.error('Error fetching followed departments:', error);
     }
@@ -122,21 +121,11 @@ const Notices = () => {
 
     try {
       if (followedDeptIds.includes(deptId)) {
-        // Unfollow
-        await supabase
-          .from('department_followers')
-          .delete()
-          .eq('department_id', deptId)
-          .eq('follower_email', user.email);
-
+        await api.unfollowDepartment(deptId);
         setFollowedDeptIds(prev => prev.filter(id => id !== deptId));
         toast.success(`Unfollowed`);
       } else {
-        // Follow
-        await supabase
-          .from('department_followers')
-          .insert([{ department_id: deptId, follower_email: user.email }]);
-
+        await api.followDepartment(deptId);
         setFollowedDeptIds(prev => [...prev, deptId]);
         toast.success(`Following`);
       }
@@ -323,7 +312,7 @@ const Notices = () => {
                         )}
 
                         {/* Action Bar */}
-                        <div className="flex items-center justify-between mt-3 max-w-[400px] text-muted-foreground">
+                        <div className="flex items-center justify-between mt-3 max-w-[425px] text-muted-foreground">
                           <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-blue-400 hover:bg-blue-400/10 rounded-full group">
                             <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
                           </Button>
@@ -337,6 +326,17 @@ const Notices = () => {
                             onClick={(e) => { e.stopPropagation(); toggleLike(notice.id); }}
                           >
                             <Heart className={cn("w-4 h-4 group-hover:scale-110 transition-transform", likedNotices.includes(notice.id) && "fill-current")} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "w-8 h-8 hover:text-primary hover:bg-primary/10 rounded-full group",
+                              isBookmarked(notice.id) && "text-primary"
+                            )}
+                            onClick={(e) => { e.stopPropagation(); toggleBookmark(notice.id, 'notice'); }}
+                          >
+                            <Bookmark className={cn("w-4 h-4 group-hover:scale-110 transition-transform", isBookmarked(notice.id) && "fill-current")} />
                           </Button>
                           <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-green-500 hover:bg-green-500/10 rounded-full group">
                             <Share className="w-4 h-4 group-hover:scale-110 transition-transform" />
