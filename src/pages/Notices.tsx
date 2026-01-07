@@ -213,7 +213,7 @@ const Notices = () => {
         <main className="flex-1 min-w-[350px] max-w-[600px] border-r border-border/50">
           {/* Header / Tabs */}
           <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
-            <div className="px-4 py-3 cursor-pointer md:hidden" onClick={() => navigate('/')}>
+            <div className="px-4 py-3 cursor-pointer md:hidden" onClick={() => navigate('/study')}>
               <ArrowLeft className="w-5 h-5" />
             </div>
             <div className="flex w-full">
