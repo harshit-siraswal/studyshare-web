@@ -6,9 +6,9 @@
 -- 1. EXTEND BOOKMARKS TABLE
 -- ==========================================
 
--- Add notice_id column
+-- Add notice_id column (TEXT type to match notices.id)
 ALTER TABLE bookmarks 
-ADD COLUMN IF NOT EXISTS notice_id UUID REFERENCES notices(id) ON DELETE CASCADE;
+ADD COLUMN IF NOT EXISTS notice_id TEXT REFERENCES notices(id) ON DELETE CASCADE;
 
 -- Drop existing not-null constraint on resource_id if exists/needed
 ALTER TABLE bookmarks ALTER COLUMN resource_id DROP NOT NULL;
