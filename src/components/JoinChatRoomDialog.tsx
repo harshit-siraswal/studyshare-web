@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import { joinChatRoomById } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import bcrypt from "bcryptjs";
@@ -88,7 +89,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
 
     setJoining(room.id);
     try {
-      // Check if already a member
+      // Check if already a member (read is allowed)
       const { data: existing } = await supabase
         .from('room_members')
         .select('id')
@@ -103,7 +104,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
         return;
       }
 
-      // Verify password for private rooms
+      // Verify password for private rooms (read password hash is allowed)
       if (room.is_private) {
         const { data: roomData } = await supabase
           .from('chat_rooms')
@@ -125,24 +126,12 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
         }
       }
 
-      // Add user as member
-      const { error: memberError } = await supabase
-        .from('room_members')
-        .insert([{
-          room_id: room.id,
-          user_email: user.email,
-          user_name: user.displayName || user.email?.split('@')[0] || 'User',
-        }]);
-
-      if (memberError) throw memberError;
-
-      // Update member count
-      const { error: updateError } = await supabase
-        .from('chat_rooms')
-        .update({ member_count: room.member_count + 1 })
-        .eq('id', room.id);
-
-      if (updateError) throw updateError;
+      // Use backend API for secure member insertion
+      await joinChatRoomById(
+        room.id,
+        user.displayName || user.email?.split('@')[0] || 'User',
+        selectedCollege?.domain || 'kiet.edu'
+      );
 
       toast.success("Joined room successfully!");
       setOpen(false);

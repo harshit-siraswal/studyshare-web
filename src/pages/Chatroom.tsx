@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -211,17 +212,13 @@ const Chatroom = () => {
 
     setPosting(true);
     try {
-      const { error } = await supabase
-        .from('room_messages')
-        .insert([{
-          room_id: roomId,
-          author_name: user.displayName || user.email?.split('@')[0] || 'User',
-          author_email: user.email,
-          content: newPost.trim(),
-          image_url: postImage,
-        }]);
-
-      if (error) throw error;
+      // Use backend API for secure posting
+      await postChatMessage(
+        roomId,
+        newPost.trim(),
+        postImage || undefined,
+        user.displayName || user.email?.split('@')[0] || 'User'
+      );
 
       setNewPost("");
       setPostImage(null);
@@ -251,6 +248,19 @@ const Chatroom = () => {
       const message = messages.find(m => m.id === messageId);
       if (!message) return;
 
+      let delta = 1;
+      if (currentVote === direction) {
+        // Remove vote
+        delta = -1;
+      } else if (currentVote) {
+        // Change vote - need to handle both directions
+        delta = 1;
+      }
+
+      // Use backend API for secure voting
+      await voteChatMessage(messageId, direction, delta);
+
+      // Update local state based on action
       let newUpvotes = message.upvotes;
       let newDownvotes = message.downvotes;
 
@@ -273,13 +283,6 @@ const Chatroom = () => {
         else newDownvotes++;
       }
 
-      const { error } = await supabase
-        .from('room_messages')
-        .update({ upvotes: newUpvotes, downvotes: newDownvotes })
-        .eq('id', messageId);
-
-      if (error) throw error;
-      // Update local state
       setMessages(prev => prev.map(m =>
         m.id === messageId
           ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes }
@@ -357,27 +360,19 @@ const Chatroom = () => {
     if (!roomId) return;
 
     try {
-      const isSaved = savedPosts.has(messageId);
-      if (isSaved) {
-        const { error } = await supabase
-          .from('saved_posts')
-          .delete()
-          .eq('user_email', user.email)
-          .eq('message_id', messageId);
-        if (error) throw error;
+      // Use backend API for secure save toggle
+      const result = await toggleSaveChatPost(messageId, roomId);
+
+      if (result.saved) {
+        setSavedPosts(prev => new Set([...prev, messageId]));
+        toast.success('Post saved!');
+      } else {
         setSavedPosts(prev => {
           const newSet = new Set(prev);
           newSet.delete(messageId);
           return newSet;
         });
         toast.success('Post unsaved');
-      } else {
-        const { error } = await supabase
-          .from('saved_posts')
-          .insert([{ user_email: user.email, message_id: messageId, room_id: roomId }]);
-        if (error) throw error;
-        setSavedPosts(prev => new Set([...prev, messageId]));
-        toast.success('Post saved!');
       }
     } catch (error) {
       console.error('Error saving post:', error);
@@ -389,16 +384,12 @@ const Chatroom = () => {
     if (!user?.email || !commentText.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from('room_post_comments')
-        .insert([{
-          message_id: messageId,
-          author_name: user.displayName || user.email.split('@')[0],
-          author_email: user.email,
-          content: commentText.trim()
-        }]);
-
-      if (error) throw error;
+      // Use backend API for secure comment posting
+      await addChatComment(
+        messageId,
+        commentText.trim(),
+        user.displayName || user.email.split('@')[0]
+      );
 
       setCommentText('');
       toast.success('Comment added!');

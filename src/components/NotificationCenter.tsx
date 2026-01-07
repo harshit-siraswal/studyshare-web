@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "../supabase";
+import {
+  approveFollowRequest,
+  rejectFollowRequest,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  deleteAllNotifications
+} from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
@@ -112,40 +120,15 @@ const NotificationCenter = () => {
     setActionLoading(request.id);
 
     try {
-      // 1. Update request status to accepted
-      const { error: updateError } = await supabase
-        .from('follow_requests')
-        .update({ status: 'accepted' })
-        .eq('id', request.id);
+      // Use backend API for secure follow request approval
+      await approveFollowRequest(request.id);
 
-      if (updateError) throw updateError;
-
-      // 2. Add to follows table
-      const { error: followError } = await supabase
-        .from('follows')
-        .insert([{
-          follower_email: request.requester_email,
-          following_email: user.email,
-        }]);
-
-      if (followError && followError.code !== '23505') throw followError;
-
-      // 3. Create notification for requester
-      await supabase.from('notifications').insert([{
-        user_email: request.requester_email,
-        type: 'follow',
-        title: 'Follow Request Accepted',
-        message: `${user.email.split('@')[0]} accepted your follow request`,
-        read: false,
-        college_id: selectedCollege?.domain || 'kiet.edu',
-      }]);
-
-      // 4. Remove from local state
+      // Remove from local state
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
       toast.success('Follow request accepted!');
     } catch (error: any) {
       console.error('Error accepting request:', error);
-      toast.error('Failed to accept request');
+      toast.error(error.message || 'Failed to accept request');
     } finally {
       setActionLoading(null);
     }
@@ -155,18 +138,14 @@ const NotificationCenter = () => {
     setActionLoading(request.id);
 
     try {
-      const { error } = await supabase
-        .from('follow_requests')
-        .update({ status: 'rejected' })
-        .eq('id', request.id);
-
-      if (error) throw error;
+      // Use backend API for secure rejection
+      await rejectFollowRequest(request.id);
 
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
       toast.success('Follow request declined');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting request:', error);
-      toast.error('Failed to decline request');
+      toast.error(error.message || 'Failed to decline request');
     } finally {
       setActionLoading(null);
     }
@@ -174,10 +153,8 @@ const NotificationCenter = () => {
 
   const markAsRead = async (id: string) => {
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id);
+      // Use backend API for secure update
+      await markNotificationRead(id);
 
       setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, read: true } : n)
@@ -187,14 +164,12 @@ const NotificationCenter = () => {
     }
   };
 
-  const markAllAsRead = async () => {
+  const markAllAsReadHandler = async () => {
     if (!user?.email) return;
 
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_email', user.email);
+      // Use backend API for secure bulk update
+      await markAllNotificationsRead();
 
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch (error) {
@@ -202,12 +177,10 @@ const NotificationCenter = () => {
     }
   };
 
-  const removeNotification = async (id: string) => {
+  const removeNotificationHandler = async (id: string) => {
     try {
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', id);
+      // Use backend API for secure deletion
+      await deleteNotification(id);
 
       setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
@@ -215,15 +188,12 @@ const NotificationCenter = () => {
     }
   };
 
-  const clearAllNotifications = async () => {
+  const clearAllNotificationsHandler = async () => {
     if (!user?.email) return;
 
     try {
-      // Delete all notifications for this user
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_email', user.email);
+      // Use backend API for secure bulk deletion
+      await deleteAllNotifications();
 
       setNotifications([]);
       toast.success('All notifications cleared');
@@ -270,12 +240,12 @@ const NotificationCenter = () => {
           <h3 className="font-semibold text-foreground">Notifications</h3>
           <div className="flex items-center gap-1">
             {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
+              <Button variant="ghost" size="sm" onClick={markAllAsReadHandler} className="text-xs">
                 Mark all read
               </Button>
             )}
             {totalItems > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-xs text-destructive hover:text-destructive">
+              <Button variant="ghost" size="sm" onClick={clearAllNotificationsHandler} className="text-xs text-destructive hover:text-destructive">
                 Clear All
               </Button>
             )}
@@ -376,7 +346,7 @@ const NotificationCenter = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeNotification(notification.id);
+                        removeNotificationHandler(notification.id);
                       }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                     >

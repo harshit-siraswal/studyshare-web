@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import { createChatRoom } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import bcrypt from "bcryptjs";
 
 interface CreateChatRoomDialogProps {
   trigger: React.ReactNode;
@@ -53,7 +53,7 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
 
     setCreating(true);
     try {
-      // Check if room name already exists
+      // Check if room name already exists (read is still allowed)
       const { data: existing } = await supabase
         .from('chat_rooms')
         .select('id')
@@ -66,43 +66,23 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
         return;
       }
 
-      // Create the room
-      const hashedPassword = isPrivate && password ? await bcrypt.hash(password, 10) : null;
-
-      const { data: room, error: roomError } = await supabase
-        .from('chat_rooms')
-        .insert([{
-          name: roomName.trim(),
-          description: description.trim() || null,
-          created_by: user.displayName || user.email?.split('@')[0] || 'User',
-          created_by_email: user.email,
-          is_private: isPrivate,
-          password: hashedPassword,
-          member_count: 1,
-          college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
-        }])
-        .select()
-        .single();
-
-      if (roomError) throw roomError;
-
-      // Add creator as first member
-      const { error: memberError } = await supabase
-        .from('room_members')
-        .insert([{
-          room_id: room.id,
-          user_email: user.email,
-          user_name: user.displayName || user.email?.split('@')[0] || 'User',
-        }]);
-
-      if (memberError) throw memberError;
+      // Use backend API for secure room creation
+      const result = await createChatRoom(
+        roomName.trim(),
+        description.trim() || null,
+        isPrivate,
+        selectedCollege?.domain || 'kiet.edu'
+      );
 
       toast.success("Room created successfully!");
+      if (result.joinCode) {
+        toast.info(`Join code: ${result.joinCode}`, { duration: 10000 });
+      }
       setOpen(false);
       handleReset();
 
       // Navigate to the new room
-      navigate(`/chatroom/${room.id}`);
+      navigate(`/chatroom/${result.id}`);
     } catch (error: any) {
       console.error('Error creating room:', error);
       toast.error(error.message || "Failed to create room");

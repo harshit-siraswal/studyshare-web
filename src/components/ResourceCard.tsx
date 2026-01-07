@@ -10,6 +10,7 @@ import VideoPlayer from "./VideoPlayer";
 import FollowButton from './FollowButton';
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import { castVote, getVoteStatus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
@@ -93,19 +94,16 @@ const ResourceCard = ({
     if (!user?.uid) return;
 
     try {
-      // Check vote status
-      const { data: voteData, error: voteError } = await supabase
-        .from('votes')
-        .select('vote_type')
-        .eq('user_id', user.uid)
-        .eq('resource_id', id.toString())
-        .maybeSingle();
-
-      if (!voteError && voteData) {
-        setUserVote(voteData.vote_type as 'upvote' | 'downvote');
+      // Check vote status via backend API
+      const voteData = await getVoteStatus(id.toString());
+      if (voteData.userVote) {
+        setUserVote(voteData.userVote);
       }
+      // Sync counts from server
+      setLocalUpvotes(voteData.upvotes);
+      setLocalDownvotes(voteData.downvotes);
     } catch (error) {
-      // Silently handle errors
+      // Silently handle errors (user might not be authenticated)
     }
   };
 
@@ -119,63 +117,23 @@ const ResourceCard = ({
 
     setLoading(true);
     try {
-      if (userVote === voteType) {
-        // Remove vote
-        const { error } = await supabase
-          .from('votes')
-          .delete()
-          .eq('user_id', user.uid)
-          .eq('resource_id', id.toString());
+      // Use backend API for secure voting
+      const result = await castVote(id.toString(), voteType);
 
-        if (error) throw error;
+      // Update local state with server response
+      setLocalUpvotes(result.upvotes);
+      setLocalDownvotes(result.downvotes);
 
-        if (voteType === 'upvote') {
-          setLocalUpvotes(prev => prev - 1);
-        } else {
-          setLocalDownvotes(prev => prev - 1);
-        }
+      if (result.action === 'removed') {
         setUserVote(null);
         toast.success('Vote removed');
-      } else if (userVote) {
-        // Change vote
-        const { error } = await supabase
-          .from('votes')
-          .update({ vote_type: voteType })
-          .eq('user_id', user.uid)
-          .eq('resource_id', id.toString());
-
-        if (error) throw error;
-
-        if (voteType === 'upvote') {
-          setLocalUpvotes(prev => prev + 1);
-          setLocalDownvotes(prev => prev - 1);
-        } else {
-          setLocalUpvotes(prev => prev - 1);
-          setLocalDownvotes(prev => prev + 1);
-        }
-        setUserVote(voteType);
       } else {
-        // New vote
-        const { error } = await supabase
-          .from('votes')
-          .insert([{
-            user_id: user.uid,
-            resource_id: id.toString(),
-            vote_type: voteType,
-          }]);
-
-        if (error) throw error;
-
-        if (voteType === 'upvote') {
-          setLocalUpvotes(prev => prev + 1);
-        } else {
-          setLocalDownvotes(prev => prev + 1);
-        }
         setUserVote(voteType);
+        toast.success(result.action === 'updated' ? 'Vote changed' : 'Vote recorded');
       }
     } catch (error: any) {
       console.error('Vote error:', error);
-      toast.error('Failed to update vote');
+      toast.error(error.message || 'Failed to update vote');
     } finally {
       setLoading(false);
     }

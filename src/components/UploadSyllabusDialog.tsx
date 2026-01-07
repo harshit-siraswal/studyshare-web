@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "../supabase";
+import { getSyllabusUploadUrl, createSyllabus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 
 interface UploadSyllabusDialogProps {
   trigger: React.ReactNode;
@@ -20,9 +21,10 @@ interface UploadSyllabusDialogProps {
 
 const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps) => {
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     title: "",
     semester: "",
@@ -65,40 +67,37 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
 
     setUploading(true);
     try {
-      // Upload PDF to Storage
-      const fileExt = 'pdf';
-      const fileName = `${formData.semester}-${formData.branch}-${formData.subject}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      // 1. Get signed upload URL from backend
+      const fileName = `${formData.semester}-${formData.branch}-${formData.subject}-${Date.now()}.pdf`;
+      const { signedUrl, path } = await getSyllabusUploadUrl(fileName);
 
-      const { error: uploadError } = await supabase.storage
-        .from('syllabus-pdfs')
-        .upload(filePath, pdfFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // 2. Upload PDF directly to storage using signed URL
+      const uploadResponse = await fetch(signedUrl, {
+        method: 'PUT',
+        body: pdfFile,
+        headers: {
+          'Content-Type': 'application/pdf',
+        },
+      });
 
-      if (uploadError) throw uploadError;
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('syllabus-pdfs')
-        .getPublicUrl(filePath);
+      // 3. Get public URL (construct from known bucket path)
+      const pdfUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/syllabus-pdfs/${path}`;
 
-      // Insert into database
-      const { error: dbError } = await supabase
-        .from('syllabus')
-        .insert([{
-          title: formData.title,
-          semester: formData.semester,
-          branch: formData.branch,
-          subject: formData.subject,
-          description: formData.description || null,
-          pdf_url: publicUrl,
-          uploaded_by: user?.uid || null,
-          file_size: pdfFile.size,
-        }]);
-
-      if (dbError) throw dbError;
+      // 4. Create syllabus entry via backend API
+      await createSyllabus({
+        title: formData.title,
+        semester: formData.semester,
+        branch: formData.branch,
+        subject: formData.subject,
+        description: formData.description || undefined,
+        pdfUrl,
+        fileSize: pdfFile.size,
+        collegeId: selectedCollege?.domain || 'kiet.edu',
+      });
 
       toast.success("Syllabus uploaded successfully!");
       setOpen(false);
@@ -126,7 +125,7 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <div onClick={() => setOpen(true)}>{trigger}</div>
-      
+
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Upload Syllabus</DialogTitle>

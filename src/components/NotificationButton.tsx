@@ -14,6 +14,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '../supabase';
+import {
+  approveFollowRequest,
+  rejectFollowRequest,
+  markNotificationRead,
+  markAllNotificationsRead
+} from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -142,37 +148,16 @@ const NotificationButton = () => {
     setActionLoading(request.id);
 
     try {
-      // 1. Update request status
-      await supabase
-        .from('follow_requests')
-        .update({ status: 'accepted' })
-        .eq('id', request.id);
+      // Use backend API for secure approval
+      await approveFollowRequest(request.id);
 
-      // 2. Add to follows table
-      await supabase
-        .from('follows')
-        .insert([{
-          follower_email: request.requester_email,
-          following_email: user.email,
-        }]);
-
-      // 3. Create notification for requester
-      await supabase.from('notifications').insert([{
-        user_email: request.requester_email,
-        type: 'follow',
-        title: 'Follow Request Accepted',
-        message: `${user.email?.split('@')[0]} accepted your follow request`,
-        read: false,
-        college_id: selectedCollege?.domain || 'kiet.edu',
-      }]);
-
-      // 4. Update local state
+      // Update local state
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
       setUnreadCount(prev => Math.max(0, prev - 1));
       toast.success('Follow request accepted!');
     } catch (error: any) {
       console.error('Error accepting request:', error);
-      toast.error('Failed to accept request');
+      toast.error(error.message || 'Failed to accept request');
     } finally {
       setActionLoading(null);
     }
@@ -183,17 +168,15 @@ const NotificationButton = () => {
     setActionLoading(request.id);
 
     try {
-      await supabase
-        .from('follow_requests')
-        .update({ status: 'rejected' })
-        .eq('id', request.id);
+      // Use backend API for secure rejection
+      await rejectFollowRequest(request.id);
 
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
       setUnreadCount(prev => Math.max(0, prev - 1));
       toast.success('Follow request declined');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting request:', error);
-      toast.error('Failed to decline request');
+      toast.error(error.message || 'Failed to decline request');
     } finally {
       setActionLoading(null);
     }
@@ -201,10 +184,8 @@ const NotificationButton = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
+      // Use backend API for secure update
+      await markNotificationRead(notificationId);
 
       setNotifications(prev =>
         prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
@@ -219,11 +200,8 @@ const NotificationButton = () => {
     if (!user?.email) return;
 
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_email', user.email)
-        .eq('read', false);
+      // Use backend API for secure bulk update
+      await markAllNotificationsRead();
 
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(followRequests.length);

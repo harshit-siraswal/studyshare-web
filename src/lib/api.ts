@@ -302,6 +302,217 @@ export async function getMyResources(): Promise<{ resources: Resource[] }> {
 }
 
 // ============================================
+// VOTE ENDPOINTS
+// ============================================
+
+/**
+ * Cast or toggle a vote on a resource
+ */
+export async function castVote(
+    resourceId: string,
+    voteType: 'upvote' | 'downvote'
+): Promise<{ message: string; action: string; upvotes: number; downvotes: number }> {
+    return apiRequest('/api/votes', {
+        method: 'POST',
+        body: JSON.stringify({ resourceId, voteType }),
+    });
+}
+
+/**
+ * Get vote status for a resource
+ */
+export async function getVoteStatus(resourceId: string): Promise<{
+    userVote: 'upvote' | 'downvote' | null;
+    upvotes: number;
+    downvotes: number;
+}> {
+    return apiRequest(`/api/votes/${resourceId}`);
+}
+
+// ============================================
+// NOTIFICATION ENDPOINTS
+// ============================================
+
+/**
+ * Create a notification
+ */
+export async function createNotification(
+    targetUserId: string,
+    title: string,
+    message: string,
+    type: string,
+    link?: string
+): Promise<{ notification: any }> {
+    return apiRequest('/api/notifications', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId, title, message, type, link }),
+    });
+}
+
+/**
+ * Mark a notification as read
+ */
+export async function markNotificationRead(notificationId: string): Promise<{ message: string }> {
+    return apiRequest(`/api/notifications/${notificationId}/read`, { method: 'PUT' });
+}
+
+/**
+ * Mark all notifications as read
+ */
+export async function markAllNotificationsRead(): Promise<{ message: string }> {
+    return apiRequest('/api/notifications/read-all', { method: 'PUT' });
+}
+
+/**
+ * Delete a notification
+ */
+export async function deleteNotification(notificationId: string): Promise<{ message: string }> {
+    return apiRequest(`/api/notifications/${notificationId}`, { method: 'DELETE' });
+}
+
+/**
+ * Delete all notifications
+ */
+export async function deleteAllNotifications(): Promise<{ message: string }> {
+    return apiRequest('/api/notifications', { method: 'DELETE' });
+}
+
+// ============================================
+// CHAT ENDPOINTS
+// ============================================
+
+/**
+ * Create a chat room
+ */
+export async function createChatRoom(
+    name: string,
+    description: string | null,
+    isPrivate: boolean,
+    collegeId?: string
+): Promise<{ message: string; id: string; joinCode?: string }> {
+    return apiRequest('/api/chat/rooms', {
+        method: 'POST',
+        body: JSON.stringify({ name, description, isPrivate, collegeId }),
+    });
+}
+
+/**
+ * Join a chat room by code
+ */
+export async function joinChatRoom(
+    joinCode: string,
+    collegeId?: string
+): Promise<{ message: string; roomId: string; roomName: string }> {
+    return apiRequest('/api/chat/join', {
+        method: 'POST',
+        body: JSON.stringify({ joinCode, collegeId }),
+    });
+}
+
+/**
+ * Join a chat room by ID (for public rooms or after password verification)
+ */
+export async function joinChatRoomById(
+    roomId: string,
+    userName?: string,
+    collegeId?: string
+): Promise<{ message: string; roomName: string }> {
+    return apiRequest('/api/chat/join-room', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, userName, collegeId }),
+    });
+}
+
+/**
+ * Post a message to a chat room
+ */
+export async function postChatMessage(
+    roomId: string,
+    content: string,
+    imageUrl?: string,
+    authorName?: string
+): Promise<{ message: string; id: string }> {
+    return apiRequest('/api/chat/messages', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, content, imageUrl, authorName }),
+    });
+}
+
+/**
+ * Vote on a chat message
+ */
+export async function voteChatMessage(
+    messageId: string,
+    direction: 'up' | 'down',
+    delta: number
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/messages/${messageId}/vote`, {
+        method: 'PUT',
+        body: JSON.stringify({ direction, delta }),
+    });
+}
+
+/**
+ * Toggle save a chat post
+ */
+export async function toggleSaveChatPost(
+    messageId: string,
+    roomId: string
+): Promise<{ message: string; saved: boolean }> {
+    return apiRequest('/api/chat/saved', {
+        method: 'POST',
+        body: JSON.stringify({ messageId, roomId }),
+    });
+}
+
+/**
+ * Add a comment to a chat post
+ */
+export async function addChatComment(
+    messageId: string,
+    content: string,
+    authorName?: string
+): Promise<{ message: string; id: string }> {
+    return apiRequest('/api/chat/comments', {
+        method: 'POST',
+        body: JSON.stringify({ messageId, content, authorName }),
+    });
+}
+
+// ============================================
+// USER PROFILE ENDPOINTS
+// ============================================
+
+export interface UserProfile {
+    id: string;
+    email: string;
+    display_name: string;
+    username?: string;
+    bio?: string;
+    profile_photo_url?: string;
+    college?: string;
+    branch?: string;
+    semester?: string;
+}
+
+/**
+ * Get current user's profile
+ */
+export async function getMyProfile(): Promise<{ profile: UserProfile }> {
+    return apiRequest('/api/users/profile');
+}
+
+/**
+ * Update current user's profile
+ */
+export async function updateProfile(updates: Partial<UserProfile>): Promise<{ message: string; profile: UserProfile }> {
+    return apiRequest('/api/users/profile', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+    });
+}
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 
@@ -318,4 +529,48 @@ export interface HealthStatus {
 export async function checkHealth(): Promise<HealthStatus> {
     const response = await fetch(`${API_BASE}/health`);
     return response.json();
+}
+
+// ============================================
+// SYLLABUS ENDPOINTS
+// ============================================
+
+/**
+ * Get a signed URL for uploading syllabus PDF
+ */
+export async function getSyllabusUploadUrl(
+    filename: string
+): Promise<{ signedUrl: string; path: string }> {
+    return apiRequest('/api/syllabus/upload-url', {
+        method: 'POST',
+        body: JSON.stringify({ filename }),
+    });
+}
+
+/**
+ * Create a syllabus entry after file upload
+ */
+export async function createSyllabus(
+    data: {
+        title: string;
+        semester: string;
+        branch: string;
+        subject: string;
+        description?: string;
+        pdfUrl: string;
+        fileSize: number;
+        collegeId?: string;
+    }
+): Promise<{ message: string; id: string }> {
+    return apiRequest('/api/syllabus', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * Delete a syllabus entry
+ */
+export async function deleteSyllabus(id: string): Promise<{ message: string }> {
+    return apiRequest(`/api/syllabus/${id}`, { method: 'DELETE' });
 }
