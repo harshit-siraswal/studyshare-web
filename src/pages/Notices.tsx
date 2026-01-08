@@ -197,21 +197,11 @@ const Notices = () => {
                       </div>
                     </div>
                     <Button
-                      className={cn(
-                        "rounded-full font-bold h-8 transition-all duration-200",
-                        isFollowing
-                          ? "bg-transparent border border-border text-foreground hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 w-24"
-                          : "bg-foreground text-background hover:bg-foreground/90 w-20"
-                      )}
-                      onClick={(e) => { e.stopPropagation(); handleFollowDept(dept.value); }}
-                      onMouseEnter={(e) => {
-                        if (isFollowing) e.currentTarget.textContent = "Unfollow";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (isFollowing) e.currentTarget.textContent = "Following";
-                      }}
+                      variant="outline"
+                      className="rounded-full font-bold h-8 w-20"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/department/${dept.value}`); }}
                     >
-                      {isFollowing ? "Following" : "Follow"}
+                      View
                     </Button>
                   </div>
                 );

@@ -249,13 +249,13 @@ const Study = () => {
                 )}
               </div>
 
-              {/* Search Bar - only show for resources */}
-              {searchMode === "resources" && (
+              {/* Search Bar - show for resources and following */}
+              {(searchMode === "resources" || searchMode === "following") && (
                 <div className="relative flex-1 max-w-2xl">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search resources..."
+                    placeholder={searchMode === "following" ? "Search following content..." : "Search resources..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4"
@@ -447,7 +447,7 @@ const Study = () => {
               )}
             </div>
           ) : searchMode === "following" ? (
-            <FollowingFeed />
+            <FollowingFeed searchQuery={searchQuery} />
           ) : searchMode === "bookmarks" ? (
             <BookmarkedResources />
           ) : (

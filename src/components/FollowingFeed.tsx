@@ -30,7 +30,11 @@ interface Resource {
   downvotes: number;
 }
 
-const FollowingFeed = () => {
+interface FollowingFeedProps {
+  searchQuery?: string;
+}
+
+const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingCount, setFollowingCount] = useState(0);
@@ -138,6 +142,28 @@ const FollowingFeed = () => {
     );
   }
 
+  // Filter resources by search query
+  const filteredResources = searchQuery
+    ? resources.filter(r =>
+      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.chapter || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.uploaded_by_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : resources;
+
+  if (filteredResources.length === 0 && searchQuery) {
+    return (
+      <Card className="p-12 text-center">
+        <Users className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+        <h3 className="text-xl font-semibold mb-2">No matches found</h3>
+        <p className="text-slate-600">
+          Try a different search term
+        </p>
+      </Card>
+    );
+  }
+
   if (resources.length === 0) {
     return (
       <Card className="p-12 text-center">
@@ -154,7 +180,7 @@ const FollowingFeed = () => {
     <div>
       <div className="mb-4">
         <h2 className="text-xl font-semibold">
-          From People You Follow ({resources.length})
+          From People You Follow ({filteredResources.length})
         </h2>
         <p className="text-sm text-slate-600">
           Following {followingCount} {followingCount === 1 ? 'person' : 'people'}
@@ -162,7 +188,7 @@ const FollowingFeed = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {resources.map((resource) => (
+        {filteredResources.map((resource) => (
           <ResourceCard
             key={resource.id}
             id={resource.id}
