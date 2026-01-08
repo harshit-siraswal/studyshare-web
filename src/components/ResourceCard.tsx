@@ -63,6 +63,7 @@ const ResourceCard = ({
   downvotes: initialDownvotes = 0,
   subject,
   chapter,
+  thumbnail,
   pdfUrl,
   videoUrl,
   uploaded_by_email,
