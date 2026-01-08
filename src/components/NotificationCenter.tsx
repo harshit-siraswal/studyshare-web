@@ -233,16 +233,24 @@ const NotificationCenter = () => {
         <div className="flex items-center justify-between p-3 border-b border-border">
           <h3 className="font-semibold text-foreground">Notifications</h3>
           <div className="flex items-center gap-1">
-            {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllAsReadHandler} className="text-xs">
-                Mark all read
-              </Button>
-            )}
-            {totalItems > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllNotificationsHandler} className="text-xs text-destructive hover:text-destructive">
-                Clear All
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={markAllAsReadHandler}
+              className="text-xs h-7 px-2"
+              disabled={unreadCount === 0}
+            >
+              Mark all read
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllNotificationsHandler}
+              className="text-xs text-destructive hover:text-destructive h-7 px-2"
+              disabled={totalItems === 0}
+            >
+              Clear All
+            </Button>
           </div>
         </div>
 
