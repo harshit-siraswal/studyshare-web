@@ -224,10 +224,10 @@ const Explore = () => {
                                         onClick={() => navigate(`/profile/${user.username}`)}
                                     >
                                         <h3 className="font-semibold text-foreground truncate">
-                                            {user.display_name || user.email.split('@')[0]}
+                                            {user.display_name || user.email?.split('@')[0] || 'User'}
                                         </h3>
                                         <p className="text-sm text-muted-foreground truncate">
-                                            @{user.username || user.email.split('@')[0]}
+                                            @{user.username || user.email?.split('@')[0] || 'user'}
                                         </p>
                                         {user.bio && (
                                             <p className="text-xs text-muted-foreground mt-1 line-clamp-1">

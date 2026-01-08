@@ -270,7 +270,7 @@ const NotificationCenter = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">Follow Request</p>
                       <p className="text-xs text-muted-foreground">
-                        {request.requester_email.split('@')[0]} wants to follow you
+                        {request.requester_email?.split('@')[0] || 'Someone'} wants to follow you
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatTime(request.created_at)}

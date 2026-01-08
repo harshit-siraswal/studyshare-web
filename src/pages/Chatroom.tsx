@@ -388,7 +388,7 @@ const Chatroom = () => {
       await addChatComment(
         messageId,
         commentText.trim(),
-        user.displayName || user.email.split('@')[0]
+        user.displayName || user.email?.split('@')[0] || 'User'
       );
 
       setCommentText('');
