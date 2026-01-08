@@ -183,13 +183,13 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => toggleSection("bookmarks")}
+                    onClick={() => navigate("/study?tab=bookmarks")}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Bookmark className="w-5 h-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Bookmarks ({bookmarks.length})</TooltipContent>
+                <TooltipContent side="right">Bookmarks</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -294,39 +294,17 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
 
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4 pb-24">
-          {/* Bookmarks */}
+          {/* Bookmarks - Navigate to full page like mobile */}
           <div>
-            <button
-              onClick={() => toggleSection("bookmarks")}
-              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
+              onClick={() => navigate("/study?tab=bookmarks")}
             >
-              {expandedSections.bookmarks ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               <Bookmark className="w-4 h-4" />
               <span>Bookmarks</span>
-              <span className="ml-auto text-xs bg-secondary px-1.5 py-0.5 rounded">{bookmarks.length}</span>
-            </button>
-            {expandedSections.bookmarks && (
-              <div className="mt-1 space-y-0.5 pl-4">
-                {bookmarks.length > 0 ? (
-                  bookmarks.map((bookmark) => (
-                    <div
-                      key={bookmark.id}
-                      className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors group"
-                    >
-                      <span className="flex-1 truncate">{bookmark.title}</span>
-                      <button
-                        onClick={() => removeBookmark(bookmark.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="px-2 py-1.5 text-xs text-muted-foreground">No bookmarks yet</p>
-                )}
-              </div>
-            )}
+              <ExternalLink className="w-3 h-3 ml-auto" />
+            </Button>
           </div>
 
           {/* College Notices - Now a button */}
