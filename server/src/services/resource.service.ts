@@ -48,14 +48,14 @@ export async function createResource(
             title: input.title,
             type: input.type,
             description: input.description,
-            url: input.url,
-            file_path: input.filePath,
+            video_url: input.url,  // For video type resources
+            file_url: input.filePath,  // For notes/documents (uploaded to Cloudinary)
             branch: input.branch,
             semester: input.semester,
             subject: input.subject,
             uploaded_by_email: userEmail,
             college_id: collegeId,
-            is_approved: true, // Auto-approve for now
+            status: 'pending',  // Resources need admin approval
             upvotes: 0,
             downvotes: 0,
         })
