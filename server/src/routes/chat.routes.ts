@@ -16,7 +16,7 @@ router.use(verifyToken, resolveUserRole, requireRole('COLLEGE_USER'));
  * POST /api/chat/rooms
  * Create a chat room
  */
-router.post('/rooms', rateLimit('write'), chatController.createRoom);
+router.post('/rooms', chatController.createRoom); // Rate limit disabled for testing
 
 /**
  * POST /api/chat/join

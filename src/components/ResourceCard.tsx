@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PDFViewer from "./PDFViewer";
 import VideoPlayer from "./VideoPlayer";
 import FollowButton from './FollowButton';
@@ -81,6 +81,10 @@ const ResourceCard = ({
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Refs to prevent double-clicks (synchronous check)
+  const isVotingRef = useRef(false);
+  const isBookmarkingRef = useRef(false);
+
   const Icon = typeIcons[type];
 
   // Fetch user's bookmark and vote status on mount
@@ -115,6 +119,10 @@ const ResourceCard = ({
       return;
     }
 
+    // Prevent double-clicks (synchronous check)
+    if (isVotingRef.current || loading) return;
+    isVotingRef.current = true;
+
     setLoading(true);
     try {
       // Use backend API for secure voting
@@ -136,6 +144,7 @@ const ResourceCard = ({
       toast.error(error.message || 'Failed to update vote');
     } finally {
       setLoading(false);
+      isVotingRef.current = false;
     }
   };
 
@@ -147,11 +156,19 @@ const ResourceCard = ({
       return;
     }
 
-    // Toggle bookmark using hook
-    const success = await toggleBookmark(id.toString());
+    // Prevent double-clicks (synchronous check)
+    if (isBookmarkingRef.current) return;
+    isBookmarkingRef.current = true;
 
-    if (success) {
-      onBookmark?.(id, !isBookmarked);
+    try {
+      // Toggle bookmark using hook
+      const success = await toggleBookmark(id.toString());
+
+      if (success) {
+        onBookmark?.(id, !isBookmarked);
+      }
+    } finally {
+      isBookmarkingRef.current = false;
     }
   };
 
