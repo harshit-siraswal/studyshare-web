@@ -169,13 +169,92 @@ const Notices = () => {
     <div className="min-h-screen bg-background text-foreground flex justify-center">
       <div className="w-full max-w-[1000px] flex">
 
-        {/* --- MIDDLE COLUMN (Feed) --- */}
-        <main className="flex-1 min-w-[350px] max-w-[600px] border-r border-border/50">
-          {/* Header / Tabs */}
-          <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
-            <div className="px-4 py-3 cursor-pointer md:hidden" onClick={() => navigate('/study')}>
-              <ArrowLeft className="w-5 h-5" />
+        {/* --- LEFT SIDEBAR (Who to follow) --- */}
+        <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto border-r border-border/50">
+          {/* Search */}
+          <div className="sticky top-0 bg-background pb-3 z-10">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input placeholder="Search notices..." className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background" />
             </div>
+          </div>
+
+          {/* Who to follow card */}
+          <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
+            <h2 className="font-bold text-xl px-2">Who to follow</h2>
+            <div className="space-y-4">
+              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, 5).map(dept => {
+                const isFollowing = followedDeptIds.includes(dept.value);
+                return (
+                  <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 border border-border/50">
+                        <AvatarFallback className="bg-background text-lg">{dept.icon}</AvatarFallback>
+                      </Avatar>
+                      <div className="leading-tight">
+                        <div className="font-bold hover:underline">{dept.label}</div>
+                        <div className="text-muted-foreground text-sm">@{dept.value}</div>
+                      </div>
+                    </div>
+                    <Button
+                      className={cn(
+                        "rounded-full font-bold h-8 transition-all duration-200",
+                        isFollowing
+                          ? "bg-transparent border border-border text-foreground hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 w-24"
+                          : "bg-foreground text-background hover:bg-foreground/90 w-20"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); handleFollowDept(dept.value); }}
+                      onMouseEnter={(e) => {
+                        if (isFollowing) e.currentTarget.textContent = "Unfollow";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isFollowing) e.currentTarget.textContent = "Following";
+                      }}
+                    >
+                      {isFollowing ? "Following" : "Follow"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-2 text-primary text-sm cursor-pointer hover:underline">Show more</div>
+          </Card>
+
+          <div className="mt-6 px-4 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span className="hover:underline cursor-pointer">Terms of Service</span>
+            <span className="hover:underline cursor-pointer">Privacy Policy</span>
+            <span className="hover:underline cursor-pointer">Cookie Policy</span>
+            <span className="hover:underline cursor-pointer">Accessibility</span>
+            <span className="hover:underline cursor-pointer">Ads info</span>
+            <span>© 2026 Studyspace</span>
+          </div>
+        </div>
+
+        {/* --- MIDDLE COLUMN (Feed) --- */}
+        <main className="flex-1 min-w-[350px] max-w-[600px]">
+          {/* Header / Tabs with Back Button */}
+          <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
+            {/* Back button row (always visible) */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-border/30">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full hover:bg-secondary/50"
+                onClick={() => {
+                  // If there's browser history, go back; otherwise go to /study
+                  if (window.history.length > 1 && location.key !== 'default') {
+                    navigate(-1);
+                  } else {
+                    navigate('/study');
+                  }
+                }}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="font-bold text-xl">Notices</h1>
+            </div>
+
+            {/* Tabs */}
             <div className="flex w-full">
               <div
                 className={cn(
@@ -310,67 +389,6 @@ const Notices = () => {
             )}
           </div>
         </main>
-
-        {/* --- RIGHT SIDEBAR (Who to follow) --- */}
-        <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto">
-          {/* Search */}
-          <div className="sticky top-0 bg-background pb-3 z-10">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input placeholder="Search notices..." className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background" />
-            </div>
-          </div>
-
-          {/* Who to follow card */}
-          <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
-            <h2 className="font-bold text-xl px-2">Who to follow</h2>
-            <div className="space-y-4">
-              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, 5).map(dept => {
-                const isFollowing = followedDeptIds.includes(dept.value);
-                return (
-                  <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-border/50">
-                        <AvatarFallback className="bg-background text-lg">{dept.icon}</AvatarFallback>
-                      </Avatar>
-                      <div className="leading-tight">
-                        <div className="font-bold hover:underline">{dept.label}</div>
-                        <div className="text-muted-foreground text-sm">@{dept.value}</div>
-                      </div>
-                    </div>
-                    <Button
-                      className={cn(
-                        "rounded-full font-bold h-8 transition-all duration-200",
-                        isFollowing
-                          ? "bg-transparent border border-border text-foreground hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 w-24"
-                          : "bg-foreground text-background hover:bg-foreground/90 w-20"
-                      )}
-                      onClick={(e) => { e.stopPropagation(); handleFollowDept(dept.value); }}
-                      onMouseEnter={(e) => {
-                        if (isFollowing) e.currentTarget.textContent = "Unfollow";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (isFollowing) e.currentTarget.textContent = "Following";
-                      }}
-                    >
-                      {isFollowing ? "Following" : "Follow"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="px-2 text-primary text-sm cursor-pointer hover:underline">Show more</div>
-          </Card>
-
-          <div className="mt-6 px-4 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            <span className="hover:underline cursor-pointer">Terms of Service</span>
-            <span className="hover:underline cursor-pointer">Privacy Policy</span>
-            <span className="hover:underline cursor-pointer">Cookie Policy</span>
-            <span className="hover:underline cursor-pointer">Accessibility</span>
-            <span className="hover:underline cursor-pointer">Ads info</span>
-            <span>© 2026 Studyspace</span>
-          </div>
-        </div>
 
       </div>
 
