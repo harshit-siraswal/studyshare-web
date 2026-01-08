@@ -17,6 +17,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Explore = lazy(() => import("./pages/Explore"));
 const DepartmentProfile = lazy(() => import("./pages/DepartmentProfile"));
+const Bookmarks = lazy(() => import("./pages/Bookmarks"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/explore" element={<Explore />} />
+              <Route path="/bookmarks" element={<Bookmarks />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/messages/:username" element={<Messages />} />
               <Route path="*" element={<NotFound />} />
