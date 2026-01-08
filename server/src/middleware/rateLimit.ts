@@ -100,8 +100,43 @@ function checkRateLimit(
  * @param type - Rate limit type: 'default', 'write', or 'auth'
  */
 export function rateLimit(type: 'default' | 'write' | 'auth' = 'default') {
-    // DISABLED: Rate limiting temporarily disabled for development/testing
-    return (_req: Request, _res: Response, next: NextFunction): void => {
+    const config = RATE_CONFIGS[type];
+
+    return (req: Request, res: Response, next: NextFunction): void => {
+        const ip = getClientIp(req);
+        const userId = req.user?.email;
+
+        // Check IP-based limit
+        const ipResult = checkRateLimit(ipLimits, ip, config);
+
+        if (!ipResult.allowed) {
+            res.status(429).json({
+                error: 'TooManyRequests',
+                message: 'Rate limit exceeded. Please try again later.',
+                retryAfter: Math.ceil(ipResult.resetIn / 1000),
+            });
+            return;
+        }
+
+        // Also check user-based limit if authenticated
+        if (userId) {
+            const userResult = checkRateLimit(userLimits, userId, config);
+
+            if (!userResult.allowed) {
+                res.status(429).json({
+                    error: 'TooManyRequests',
+                    message: 'Rate limit exceeded for your account.',
+                    retryAfter: Math.ceil(userResult.resetIn / 1000),
+                });
+                return;
+            }
+        }
+
+        // Set rate limit headers
+        res.setHeader('X-RateLimit-Limit', config.maxTokens);
+        res.setHeader('X-RateLimit-Remaining', ipResult.remaining);
+        res.setHeader('X-RateLimit-Reset', Math.ceil(ipResult.resetIn / 1000));
+
         next();
     };
 }

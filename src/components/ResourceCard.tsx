@@ -4,13 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import PDFViewer from "./PDFViewer";
 import VideoPlayer from "./VideoPlayer";
 import FollowButton from './FollowButton';
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { castVote, getVoteStatus } from "@/lib/api";
+import { castVote } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
@@ -87,29 +87,8 @@ const ResourceCard = ({
 
   const Icon = typeIcons[type];
 
-  // Fetch user's bookmark and vote status on mount
-  useEffect(() => {
-    if (user?.uid) {
-      fetchUserInteractions();
-    }
-  }, [user, id]);
-
-  const fetchUserInteractions = async () => {
-    if (!user?.uid) return;
-
-    try {
-      // Check vote status via backend API
-      const voteData = await getVoteStatus(id.toString());
-      if (voteData.userVote) {
-        setUserVote(voteData.userVote);
-      }
-      // Sync counts from server
-      setLocalUpvotes(voteData.upvotes);
-      setLocalDownvotes(voteData.downvotes);
-    } catch (error) {
-      // Silently handle errors (user might not be authenticated)
-    }
-  };
+  // NOTE: Removed per-card API calls on mount to prevent rate limit exhaustion
+  // Vote/bookmark status is fetched at the parent level in bulk or on-demand
 
   const handleVote = async (voteType: "upvote" | "downvote", e: React.MouseEvent) => {
     e.stopPropagation();
