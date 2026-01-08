@@ -40,11 +40,11 @@
     --gradient-accent: linear-gradient(135deg, hsl(262 83% 68%), hsl(280 70% 60%));
     --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
     --gradient-hero: linear-gradient(135deg, hsl(222 47% 6%) 0%, hsl(222 60% 12%) 50%, hsl(222 47% 6%) 100%);
-    
+
     --shadow-glow: 0 0 40px hsl(174 72% 56% / 0.15);
     --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.4);
     --shadow-hover: 0 8px 40px hsl(174 72% 56% / 0.2);
-    
+
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
@@ -91,7 +91,7 @@
     --gradient-accent: linear-gradient(135deg, hsl(262 83% 58%), hsl(280 70% 55%));
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
     --gradient-hero: linear-gradient(135deg, hsl(220 14% 98%) 0%, hsl(220 20% 96%) 50%, hsl(220 14% 98%) 100%);
-    
+
     --shadow-glow: 0 0 40px hsl(174 72% 40% / 0.15);
     --shadow-card: 0 4px 24px hsl(222 47% 11% / 0.08);
     --shadow-hover: 0 8px 40px hsl(174 72% 40% / 0.15);
@@ -117,11 +117,17 @@
     font-family: 'Inter', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 
-  code, pre {
+  code,
+  pre {
     font-family: 'JetBrains Mono', monospace;
   }
 }
@@ -184,16 +190,45 @@
   .animate-fade-in {
     animation: fade-in 0.6s ease-out forwards;
   }
+
+  /* PDF Viewer Isolation Layer - Forces light mode for canvas to prevent inverted colors */
+  .pdf-viewer-isolation-layer {
+    background-color: white !important;
+    color: black !important;
+    filter: none !important;
+    isolation: isolate;
+  }
+
+  .pdf-viewer-isolation-layer canvas,
+  .pdf-viewer-isolation-layer .react-pdf__Page__canvas,
+  .pdf-viewer-isolation-layer .react-pdf__Page__textContent {
+    filter: none !important;
+    mix-blend-mode: normal !important;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes slide-up {
@@ -201,6 +236,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -208,8 +244,13 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes page-flip {
@@ -217,10 +258,12 @@
     transform: rotateY(0deg) scale(1);
     opacity: 1;
   }
+
   50% {
     transform: rotateY(-90deg) scale(0.95);
     opacity: 0.7;
   }
+
   100% {
     transform: rotateY(0deg) scale(1);
     opacity: 1;

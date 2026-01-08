@@ -4,8 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useState, useRef } from "react";
-import PDFViewer from "./PDFViewer";
+import { useState, useRef, lazy, Suspense } from "react";
 import VideoPlayer from "./VideoPlayer";
 import FollowButton from './FollowButton';
 import { toast } from "sonner";
@@ -13,6 +12,9 @@ import { supabase } from "../supabase";
 import { castVote } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
+
+// Lazy load PDFViewer for better performance
+const PDFViewer = lazy(() => import("./PDFViewer"));
 
 
 export type ResourceType = "video" | "notes" | "pyq";
@@ -89,6 +91,20 @@ const ResourceCard = ({
 
   // NOTE: Removed per-card API calls on mount to prevent rate limit exhaustion
   // Vote/bookmark status is fetched at the parent level in bulk or on-demand
+
+  // Generate Cloudinary preview if PDF
+  const getPreviewUrl = () => {
+    if (type === 'notes' && pdfUrl && pdfUrl.includes('cloudinary.com')) {
+      // Convert PDF URL to JPG preview URL (page 1)
+      // Example: .../upload/v123/doc.pdf -> .../upload/w_400,h_400,c_limit,f_jpg,pg_1/v123/doc.pdf
+      // We insert transformations after /upload/
+      return pdfUrl.replace('/upload/', '/upload/w_500,f_jpg,pg_1/');
+    }
+    if (thumbnail) return thumbnail;
+    return null;
+  };
+
+  const previewImage = getPreviewUrl();
 
   const handleVote = async (voteType: "upvote" | "downvote", e: React.MouseEvent) => {
     e.stopPropagation();
@@ -177,6 +193,7 @@ const ResourceCard = ({
             type === "video" && "bg-red-500/10",
             type === "notes" && "bg-blue-500/10",
             type === "pyq" && "bg-amber-500/10",
+            "overflow-hidden relative" // Add relative and overflow hidden for preview image
           )}>
             <Icon className={cn(
               "w-6 h-6 md:w-8 md:h-8",
@@ -184,6 +201,17 @@ const ResourceCard = ({
               type === "notes" && "text-blue-500",
               type === "pyq" && "text-amber-500",
             )} />
+
+            {/* Cloudinary Preview Overlay */}
+            {previewImage && (type === 'notes' || type === 'pyq') && (
+              <img
+                src={previewImage}
+                alt={title}
+                className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover:scale-105 transition-transform"
+              />
+            )}
+            {/* Dark overlay for icon readability if preview exists */}
+            {previewImage && <div className="absolute inset-0 bg-black/10" />}
           </div>
 
           {/* Content */}
@@ -297,14 +325,17 @@ const ResourceCard = ({
         </div>
       </Card>
 
-      {/* PDF Viewer */}
-      {pdfUrl && (
-        <PDFViewer
-          isOpen={showPdfViewer}
-          onClose={() => setShowPdfViewer(false)}
-          title={title}
-          pdfUrl={pdfUrl}
-        />
+
+      {/* PDF Viewer - Lazy Loaded */}
+      {pdfUrl && showPdfViewer && (
+        <Suspense fallback={null}>
+          <PDFViewer
+            isOpen={showPdfViewer}
+            onClose={() => setShowPdfViewer(false)}
+            title={title}
+            pdfUrl={pdfUrl}
+          />
+        </Suspense>
       )}
 
       {/* Video Player */}
