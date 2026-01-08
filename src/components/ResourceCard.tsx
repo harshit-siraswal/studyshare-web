@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useState, useRef } from "react";
-import PDFViewer from "./PDFViewer";
+import { useState, useRef, lazy, Suspense } from "react";
+// import PDFViewer from "./PDFViewer"; // Replaced by lazy load
 import VideoPlayer from "./VideoPlayer";
 import FollowButton from './FollowButton';
 import { toast } from "sonner";
@@ -13,6 +13,9 @@ import { supabase } from "../supabase";
 import { castVote } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
+
+// Lazy load PDFViewer for improved performance
+const PDFViewer = lazy(() => import("./PDFViewer"));
 
 
 export type ResourceType = "video" | "notes" | "pyq";
@@ -297,14 +300,16 @@ const ResourceCard = ({
         </div>
       </Card>
 
-      {/* PDF Viewer */}
-      {pdfUrl && (
-        <PDFViewer
-          isOpen={showPdfViewer}
-          onClose={() => setShowPdfViewer(false)}
-          title={title}
-          pdfUrl={pdfUrl}
-        />
+      {/* PDF Viewer - Lazy Loaded on Click */}
+      {pdfUrl && showPdfViewer && (
+        <Suspense fallback={null}>
+          <PDFViewer
+            isOpen={showPdfViewer}
+            onClose={() => setShowPdfViewer(false)}
+            title={title}
+            pdfUrl={pdfUrl}
+          />
+        </Suspense>
       )}
 
       {/* Video Player */}
