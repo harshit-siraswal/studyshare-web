@@ -16,13 +16,13 @@ router.use(verifyToken, resolveUserRole);
 /**
  * POST /api/follow/request
  * Send a follow request
- * Requires: COLLEGE_USER, reCAPTCHA
+ * Requires: COLLEGE_USER, rate limited
+ * Note: reCAPTCHA removed - already authenticated and rate-limited
  */
 router.post(
     '/request',
     requireRole('COLLEGE_USER'),
     rateLimit('write'),
-    verifyRecaptcha,
     followController.sendFollowRequest
 );
 
