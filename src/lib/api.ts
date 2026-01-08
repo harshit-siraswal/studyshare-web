@@ -147,6 +147,32 @@ export async function getPendingFollowRequests(): Promise<{ requests: FollowRequ
     return apiRequest('/api/follow/pending');
 }
 
+/**
+ * Check follow status for a user
+ */
+export async function checkFollowStatus(targetEmail: string): Promise<{
+    status: 'following' | 'pending' | 'not-following';
+    requestId?: string;
+}> {
+    return apiRequest(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
+}
+
+/**
+ * Get my followers
+ */
+export async function getFollowers(): Promise<{ followers: UserProfile[] }> {
+    // Note: UserProfile is defined later, using any[] for now to avoid circular ref issues if moved
+    // or we can rely on hoisting if interface is exported similarly
+    return apiRequest('/api/follow/followers');
+}
+
+/**
+ * Get people I follow
+ */
+export async function getFollowing(): Promise<{ following: UserProfile[] }> {
+    return apiRequest('/api/follow/following');
+}
+
 // ============================================
 // BOOKMARK ENDPOINTS
 // ============================================

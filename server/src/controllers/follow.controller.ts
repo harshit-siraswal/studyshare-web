@@ -167,3 +167,65 @@ export async function getPending(
         next(error);
     }
 }
+
+/**
+ * GET /api/follow/status/:targetEmail
+ * Check if I am following target user
+ */
+export async function checkStatus(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { targetEmail } = req.params;
+        const followerEmail = req.user!.email;
+
+        // Self check
+        if (targetEmail === followerEmail) {
+            res.json({ status: 'not-following' });
+            return;
+        }
+
+        const result = await followService.getFollowStatus(followerEmail, targetEmail);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/follow/followers
+ * Get users who match my followers
+ */
+export async function getFollowers(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userEmail = req.user!.email;
+        const followers = await followService.getFollowers(userEmail);
+        res.json({ followers });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/follow/following
+ * Get users I follow
+ */
+export async function getFollowing(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userEmail = req.user!.email;
+        const following = await followService.getFollowing(userEmail);
+        res.json({ following });
+    } catch (error) {
+        next(error);
+    }
+}

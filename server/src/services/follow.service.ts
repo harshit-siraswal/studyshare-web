@@ -283,3 +283,94 @@ export async function getPendingRequests(userEmail: string): Promise<FollowReque
         createdAt: r.created_at,
     }));
 }
+
+/**
+ * Check follow status between current user and target user
+ */
+export async function getFollowStatus(
+    followerEmail: string,
+    targetEmail: string
+): Promise<{ status: 'following' | 'pending' | 'not-following'; requestId?: string }> {
+    const supabase = getSupabaseAdmin();
+
+    // 1. Check if following
+    const { data: follow } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_email', followerEmail)
+        .eq('following_email', targetEmail)
+        .single();
+
+    if (follow) {
+        return { status: 'following' };
+    }
+
+    // 2. Check if pending request
+    const { data: request } = await supabase
+        .from('follow_requests')
+        .select('id')
+        .eq('requester_email', followerEmail)
+        .eq('target_email', targetEmail)
+        .eq('status', 'pending')
+        .single();
+
+    if (request) {
+        return { status: 'pending', requestId: request.id };
+    }
+
+    return { status: 'not-following' };
+}
+
+/**
+ * Get users who follow the specified user
+ */
+export async function getFollowers(userEmail: string): Promise<any[]> {
+    const supabase = getSupabaseAdmin();
+
+    // Get follower emails
+    const { data: follows, error } = await supabase
+        .from('follows')
+        .select('follower_email')
+        .eq('following_email', userEmail);
+
+    if (error) throw error;
+    if (!follows || follows.length === 0) return [];
+
+    const followerEmails = follows.map(f => f.follower_email);
+
+    // Get profiles
+    const { data: profiles, error: profileError } = await supabase
+        .from('users')
+        .select('id, email, display_name, username, profile_photo_url, college')
+        .in('email', followerEmails);
+
+    if (profileError) throw profileError;
+    return profiles || [];
+}
+
+/**
+ * Get users that the specified user follows
+ */
+export async function getFollowing(userEmail: string): Promise<any[]> {
+    const supabase = getSupabaseAdmin();
+
+    // Get following emails
+    const { data: follows, error } = await supabase
+        .from('follows')
+        .select('following_email')
+        .eq('follower_email', userEmail);
+
+    if (error) throw error;
+    if (!follows || follows.length === 0) return [];
+
+    const followingEmails = follows.map(f => f.following_email);
+
+    // Get profiles
+    const { data: profiles, error: profileError } = await supabase
+        .from('users')
+        .select('id, email, display_name, username, profile_photo_url, college')
+        .in('email', followingEmails);
+
+    if (profileError) throw profileError;
+    return profiles || [];
+}

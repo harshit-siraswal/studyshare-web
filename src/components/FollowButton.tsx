@@ -44,7 +44,7 @@ const FollowButton = ({
     }
   }, [targetUserEmail, authUser]);
 
-  // Check current follow status (reads can still use Supabase for now)
+  // Check current follow status via Backend API
   const checkFollowStatus = async (userEmail: string) => {
     try {
       if (!userEmail) return;
@@ -54,39 +54,17 @@ const FollowButton = ({
         return;
       }
 
-      // First: Check if already following (in follows table)
-      const { data: followData } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_email', userEmail)
-        .eq('following_email', targetUserEmail)
-        .single();
+      // Use backend API which bypasses RLS and checks both tables
+      const response = await api.checkFollowStatus(targetUserEmail);
 
-      if (followData) {
-        setFollowStatus('following');
-        setLoading(false);
-        return;
+      setFollowStatus(response.status);
+
+      if (response.status === 'pending' && response.requestId) {
+        pendingRequestIds.set(targetUserEmail, response.requestId);
       }
-
-      // Second: Check for pending request (in follow_requests table)
-      const { data: requestData } = await supabase
-        .from('follow_requests')
-        .select('id, status')
-        .eq('requester_email', userEmail)
-        .eq('target_email', targetUserEmail)
-        .eq('status', 'pending')
-        .single();
-
-      if (requestData) {
-        pendingRequestIds.set(targetUserEmail, requestData.id);
-        setFollowStatus('pending');
-        setLoading(false);
-        return;
-      }
-
-      setFollowStatus('not-following');
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error checking follow status:', error);
+      // Fallback or leave as not-following
     } finally {
       setLoading(false);
     }

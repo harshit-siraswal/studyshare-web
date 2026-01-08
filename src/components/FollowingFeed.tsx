@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useCollege } from '@/context/CollegeContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
+import * as api from '@/lib/api';
 
 interface Resource {
   id: string;
@@ -61,15 +62,10 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
       // Policy: Filter by college_id for data isolation
       const collegeId = selectedCollege?.domain || 'kiet.edu';
 
-      // Get list of people user is following
-      const { data: followingData, error: followingError } = await supabase
-        .from('follows')
-        .select('following_email')
-        .eq('follower_email', authUser.email);
+      // Get list of people user is following via Backend API
+      const { following } = await api.getFollowing();
 
-      if (followingError) throw followingError;
-
-      const followingEmails = followingData?.map(f => f.following_email) || [];
+      const followingEmails = following.map(p => p.email);
       setFollowingCount(followingEmails.length);
 
       if (followingEmails.length === 0) {

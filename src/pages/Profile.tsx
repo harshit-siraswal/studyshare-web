@@ -1,5 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
+import * as api from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import { ArrowLeft, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, ExternalLink, MessageCircle, MoreVertical, Trash2, Bookmark, Moon, Sun, Loader2 } from "lucide-react";
@@ -38,6 +39,8 @@ interface Contribution {
   chapter?: string;
   topic?: string;
   description?: string;
+  uploaded_by_email?: string;
+  uploaded_by_name?: string;
 }
 
 interface User {
@@ -252,56 +255,21 @@ const Profile = () => {
     fetchUserProfile();
   }, [authUser]);
 
-  // Fetch followers and following
+  // Fetch followers and following via Backend API
   const fetchFollowersFollowing = async () => {
     if (!authUser?.email) return;
 
     try {
-      // Get followers (people who follow me)
-      const { data: followersData, error: followersError } = await supabase
-        .from('follows')
-        .select('follower_email')
-        .eq('following_email', authUser.email);
+      const [followersData, followingData] = await Promise.all([
+        api.getFollowers(),
+        api.getFollowing()
+      ]);
 
-      if (followersError) throw followersError;
+      setFollowersCount(followersData.followers.length);
+      setFollowers(followersData.followers);
 
-      const followerEmails = followersData?.map(f => f.follower_email) || [];
-      setFollowersCount(followerEmails.length);
-
-      // Get user profiles for followers
-      if (followerEmails.length > 0) {
-        const { data: followersProfiles } = await supabase
-          .from('users')
-          .select('id, email, display_name, username, profile_photo_url, college')
-          .in('email', followerEmails);
-
-        setFollowers(followersProfiles || []);
-      } else {
-        setFollowers([]);
-      }
-
-      // Get following (people I follow)
-      const { data: followingData, error: followingError } = await supabase
-        .from('follows')
-        .select('following_email')
-        .eq('follower_email', authUser.email);
-
-      if (followingError) throw followingError;
-
-      const followingEmails = followingData?.map(f => f.following_email) || [];
-      setFollowingCount(followingEmails.length);
-
-      // Get user profiles for following
-      if (followingEmails.length > 0) {
-        const { data: followingProfiles } = await supabase
-          .from('users')
-          .select('id, email, display_name, username, profile_photo_url, college')
-          .in('email', followingEmails);
-
-        setFollowing(followingProfiles || []);
-      } else {
-        setFollowing([]);
-      }
+      setFollowingCount(followingData.following.length);
+      setFollowing(followingData.following);
     } catch (error) {
       console.error('Error fetching followers/following:', error);
     }

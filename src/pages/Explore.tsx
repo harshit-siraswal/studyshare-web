@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import * as api from "@/lib/api";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import FollowButton from "@/components/FollowButton";
@@ -78,14 +79,9 @@ const Explore = () => {
         if (!authUser?.email) return;
 
         try {
-            const { count, error } = await supabase
-                .from('follows')
-                .select('*', { count: 'exact', head: true })
-                .eq('follower_email', authUser.email);
-
-            if (!error) {
-                setFollowingCount(count || 0);
-            }
+            // Get list via Backend API
+            const { following } = await api.getFollowing();
+            setFollowingCount(following.length);
         } catch (error) {
             console.error('Error fetching following count:', error);
         }

@@ -82,4 +82,34 @@ router.get(
     followController.getPending
 );
 
+/**
+ * GET /api/follow/status/:targetEmail
+ * Check if I am following target user
+ */
+router.get(
+    '/status/:targetEmail',
+    rateLimit('default'),
+    followController.checkStatus
+);
+
+/**
+ * GET /api/follow/followers
+ * Get my followers
+ */
+router.get(
+    '/followers',
+    rateLimit('default'),
+    followController.getFollowers
+);
+
+/**
+ * GET /api/follow/following
+ * Get people I follow
+ */
+router.get(
+    '/following',
+    rateLimit('default'),
+    followController.getFollowing
+);
+
 export default router;
