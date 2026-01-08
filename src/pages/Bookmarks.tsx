@@ -245,52 +245,56 @@ const Bookmarks = () => {
 
                                 if (bookmark.type === 'notice' && bookmark.content) {
                                     const notice = bookmark.content;
-                                    const dept = DEPARTMENTS[notice.department] || { label: notice.department, icon: '📌' };
+                                    const dept = DEPARTMENTS[notice.department || ''] || { label: notice.department || 'Notice', icon: '📌' };
                                     return (
-                                        <div
-                                            key={bookmark.id}
-                                            className="p-4 hover:bg-secondary/20 transition-colors cursor-pointer"
-                                            onClick={() => navigate(`/department/${notice.department}`)}
-                                        >
-                                            <div className="flex gap-3">
-                                                <Avatar className="w-10 h-10 border border-border shrink-0">
-                                                    <AvatarFallback className="bg-secondary text-lg">{dept.icon}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <span className="font-bold hover:underline">{dept.label}</span>
-                                                        <span className="text-muted-foreground text-sm">@{notice.department}</span>
-                                                        <span className="text-muted-foreground text-sm">·</span>
-                                                        <span className="text-muted-foreground text-sm">{formatTimeAgo(notice.created_at)}</span>
-                                                        {notice.priority === 'urgent' && <Badge variant="destructive" className="ml-auto h-5 text-[10px]">Urgent</Badge>}
-                                                    </div>
-                                                    {notice.title && <h3 className="font-bold mt-1 text-base">{notice.title}</h3>}
-                                                    <p className="text-foreground/90 whitespace-pre-wrap mt-1 text-[15px] leading-normal line-clamp-3">{notice.content}</p>
+                                        <div key={bookmark.id} className="px-4 py-3">
+                                            {/* Notice Card - styled like resource cards */}
+                                            <div
+                                                className="p-4 border border-border/50 rounded-xl hover:bg-secondary/20 transition-colors cursor-pointer bg-card"
+                                                onClick={() => notice.department && navigate(`/department/${notice.department}`)}
+                                            >
+                                                <div className="flex gap-3">
+                                                    <Avatar className="w-10 h-10 border border-border shrink-0">
+                                                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-500 text-white text-lg">{dept.icon}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-bold">{dept.label}</span>
+                                                            <span className="text-muted-foreground text-sm">@{notice.department || 'notice'}</span>
+                                                            <span className="text-muted-foreground text-sm">·</span>
+                                                            <span className="text-muted-foreground text-sm">{notice.created_at ? formatTimeAgo(notice.created_at) : ''}</span>
+                                                            {notice.priority === 'urgent' && (
+                                                                <Badge variant="destructive" className="ml-auto h-5 text-[10px]">Urgent</Badge>
+                                                            )}
+                                                        </div>
+                                                        {notice.title && <h3 className="font-bold mt-2 text-base text-foreground">{notice.title}</h3>}
+                                                        <p className="text-foreground/80 whitespace-pre-wrap mt-1 text-sm leading-relaxed line-clamp-3">{notice.content}</p>
 
-                                                    {/* Media preview */}
-                                                    {notice.file_url && notice.file_type === 'image' && (
-                                                        <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-64 object-cover border border-border/50 w-full" />
-                                                    )}
+                                                        {/* Media preview */}
+                                                        {notice.file_url && notice.file_type === 'image' && (
+                                                            <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-48 object-cover border border-border/50" />
+                                                        )}
 
-                                                    {/* Action bar */}
-                                                    <div className="flex items-center gap-8 mt-3 text-muted-foreground">
-                                                        <Button variant="ghost" size="sm" className="gap-1 hover:text-blue-400 rounded-full h-8 px-2">
-                                                            <MessageCircle className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="sm" className="gap-1 hover:text-pink-500 rounded-full h-8 px-2">
-                                                            <Heart className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="gap-1 text-primary rounded-full h-8 px-2"
-                                                            onClick={(e) => { e.stopPropagation(); toggleBookmark(notice.id, 'notice'); }}
-                                                        >
-                                                            <Bookmark className="w-4 h-4 fill-current" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="sm" className="gap-1 hover:text-green-500 rounded-full h-8 px-2">
-                                                            <Share className="w-4 h-4" />
-                                                        </Button>
+                                                        {/* Action bar */}
+                                                        <div className="flex items-center gap-6 mt-3 pt-3 border-t border-border/30 text-muted-foreground">
+                                                            <Button variant="ghost" size="sm" className="gap-1 hover:text-blue-400 rounded-full h-8 px-2">
+                                                                <MessageCircle className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" className="gap-1 hover:text-pink-500 rounded-full h-8 px-2">
+                                                                <Heart className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="gap-1 text-primary rounded-full h-8 px-2"
+                                                                onClick={(e) => { e.stopPropagation(); toggleBookmark(notice.id, 'notice'); }}
+                                                            >
+                                                                <Bookmark className="w-4 h-4 fill-current" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" className="gap-1 hover:text-green-500 rounded-full h-8 px-2">
+                                                                <Share className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
