@@ -31,6 +31,7 @@ interface UseBookmarksReturn {
     isBookmarked: (itemId: string) => boolean;
     toggleBookmark: (itemId: string, type?: 'resource' | 'notice') => Promise<boolean>;
     refresh: () => Promise<void>;
+    clearAll: () => Promise<boolean>;
 }
 
 export const useBookmarks = (): UseBookmarksReturn => {
@@ -177,6 +178,31 @@ export const useBookmarks = (): UseBookmarksReturn => {
         }
     }, [isBookmarked, addBookmark, removeBookmark]);
 
+    // Clear all bookmarks
+    const clearAll = useCallback(async (): Promise<boolean> => {
+        if (!user?.email) return false;
+
+        try {
+            // Remove each bookmark via API
+            for (const bookmark of bookmarks) {
+                const itemId = bookmark.resourceId || bookmark.noticeId;
+                if (itemId) {
+                    await api.removeBookmarkByItem(itemId);
+                }
+            }
+
+            // Clear local and global cache
+            setBookmarks([]);
+            setBookmarkedIds(new Set());
+            globalBookmarksCache = [];
+            globalBookmarkIdsCache = new Set();
+            return true;
+        } catch (error) {
+            console.error('Error clearing bookmarks:', error);
+            return false;
+        }
+    }, [user?.email, bookmarks]);
+
     return {
         bookmarks,
         bookmarkedIds,
@@ -186,6 +212,7 @@ export const useBookmarks = (): UseBookmarksReturn => {
         isBookmarked,
         toggleBookmark,
         refresh: () => fetchBookmarks(true),
+        clearAll,
     };
 };
 

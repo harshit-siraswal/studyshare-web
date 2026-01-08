@@ -14,6 +14,7 @@ import Chatroom from "./pages/Chatroom";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Explore from "./pages/Explore";
+import Bookmarks from "./pages/Bookmarks";
 import DepartmentProfile from "./pages/DepartmentProfile";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<Profile />} />
             <Route path="/explore" element={<Explore />} /> {/* Explore Page */}
+            <Route path="/bookmarks" element={<Bookmarks />} /> {/* Bookmarks Page */}
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:username" element={<Messages />} />
             <Route path="*" element={<NotFound />} />

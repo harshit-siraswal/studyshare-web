@@ -183,7 +183,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => navigate("/study?tab=bookmarks")}
+                    onClick={() => navigate("/bookmarks")}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Bookmark className="w-5 h-5" />
@@ -299,7 +299,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             <Button
               variant="ghost"
               className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
-              onClick={() => navigate("/study?tab=bookmarks")}
+              onClick={() => navigate("/bookmarks")}
             >
               <Bookmark className="w-4 h-4" />
               <span>Bookmarks</span>
