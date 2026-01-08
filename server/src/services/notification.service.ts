@@ -32,7 +32,7 @@ export async function createNotification(
             message,
             type,
             link,
-            is_read: false,
+            read: false,
         })
         .select()
         .single();
@@ -53,7 +53,7 @@ export async function markAsRead(notificationId: string, userId: string): Promis
 
     const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ read: true })
         .eq('id', notificationId)
         .eq('user_id', userId);
 
@@ -71,9 +71,9 @@ export async function markAllAsRead(userId: string): Promise<void> {
 
     const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ read: true })
         .eq('user_id', userId)
-        .eq('is_read', false);
+        .eq('read', false);
 
     if (error) {
         console.error('[NotificationService] Mark all read error:', error);
@@ -124,7 +124,7 @@ function mapNotification(row: any): Notification {
         message: row.message,
         type: row.type,
         link: row.link,
-        isRead: row.is_read,
+        isRead: row.read,
         createdAt: row.created_at,
     };
 }
