@@ -34,6 +34,7 @@ export async function addBookmark(
     try {
         const { resourceId, noticeId, itemId, type } = req.body;
         const userEmail = req.user!.email;
+        const userId = req.user!.uid;
 
         // Support both old { resourceId } and new { itemId, type } formats
         const finalItemId = itemId || resourceId || noticeId;
@@ -44,7 +45,7 @@ export async function addBookmark(
             return;
         }
 
-        const bookmark = await bookmarkService.addBookmark(userEmail, finalItemId, finalType);
+        const bookmark = await bookmarkService.addBookmark(userId, userEmail, finalItemId, finalType);
 
         await logActivity({
             userEmail,

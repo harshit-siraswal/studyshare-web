@@ -51,6 +51,7 @@ export async function getUserBookmarks(userEmail: string): Promise<Bookmark[]> {
  * Add a bookmark
  */
 export async function addBookmark(
+    userId: string,
     userEmail: string,
     itemId: string,
     type: 'resource' | 'notice' = 'resource'
@@ -66,8 +67,8 @@ export async function addBookmark(
         if (error || !data) throw Errors.notFound('Notice');
     }
 
-    // Prepare insert payload
-    const payload: any = { user_email: userEmail };
+    // Prepare insert payload - include both user_id and user_email
+    const payload: any = { user_id: userId, user_email: userEmail };
     if (type === 'resource') payload.resource_id = itemId;
     else payload.notice_id = itemId;
 
