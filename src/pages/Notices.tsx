@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
+import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -167,6 +168,10 @@ const Notices = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
+      <SEO
+        title="Notices"
+        description="Stay updated with the latest announcements and notices from your college departments."
+      />
       <div className="w-full max-w-[1000px] flex">
 
         {/* --- LEFT SIDEBAR (Who to follow) --- */}

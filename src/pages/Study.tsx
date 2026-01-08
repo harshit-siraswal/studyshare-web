@@ -19,9 +19,11 @@ import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
+import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/use-debounce";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 
@@ -62,6 +64,7 @@ const Study = () => {
   const [searchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedSemester, setSelectedSemester] = useState("all");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedSubject, setSelectedSubject] = useState("all");
@@ -160,7 +163,7 @@ const Study = () => {
 
   const filteredResources = resources
     .filter((resource) => {
-      const query = searchQuery.toLowerCase();
+      const query = debouncedSearchQuery.toLowerCase();
       const matchesSearch =
         resource.title.toLowerCase().includes(query) ||
         (resource.description || '').toLowerCase().includes(query) ||
@@ -188,6 +191,10 @@ const Study = () => {
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
+      <SEO
+        title="Study Resources"
+        description="Access curated study materials, notes, videos, and previous year questions for your courses."
+      />
       {/* Desktop Sidebar - Fixed height */}
       <div className={`hidden lg:block transition-all duration-300 ${sidebarOpen ? "w-72" : "w-14"} h-screen overflow-hidden shrink-0`}>
         <StudySidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />

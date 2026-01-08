@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { GraduationCap, Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
+import { SEO } from "@/components/SEO";
 
 const colleges = [
   { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 12500 },
@@ -44,6 +45,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <SEO
+        title="Select Your College"
+        description="Join your college community on StudySpace. Access curated study materials, notes, videos, and connect with peers."
+      />
       {/* Background decorations */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float" />
