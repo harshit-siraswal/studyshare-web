@@ -1,6 +1,6 @@
 import { initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
-import { env } from './env.js';
+import { env } from './env';
 
 let app: App | null = null;
 let auth: Auth | null = null;

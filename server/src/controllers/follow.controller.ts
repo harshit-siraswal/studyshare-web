@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as followService from '../services/follow.service.js';
-import { logActivity, Actions } from '../services/activity.service.js';
+import * as followService from '../services/follow.service';
+import { logActivity, Actions } from '../services/activity.service';
 
 /**
  * POST /api/follow/request

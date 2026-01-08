@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as chatService from '../services/chat.service.js';
+import * as chatService from '../services/chat.service';
 
 /**
  * POST /api/chat/rooms

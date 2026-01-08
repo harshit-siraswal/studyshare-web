@@ -4,8 +4,8 @@ import {
     resolveUserRole,
     requireRole,
     rateLimit
-} from '../middleware/index.js';
-import * as chatController from '../controllers/chat.controller.js';
+} from '../middleware/index';
+import * as chatController from '../controllers/chat.controller';
 
 const router = Router();
 

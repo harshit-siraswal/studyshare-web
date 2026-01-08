@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as departmentService from '../services/department.service.js';
-import { logActivity, Actions } from '../services/activity.service.js';
+import * as departmentService from '../services/department.service';
+import { logActivity, Actions } from '../services/activity.service';
 
 export async function followDepartment(
     req: Request,

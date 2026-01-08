@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '../config/supabase.js';
+import { getSupabaseAdmin } from '../config/supabase';
 
 export interface LogEntry {
     userEmail: string;

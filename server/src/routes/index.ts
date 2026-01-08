@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import authRoutes from './auth.routes.js';
-import followRoutes from './follow.routes.js';
-import bookmarkRoutes from './bookmark.routes.js';
-import resourceRoutes from './resource.routes.js';
-import departmentRoutes from './department.routes.js';
-import voteRoutes from './vote.routes.js';
-import notificationRoutes from './notification.routes.js';
-import chatRoutes from './chat.routes.js';
-import userRoutes from './user.routes.js';
-import syllabusRoutes from './syllabus.routes.js';
+import authRoutes from './auth.routes';
+import followRoutes from './follow.routes';
+import bookmarkRoutes from './bookmark.routes';
+import resourceRoutes from './resource.routes';
+import departmentRoutes from './department.routes';
+import voteRoutes from './vote.routes';
+import notificationRoutes from './notification.routes';
+import chatRoutes from './chat.routes';
+import userRoutes from './user.routes';
+import syllabusRoutes from './syllabus.routes';
 
 const router = Router();
 

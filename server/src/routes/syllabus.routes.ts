@@ -4,8 +4,8 @@ import {
     resolveUserRole,
     requireRole,
     rateLimit
-} from '../middleware/index.js';
-import * as syllabusController from '../controllers/syllabus.controller.js';
+} from '../middleware/index';
+import * as syllabusController from '../controllers/syllabus.controller';
 
 const router = Router();
 

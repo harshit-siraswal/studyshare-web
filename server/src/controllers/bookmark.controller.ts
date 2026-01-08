@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as bookmarkService from '../services/bookmark.service.js';
-import { logActivity, Actions } from '../services/activity.service.js';
+import * as bookmarkService from '../services/bookmark.service';
+import { logActivity, Actions } from '../services/activity.service';
 
 /**
  * GET /api/bookmarks

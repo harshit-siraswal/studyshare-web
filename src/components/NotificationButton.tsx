@@ -18,7 +18,8 @@ import {
   approveFollowRequest,
   rejectFollowRequest,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  getPendingFollowRequests
 } from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -121,17 +122,12 @@ const NotificationButton = () => {
     if (!user?.email) return;
 
     try {
-      const { data, error } = await supabase
-        .from('follow_requests')
-        .select('*')
-        .eq('target_email', user.email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+      // Get pending follow requests via backend API
+      const result = await getPendingFollowRequests();
+      const requests = result.requests || [];
 
-      if (error) throw error;
-
-      setFollowRequests(data || []);
-      updateUnreadCount(notifications, data || []);
+      setFollowRequests(requests);
+      updateUnreadCount(notifications, requests);
     } catch (error) {
       console.error('Error fetching follow requests:', error);
     }

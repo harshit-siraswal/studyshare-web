@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as syllabusService from '../services/syllabus.service.js';
+import * as syllabusService from '../services/syllabus.service';
 
 /**
  * POST /api/syllabus/upload-url

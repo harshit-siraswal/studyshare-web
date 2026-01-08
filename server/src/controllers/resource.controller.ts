@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as resourceService from '../services/resource.service.js';
-import { logActivity, Actions } from '../services/activity.service.js';
+import * as resourceService from '../services/resource.service';
+import { logActivity, Actions } from '../services/activity.service';
 
 /**
  * POST /api/resources

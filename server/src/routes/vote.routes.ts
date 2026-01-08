@@ -4,8 +4,8 @@ import {
     resolveUserRole,
     requireRole,
     rateLimit
-} from '../middleware/index.js';
-import * as voteController from '../controllers/vote.controller.js';
+} from '../middleware/index';
+import * as voteController from '../controllers/vote.controller';
 
 const router = Router();
 

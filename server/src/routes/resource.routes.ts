@@ -5,8 +5,8 @@ import {
     requireRole,
     rateLimit,
     optionalRecaptcha
-} from '../middleware/index.js';
-import * as resourceController from '../controllers/resource.controller.js';
+} from '../middleware/index';
+import * as resourceController from '../controllers/resource.controller';
 
 const router = Router();
 

@@ -4,8 +4,8 @@ import {
     resolveUserRole,
     requireRole,
     rateLimit
-} from '../middleware/index.js';
-import * as bookmarkController from '../controllers/bookmark.controller.js';
+} from '../middleware/index';
+import * as bookmarkController from '../controllers/bookmark.controller';
 
 const router = Router();
 

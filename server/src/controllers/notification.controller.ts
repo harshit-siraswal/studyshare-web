@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as notificationService from '../services/notification.service.js';
+import * as notificationService from '../services/notification.service';
 
 /**
  * POST /api/notifications

@@ -5,8 +5,8 @@ import {
     requireRole,
     rateLimit,
     verifyRecaptcha
-} from '../middleware/index.js';
-import * as followController from '../controllers/follow.controller.js';
+} from '../middleware/index';
+import * as followController from '../controllers/follow.controller';
 
 const router = Router();
 

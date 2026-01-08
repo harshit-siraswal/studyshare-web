@@ -3,8 +3,8 @@ import {
     verifyToken,
     resolveUserRole,
     rateLimit
-} from '../middleware/index.js';
-import * as departmentController from '../controllers/department.controller.js';
+} from '../middleware/index';
+import * as departmentController from '../controllers/department.controller';
 
 const router = Router();
 

@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from '../config/supabase.js';
-import { Errors } from '../middleware/errorHandler.js';
+import { getSupabaseAdmin } from '../config/supabase';
+import { Errors } from '../middleware/errorHandler';
 
 /**
  * Get user profile by ID

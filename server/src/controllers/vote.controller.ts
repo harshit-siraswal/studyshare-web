@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as voteService from '../services/vote.service.js';
+import * as voteService from '../services/vote.service';
 
 /**
  * POST /api/votes

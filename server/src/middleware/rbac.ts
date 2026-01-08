@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { getSupabaseAdmin } from '../config/supabase.js';
-import { env } from '../config/env.js';
+import { getSupabaseAdmin } from '../config/supabase';
+import { env } from '../config/env';
 
 /**
  * User roles in ascending order of privilege

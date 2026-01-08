@@ -20,7 +20,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
-  deleteAllNotifications
+  deleteAllNotifications,
+  getPendingFollowRequests
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -98,16 +99,9 @@ const NotificationCenter = () => {
     if (!user?.email) return;
 
     try {
-      // Get pending follow requests where current user is the target
-      const { data, error } = await supabase
-        .from('follow_requests')
-        .select('*')
-        .eq('target_email', user.email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setFollowRequests(data || []);
+      // Get pending follow requests via backend API
+      const result = await getPendingFollowRequests();
+      setFollowRequests(result.requests || []);
     } catch (error) {
       console.error('Error fetching follow requests:', error);
     } finally {

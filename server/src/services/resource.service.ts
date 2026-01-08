@@ -1,6 +1,6 @@
-import { getSupabaseAdmin } from '../config/supabase.js';
-import { Errors } from '../middleware/errorHandler.js';
-import { hasRole, UserRole } from '../middleware/rbac.js';
+import { getSupabaseAdmin } from '../config/supabase';
+import { Errors } from '../middleware/errorHandler';
+import { hasRole, UserRole } from '../middleware/rbac';
 
 export interface Resource {
     id: string;

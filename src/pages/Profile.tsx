@@ -375,14 +375,8 @@ const Profile = () => {
 
     try {
       if (isAlreadyFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_email', authUser.email)
-          .eq('following_email', targetEmail);
-
-        if (error) throw error;
+        // Unfollow via backend API
+        await api.unfollowUser(targetEmail);
 
         // Update local state
         setFollowing(prev => prev.filter(f => f.email !== targetEmail));
@@ -399,21 +393,8 @@ const Profile = () => {
 
         toast.success(`Unfollowed ${targetName || 'user'}`);
       } else {
-        // Follow
-        const { error } = await supabase
-          .from('follows')
-          .insert([{
-            follower_email: authUser.email,
-            following_email: targetEmail
-          }]);
-
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('Already following');
-            return;
-          }
-          throw error;
-        }
+        // Follow via backend API
+        await api.sendFollowRequest(targetEmail);
 
         // Refresh following list to get full user details
         // This will also update the `following` state, which is a dependency for `fetchDiscoverUsers`
@@ -428,25 +409,11 @@ const Profile = () => {
         }
 
         toast.success(`Following ${targetName || 'user'}`);
-
-        // Create notification for the user being followed
-        // Matching logic from FollowButton.tsx
-        if (authUser.email) {
-          const { error: notifError } = await supabase.from('notifications').insert([{
-            user_email: targetEmail,
-            type: 'follow',
-            title: 'New Follower',
-            message: `${authUser.email.split('@')[0]} started following you`,
-            read: false,
-            college_id: selectedCollege?.domain || 'kiet.edu', // Policy: College data isolation
-          }]);
-
-          if (notifError) console.error('Error creating notification:', notifError);
-        }
+        // Backend API handles notification creation automatically
       }
     } catch (error: any) {
       console.error('Follow error:', error);
-      toast.error('Failed to update follow status');
+      toast.error(error.message || 'Failed to update follow status');
     }
   };
 
@@ -474,15 +441,14 @@ const Profile = () => {
         console.log('✅ Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
         setViewingOtherProfile(otherProfile);
 
-        // Check if we're following them
-        const { data } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('follower_email', authUser.email)
-          .eq('following_email', otherProfile.email)
-          .maybeSingle();
-
-        setIsFollowingOther(!!data);
+        // Check if we're following them via backend API
+        try {
+          const statusResult = await api.getFollowStatus(otherProfile.email);
+          setIsFollowingOther(statusResult.status === 'following');
+        } catch (err) {
+          console.error('Error checking follow status:', err);
+          setIsFollowingOther(false);
+        }
       }
     };
 

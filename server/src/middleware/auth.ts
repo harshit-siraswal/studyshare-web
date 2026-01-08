@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getFirebaseAuth } from '../config/firebase.js';
+import { getFirebaseAuth } from '../config/firebase';
 
 /**
  * User context attached to requests after authentication

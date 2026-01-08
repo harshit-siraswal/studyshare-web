@@ -1,6 +1,6 @@
-import { getSupabaseAdmin } from '../config/supabase.js';
-import { env } from '../config/env.js';
-import { UserRole } from '../middleware/rbac.js';
+import { getSupabaseAdmin } from '../config/supabase';
+import { env } from '../config/env';
+import { UserRole } from '../middleware/rbac';
 
 export interface UserInfo {
     email: string;

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getUserInfo } from '../services/auth.service.js';
+import { getUserInfo } from '../services/auth.service';
 
 /**
  * GET /api/auth/me
