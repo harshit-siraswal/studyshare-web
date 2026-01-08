@@ -211,7 +211,7 @@ export async function isBookmarked(itemId: string): Promise<{ isBookmarked: bool
 export async function followDepartment(departmentId: string): Promise<{ message: string }> {
     return apiRequest('/api/departments/follow', {
         method: 'POST',
-        body: JSON.stringify({ id: departmentId }),
+        body: JSON.stringify({ id: departmentId }),  // Backend expects { id }
     });
 }
 

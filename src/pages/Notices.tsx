@@ -230,14 +230,7 @@ const Notices = () => {
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 rounded-full hover:bg-secondary/50"
-                onClick={() => {
-                  // If there's browser history, go back; otherwise go to /study
-                  if (window.history.length > 1 && location.key !== 'default') {
-                    navigate(-1);
-                  } else {
-                    navigate('/study');
-                  }
-                }}
+                onClick={() => navigate('/study')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
