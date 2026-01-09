@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck } from "lucide-react";
+import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +70,29 @@ const Chatroom = () => {
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+  // Pinned rooms from localStorage
+  const [pinnedRooms, setPinnedRooms] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('pinnedRooms');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const togglePinRoom = (roomId: string) => {
+    setPinnedRooms(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(roomId)) {
+        newSet.delete(roomId);
+      } else {
+        newSet.add(roomId);
+      }
+      localStorage.setItem('pinnedRooms', JSON.stringify([...newSet]));
+      return newSet;
+    });
+  };
 
   // Fetch user's joined rooms
   useEffect(() => {
@@ -537,46 +560,127 @@ const Chatroom = () => {
           </div>
 
           <div className="grid gap-3">
-            {rooms
-              .filter(room =>
-                room.name.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
-                room.description?.toLowerCase().includes(roomSearchQuery.toLowerCase())
-              )
-              .map((room) => (
-                <Card
-                  key={room.id}
-                  className="p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => navigate(`/chatroom/${room.id}`)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center",
-                      room.is_private ? "bg-amber-500/10" : "bg-primary/10"
-                    )}>
-                      {room.is_private ? (
-                        <Lock className="w-5 h-5 text-amber-500" />
-                      ) : (
-                        <Hash className="w-5 h-5 text-primary" />
-                      )}
+            {showSavedOnly ? (
+              // SAVED POSTS VIEW
+              savedMessages.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bookmark className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-2">No saved posts yet</p>
+                  <p className="text-sm text-muted-foreground">Save posts from any room to see them here</p>
+                </div>
+              ) : (
+                savedMessages.map((msg) => (
+                  <Card key={msg.id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {msg.user_name?.charAt(0).toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">{msg.user_name || 'Anonymous'}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(msg.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-foreground whitespace-pre-wrap">{msg.content}</p>
+                        {msg.image_url && (
+                          <img
+                            src={msg.image_url}
+                            alt="Post"
+                            className="mt-2 rounded-lg max-h-64 object-cover cursor-pointer"
+                            onClick={() => setImageViewer({ isOpen: true, url: msg.image_url! })}
+                          />
+                        )}
+                        <div className="flex items-center gap-4 mt-3 text-muted-foreground text-sm">
+                          <span className="flex items-center gap-1">
+                            <ChevronUp className="w-4 h-4" />
+                            {msg.upvotes - msg.downvotes}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary h-7"
+                            onClick={() => handleToggleSave(msg.id)}
+                          >
+                            <BookmarkCheck className="w-4 h-4 mr-1" />
+                            Unsave
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground">{room.name}</h3>
-                        {room.is_private && (
-                          <Badge variant="outline" className="text-xs">Private</Badge>
+                  </Card>
+                ))
+              )
+            ) : (
+              // ROOMS LIST VIEW
+              rooms
+                .filter(room =>
+                  room.name.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
+                  room.description?.toLowerCase().includes(roomSearchQuery.toLowerCase())
+                )
+                .sort((a, b) => {
+                  // Sort pinned rooms to top
+                  const aPinned = pinnedRooms.has(a.id);
+                  const bPinned = pinnedRooms.has(b.id);
+                  if (aPinned && !bPinned) return -1;
+                  if (!aPinned && bPinned) return 1;
+                  return 0;
+                })
+                .map((room) => (
+                  <Card
+                    key={room.id}
+                    className={cn(
+                      "p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors",
+                      pinnedRooms.has(room.id) && "border-primary/50 bg-primary/5"
+                    )}
+                    onClick={() => navigate(`/chatroom/${room.id}`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center",
+                        room.is_private ? "bg-amber-500/10" : "bg-primary/10"
+                      )}>
+                        {room.is_private ? (
+                          <Lock className="w-5 h-5 text-amber-500" />
+                        ) : (
+                          <Hash className="w-5 h-5 text-primary" />
                         )}
                       </div>
-                      {room.description && (
-                        <p className="text-sm text-muted-foreground">{room.description}</p>
-                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-foreground">{room.name}</h3>
+                          {pinnedRooms.has(room.id) && (
+                            <Pin className="w-3 h-3 text-primary fill-primary" />
+                          )}
+                          {room.is_private && (
+                            <Badge variant="outline" className="text-xs">Private</Badge>
+                          )}
+                        </div>
+                        {room.description && (
+                          <p className="text-sm text-muted-foreground">{room.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-8 w-8 shrink-0",
+                          pinnedRooms.has(room.id) && "text-primary"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); togglePinRoom(room.id); }}
+                      >
+                        <Pin className={cn("w-4 h-4", pinnedRooms.has(room.id) && "fill-current")} />
+                      </Button>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Users className="w-4 h-4" />
+                        <span className="text-sm">{room.member_count}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span className="text-sm">{room.member_count}</span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))
+            )}
 
             {rooms.filter(room =>
               room.name.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
