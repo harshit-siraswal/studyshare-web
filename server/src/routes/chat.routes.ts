@@ -60,4 +60,10 @@ router.post('/comments', rateLimit('write'), chatController.addComment);
  */
 router.get('/comments/:messageId', rateLimit('default'), chatController.getComments);
 
+/**
+ * GET /api/chat/rooms/:roomId/votes
+ * Get user's votes for a room
+ */
+router.get('/rooms/:roomId/votes', rateLimit('default'), chatController.getUserVotes);
+
 export default router;

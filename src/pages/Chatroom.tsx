@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, getChatComments, ChatComment } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, getChatComments, ChatComment, getUserChatVotes } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -84,8 +84,23 @@ const Chatroom = () => {
       fetchRoomDetails();
       fetchMessages();
       subscribeToMessages();
+      // Fetch user's previous votes
+      if (user?.email) {
+        fetchUserVotes();
+      }
     }
-  }, [roomId]);
+  }, [roomId, user]);
+
+  // Fetch user's previous votes from DB
+  const fetchUserVotes = async () => {
+    if (!roomId) return;
+    try {
+      const { votes } = await getUserChatVotes(roomId);
+      setVotedPosts(votes);
+    } catch (error) {
+      console.error('Error fetching user votes:', error);
+    }
+  };
 
   const fetchUserRooms = async () => {
     if (!user?.email) return;
@@ -237,7 +252,7 @@ const Chatroom = () => {
     const key = messageId;
     const currentVote = votedPosts[key];
 
-    // Optimistic update
+    // Optimistic update for vote state
     setVotedPosts(prev => {
       if (prev[key] === direction) {
         const { [key]: _, ...rest } = prev;
@@ -247,49 +262,17 @@ const Chatroom = () => {
     });
 
     try {
-      const message = messages.find(m => m.id === messageId);
-      if (!message) return;
+      // Use backend API - it now handles toggle logic and returns new counts
+      const result = await voteChatMessage(messageId, direction);
 
-      let delta = 1;
-      if (currentVote === direction) {
-        // Remove vote
-        delta = -1;
-      } else if (currentVote) {
-        // Change vote - need to handle both directions
-        delta = 1;
+      // Update message counts with values from backend
+      if (result.newUpvotes !== undefined && result.newDownvotes !== undefined) {
+        setMessages(prev => prev.map(m =>
+          m.id === messageId
+            ? { ...m, upvotes: result.newUpvotes, downvotes: result.newDownvotes }
+            : m
+        ));
       }
-
-      // Use backend API for secure voting
-      await voteChatMessage(messageId, direction, delta);
-
-      // Update local state based on action
-      let newUpvotes = message.upvotes;
-      let newDownvotes = message.downvotes;
-
-      if (currentVote === direction) {
-        // Remove vote
-        if (direction === "up") newUpvotes--;
-        else newDownvotes--;
-      } else if (currentVote) {
-        // Change vote
-        if (direction === "up") {
-          newUpvotes++;
-          newDownvotes--;
-        } else {
-          newDownvotes++;
-          newUpvotes--;
-        }
-      } else {
-        // New vote
-        if (direction === "up") newUpvotes++;
-        else newDownvotes++;
-      }
-
-      setMessages(prev => prev.map(m =>
-        m.id === messageId
-          ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes }
-          : m
-      ));
     } catch (error) {
       console.error('Error voting:', error);
       // Revert optimistic update
@@ -301,6 +284,7 @@ const Chatroom = () => {
           return rest;
         }
       });
+      toast.error('Failed to vote');
     }
   };
 

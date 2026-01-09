@@ -469,13 +469,19 @@ export async function postChatMessage(
  */
 export async function voteChatMessage(
     messageId: string,
-    direction: 'up' | 'down',
-    delta: number
-): Promise<{ message: string }> {
+    direction: 'up' | 'down'
+): Promise<{ message: string; action: string; newUpvotes: number; newDownvotes: number }> {
     return apiRequest(`/api/chat/messages/${messageId}/vote`, {
         method: 'PUT',
-        body: JSON.stringify({ direction, delta }),
+        body: JSON.stringify({ direction }),
     });
+}
+
+/**
+ * Get user's votes for a room's messages
+ */
+export async function getUserChatVotes(roomId: string): Promise<{ votes: Record<string, 'up' | 'down'> }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/votes`);
 }
 
 /**

@@ -200,16 +200,19 @@ export async function postMessage(
 }
 
 /**
- * Vote on a message
+ * Vote on a message with proper toggle logic
+ * 1. If no previous vote → insert vote
+ * 2. If same vote → remove vote (toggle off)
+ * 3. If opposite vote → update vote
  */
 export async function voteMessage(
     messageId: string,
-    direction: 'up' | 'down',
-    delta: number
-): Promise<void> {
+    userEmail: string,
+    direction: 'up' | 'down'
+): Promise<{ action: 'added' | 'removed' | 'changed'; newUpvotes: number; newDownvotes: number }> {
     const supabase = getSupabaseAdmin();
 
-    // Get current counts
+    // Get current message counts
     const { data: msg, error: fetchError } = await supabase
         .from('room_messages')
         .select('upvotes, downvotes')
@@ -220,19 +223,93 @@ export async function voteMessage(
         throw Errors.notFound('Message');
     }
 
-    const updates = direction === 'up'
-        ? { upvotes: Math.max(0, msg.upvotes + delta) }
-        : { downvotes: Math.max(0, msg.downvotes + delta) };
+    // Check if user already voted
+    const { data: existingVote } = await supabase
+        .from('room_message_votes')
+        .select('id, vote_type')
+        .eq('message_id', messageId)
+        .eq('user_email', userEmail)
+        .single();
 
-    const { error } = await supabase
+    let action: 'added' | 'removed' | 'changed';
+    let upDelta = 0;
+    let downDelta = 0;
+
+    if (!existingVote) {
+        // No previous vote → insert new vote
+        await supabase.from('room_message_votes').insert({
+            message_id: messageId,
+            user_email: userEmail,
+            vote_type: direction,
+        });
+        action = 'added';
+        if (direction === 'up') upDelta = 1;
+        else downDelta = 1;
+    } else if (existingVote.vote_type === direction) {
+        // Same vote → remove (toggle off)
+        await supabase.from('room_message_votes').delete().eq('id', existingVote.id);
+        action = 'removed';
+        if (direction === 'up') upDelta = -1;
+        else downDelta = -1;
+    } else {
+        // Opposite vote → change
+        await supabase.from('room_message_votes')
+            .update({ vote_type: direction })
+            .eq('id', existingVote.id);
+        action = 'changed';
+        if (direction === 'up') {
+            upDelta = 1;
+            downDelta = -1;
+        } else {
+            upDelta = -1;
+            downDelta = 1;
+        }
+    }
+
+    // Update message counts
+    const newUpvotes = Math.max(0, msg.upvotes + upDelta);
+    const newDownvotes = Math.max(0, msg.downvotes + downDelta);
+
+    await supabase
         .from('room_messages')
-        .update(updates)
+        .update({ upvotes: newUpvotes, downvotes: newDownvotes })
         .eq('id', messageId);
 
-    if (error) {
-        console.error('[ChatService] Vote error:', error);
-        throw Errors.internal('Failed to vote');
-    }
+    return { action, newUpvotes, newDownvotes };
+}
+
+/**
+ * Get user's votes for a room's messages
+ */
+export async function getUserVotes(
+    roomId: string,
+    userEmail: string
+): Promise<Record<string, 'up' | 'down'>> {
+    const supabase = getSupabaseAdmin();
+
+    // Get all message IDs in the room
+    const { data: messages } = await supabase
+        .from('room_messages')
+        .select('id')
+        .eq('room_id', roomId);
+
+    if (!messages || messages.length === 0) return {};
+
+    const messageIds = messages.map(m => m.id);
+
+    // Get user's votes for these messages
+    const { data: votes } = await supabase
+        .from('room_message_votes')
+        .select('message_id, vote_type')
+        .eq('user_email', userEmail)
+        .in('message_id', messageIds);
+
+    const voteMap: Record<string, 'up' | 'down'> = {};
+    (votes || []).forEach(v => {
+        voteMap[v.message_id] = v.vote_type as 'up' | 'down';
+    });
+
+    return voteMap;
 }
 
 /**

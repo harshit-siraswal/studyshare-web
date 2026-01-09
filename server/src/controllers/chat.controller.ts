@@ -144,16 +144,38 @@ export async function voteMessage(
 ): Promise<void> {
     try {
         const { id } = req.params;
-        const { direction, delta } = req.body;
+        const { direction } = req.body;
+        const userEmail = req.user!.email;
 
         if (!['up', 'down'].includes(direction)) {
             res.status(400).json({ message: 'direction must be "up" or "down"' });
             return;
         }
 
-        await chatService.voteMessage(id, direction, delta ?? 1);
+        const result = await chatService.voteMessage(id, userEmail, direction);
 
-        res.json({ message: 'Vote recorded' });
+        res.json({ message: 'Vote recorded', ...result });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/chat/rooms/:roomId/votes
+ * Get user's votes for a room
+ */
+export async function getUserVotes(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const userEmail = req.user!.email;
+
+        const votes = await chatService.getUserVotes(roomId, userEmail);
+
+        res.json({ votes });
     } catch (error) {
         next(error);
     }
