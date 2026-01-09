@@ -42,6 +42,26 @@ export async function createResource(
 ): Promise<Resource> {
     const supabase = getSupabaseAdmin();
 
+    // --- SECURITY: Validate file URL domain and extension ---
+    if (input.filePath) {
+        const allowedDomain = 'res.cloudinary.com';
+        const allowedExtensions = ['.pdf', '.doc', '.docx'];
+
+        const urlLower = input.filePath.toLowerCase();
+
+        // Check domain
+        if (!urlLower.includes(allowedDomain)) {
+            throw Errors.badRequest('Invalid file URL. Only Cloudinary uploads are allowed.');
+        }
+
+        // Check extension
+        const hasValidExtension = allowedExtensions.some(ext => urlLower.endsWith(ext));
+        if (!hasValidExtension) {
+            throw Errors.badRequest('Invalid file type. Only PDF and DOC files are allowed.');
+        }
+    }
+    // --- END SECURITY ---
+
     const { data, error } = await supabase
         .from('resources')
         .insert({

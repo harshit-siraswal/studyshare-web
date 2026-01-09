@@ -36,9 +36,24 @@ function formatUptime(seconds: number): string {
 export function createApp(): Express {
     const app = express();
 
-    // Security middleware
+    // Security middleware - Hardened configuration
     app.use(helmet({
         crossOriginResourcePolicy: { policy: 'cross-origin' },
+        // Prevent Clickjacking
+        frameguard: { action: 'deny' },
+        // Strict Content Security Policy
+        contentSecurityPolicy: {
+            useDefaults: true,
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'], // reCAPTCHA
+                frameSrc: ["'self'", 'https://www.google.com'], // reCAPTCHA iframe
+                imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+                connectSrc: ["'self'", 'https://api.cloudinary.com', 'https://www.google.com'],
+            },
+        },
+        // Hide X-Powered-By
+        hidePoweredBy: true,
     }));
 
     // CORS configuration

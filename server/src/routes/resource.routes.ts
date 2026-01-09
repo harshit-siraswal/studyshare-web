@@ -4,7 +4,7 @@ import {
     resolveUserRole,
     requireRole,
     rateLimit,
-    optionalRecaptcha
+    verifyRecaptcha // SECURITY: Mandatory Recaptcha
 } from '../middleware/index';
 import * as resourceController from '../controllers/resource.controller';
 
@@ -16,13 +16,13 @@ router.use(verifyToken, resolveUserRole);
 /**
  * POST /api/resources
  * Create a new resource
- * Requires: COLLEGE_USER, rate limit, optional reCAPTCHA
+ * Requires: COLLEGE_USER, rate limit, MANDATORY reCAPTCHA
  */
 router.post(
     '/',
     requireRole('COLLEGE_USER'),
     rateLimit('write'),
-    optionalRecaptcha,
+    verifyRecaptcha, // SECURITY: Now mandatory
     resourceController.createResource
 );
 
