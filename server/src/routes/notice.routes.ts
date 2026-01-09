@@ -48,6 +48,7 @@ router.post(
             const { noticeId } = req.params;
             const { content } = req.body;
             const userEmail = req.user!.email;
+            const collegeId = req.userCollegeDomain || 'kiet.edu'; // College isolation
 
             if (!content || typeof content !== 'string' || content.trim().length === 0) {
                 throw Errors.badRequest('Comment content is required');
@@ -70,6 +71,7 @@ router.post(
                 .from('notice_comments')
                 .insert({
                     notice_id: noticeId,
+                    college_id: collegeId, // Multi-tenant isolation
                     user_email: userEmail,
                     user_name: userData?.name || userEmail.split('@')[0],
                     content: content.trim(),
@@ -81,9 +83,6 @@ router.post(
                 console.error('[NoticeComments] Create error:', error);
                 throw Errors.internal('Failed to create comment');
             }
-
-            // Update comment count on notice
-            await supabase.rpc('increment_notice_comments', { notice_id: noticeId });
 
             res.status(201).json({ comment: data });
         } catch (error) {
@@ -132,9 +131,6 @@ router.delete(
                 console.error('[NoticeComments] Delete error:', error);
                 throw Errors.internal('Failed to delete comment');
             }
-
-            // Decrement comment count
-            await supabase.rpc('decrement_notice_comments', { notice_id: noticeId });
 
             res.json({ message: 'Comment deleted' });
         } catch (error) {
