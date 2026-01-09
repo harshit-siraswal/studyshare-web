@@ -63,7 +63,7 @@ const Notices = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
-  const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllDepts, setShowAllDepts] = useState(false);
   const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
