@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Heart, Share, Search,
-  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2
+  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -78,6 +80,9 @@ const Notices = () => {
   // Bookmarks hook
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
+  // Selected notice for modal view
+  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+
   // Fetch logic
   useEffect(() => {
     fetchNotices();
@@ -85,6 +90,13 @@ const Notices = () => {
       fetchFollowedDepartments();
     }
   }, [user]);
+
+  // Auto-fetch comments when notice modal opens
+  useEffect(() => {
+    if (selectedNotice && !comments[selectedNotice.id]) {
+      toggleComments(selectedNotice.id);
+    }
+  }, [selectedNotice]);
 
   const fetchNotices = async () => {
     try {
@@ -354,7 +366,7 @@ const Notices = () => {
               displayedNotices.map((notice) => {
                 const dept = getDeptInfo(notice.department);
                 return (
-                  <div key={notice.id} className="p-4 border-b border-border/50 hover:bg-secondary/10 transition-colors cursor-pointer" onClick={() => navigate(`/department/${notice.department}`)}>
+                  <Card key={notice.id} className="p-4 mb-3 hover:bg-secondary/10 transition-colors cursor-pointer border-border/50" onClick={() => setSelectedNotice(notice)}>
                     <div className="flex gap-3">
                       <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
                         <Avatar className="w-10 h-10 border border-border">
@@ -522,7 +534,7 @@ const Notices = () => {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 );
               })
             )}
@@ -530,6 +542,187 @@ const Notices = () => {
         </main>
 
       </div>
+
+      {/* Twitter-style Notice Modal */}
+      <Dialog open={!!selectedNotice} onOpenChange={(open) => !open && setSelectedNotice(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+          {selectedNotice && (() => {
+            const dept = getDeptInfo(selectedNotice.department);
+            return (
+              <div className="flex flex-col h-full">
+                {/* Modal Header */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 sticky top-0 bg-background z-10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full"
+                    onClick={() => setSelectedNotice(null)}
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                  <span className="font-bold text-lg">Notice</span>
+                </div>
+
+                <ScrollArea className="flex-1 max-h-[calc(90vh-60px)]">
+                  <div className="p-4">
+                    {/* Notice Header */}
+                    <div className="flex gap-3 mb-4">
+                      <Avatar className="w-12 h-12 border border-border cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${selectedNotice.department}`); }}>
+                        <AvatarFallback className="bg-secondary text-xl">{dept.icon}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold hover:underline cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${selectedNotice.department}`); }}>
+                            {dept.label}
+                          </span>
+                          <span className="text-muted-foreground">@{dept.value}</span>
+                          {selectedNotice.priority === 'urgent' && <Badge variant="destructive" className="ml-2">Urgent</Badge>}
+                        </div>
+                        <span className="text-muted-foreground text-sm">{formatTimeAgo(selectedNotice.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* Notice Content */}
+                    {selectedNotice.title && <h2 className="text-xl font-bold mb-3">{selectedNotice.title}</h2>}
+                    <p className="text-lg leading-relaxed whitespace-pre-wrap mb-4">{selectedNotice.content}</p>
+
+                    {/* Media */}
+                    {selectedNotice.file_url && (
+                      <div className="rounded-2xl overflow-hidden border border-border/50 mb-4">
+                        {selectedNotice.file_type === 'image' && (
+                          <img
+                            src={selectedNotice.file_url}
+                            alt="Notice attachment"
+                            className="w-full max-h-[500px] object-contain cursor-pointer hover:opacity-95"
+                            onClick={() => setImageViewer({ isOpen: true, url: selectedNotice.file_url!, title: selectedNotice.title || "Image" })}
+                          />
+                        )}
+                        {selectedNotice.file_type === 'pdf' && (
+                          <div className="p-4 bg-secondary/20 flex items-center gap-3">
+                            <FileText className="w-8 h-8 text-primary" />
+                            <span className="text-sm font-medium flex-1 truncate">PDF Attachment</span>
+                            <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank')}>Open</Button>
+                          </div>
+                        )}
+                        {selectedNotice.file_type === 'video' && (
+                          <div className="relative group cursor-pointer bg-black h-64 flex items-center justify-center" onClick={() => setVideoPlayer({ isOpen: true, url: selectedNotice.file_url!, title: selectedNotice.title || "Video" })}>
+                            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all scale-100 group-hover:scale-110">
+                              <Play className="w-8 h-8 text-white fill-white ml-1" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    <div className="flex gap-6 py-3 border-y border-border/50 text-muted-foreground text-sm mb-4">
+                      <span><strong className="text-foreground">{(comments[selectedNotice.id]?.length || selectedNotice.comments)}</strong> Comments</span>
+                      <span><strong className="text-foreground">{selectedNotice.likes + (likedNotices.includes(selectedNotice.id) ? 1 : 0)}</strong> Likes</span>
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-around py-2 border-b border-border/50 mb-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("flex-1 gap-2", expandedNotice === selectedNotice.id && "text-blue-400")}
+                        onClick={() => toggleComments(selectedNotice.id)}
+                      >
+                        <MessageCircle className={cn("w-5 h-5", expandedNotice === selectedNotice.id && "fill-current")} />
+                        Comment
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("flex-1 gap-2", likedNotices.includes(selectedNotice.id) && "text-pink-500")}
+                        onClick={() => toggleLike(selectedNotice.id)}
+                      >
+                        <Heart className={cn("w-5 h-5", likedNotices.includes(selectedNotice.id) && "fill-current")} />
+                        Like
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("flex-1 gap-2", isBookmarked(selectedNotice.id) && "text-primary")}
+                        onClick={() => toggleBookmark(selectedNotice.id, 'notice')}
+                      >
+                        <Bookmark className={cn("w-5 h-5", isBookmarked(selectedNotice.id) && "fill-current")} />
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" className="flex-1 gap-2">
+                        <Share className="w-5 h-5" />
+                        Share
+                      </Button>
+                    </div>
+
+                    {/* Comment Input */}
+                    <div className="flex gap-3 mb-4">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {user?.email?.charAt(0).toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 flex gap-2">
+                        <Input
+                          placeholder="Post your reply..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          className="flex-1"
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(selectedNotice.id)}
+                        />
+                        <Button
+                          onClick={() => submitComment(selectedNotice.id)}
+                          disabled={!newComment.trim() || postingComment}
+                        >
+                          {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reply'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Comments List */}
+                    {loadingComments === selectedNotice.id ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (comments[selectedNotice.id] || []).length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to reply!</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {(comments[selectedNotice.id] || []).map((comment) => (
+                          <div key={comment.id} className="flex gap-3 group">
+                            <Avatar className="w-10 h-10 shrink-0">
+                              <AvatarFallback className="bg-secondary">
+                                {comment.user_name?.charAt(0).toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold">{comment.user_name}</span>
+                                <span className="text-muted-foreground text-sm">{formatTimeAgo(comment.created_at)}</span>
+                                {comment.user_email === user?.email && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="w-7 h-7 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => deleteComment(selectedNotice.id, comment.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-foreground/90">{comment.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Media Viewers */}
       <ImageViewer
