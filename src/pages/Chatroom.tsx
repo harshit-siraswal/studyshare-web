@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin } from "lucide-react";
+import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2 } from "lucide-react";
+import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, getChatComments, ChatComment, getUserChatVotes } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, deleteChatComment, getChatComments, ChatComment, getUserChatVotes } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -231,7 +232,7 @@ const Chatroom = () => {
       });
       setPostImage(imageUrl);
       toast.success("Image uploaded!");
-    } catch (error: any) {
+    } catch (error) {
       console.error('Image upload error:', error);
       toast.error(error.message || "Failed to upload image");
     } finally {
@@ -414,8 +415,8 @@ const Chatroom = () => {
     }
   };
 
-  const handleAddComment = async (messageId: string) => {
-    if (!user?.email || !commentText.trim()) return;
+  const handleChatReply = async (messageId: string, content: string, parentId?: string) => {
+    if (!user?.email || !content.trim()) return;
 
     try {
       const authorName = user.displayName || user.email?.split('@')[0] || 'User';
@@ -423,8 +424,9 @@ const Chatroom = () => {
       // Use backend API for secure comment posting
       const result = await addChatComment(
         messageId,
-        commentText.trim(),
-        authorName
+        content.trim(),
+        authorName,
+        parentId
       );
 
       // Add to local state
@@ -433,8 +435,9 @@ const Chatroom = () => {
         message_id: messageId,
         author_name: authorName,
         author_email: user.email!,
-        content: commentText.trim(),
+        content: content.trim(),
         created_at: new Date().toISOString(),
+        parent_id: parentId
       };
 
       setPostComments(prev => ({
@@ -442,11 +445,28 @@ const Chatroom = () => {
         [messageId]: [...(prev[messageId] || []), newComment]
       }));
 
-      setCommentText('');
-      toast.success('Comment added!');
+      if (!parentId) setCommentText('');
+      toast.success('Reply posted!');
     } catch (error) {
       console.error('Error adding comment:', error);
+      setCommentText(''); // Clear main input if reply logic fails or succeeds
       toast.error('Failed to add comment');
+    }
+  };
+
+  const handleDeleteComment = async (messageId: string, commentId: string) => {
+    try {
+      await deleteChatComment(messageId, commentId);
+
+      setPostComments(prev => ({
+        ...prev,
+        [messageId]: prev[messageId]?.filter(c => c.id !== commentId) || []
+      }));
+
+      toast.success('Comment deleted');
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      toast.error('Failed to delete comment');
     }
   };
 
@@ -455,7 +475,9 @@ const Chatroom = () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: `Post by ${message.author_name}`, text: shareText, url: window.location.href });
-      } catch { }
+      } catch (error) {
+        console.error('Share failed', error);
+      }
     } else {
       await navigator.clipboard.writeText(shareText);
       toast.success("Copied to clipboard!");
@@ -574,12 +596,12 @@ const Chatroom = () => {
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10 shrink-0">
                         <AvatarFallback className="bg-primary/10 text-primary">
-                          {msg.user_name?.charAt(0).toUpperCase() || '?'}
+                          {msg.author_name?.charAt(0).toUpperCase() || '?'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold">{msg.user_name || 'Anonymous'}</span>
+                          <span className="font-semibold">{msg.author_name || 'Anonymous'}</span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(msg.created_at).toLocaleDateString()}
                           </span>
@@ -602,7 +624,7 @@ const Chatroom = () => {
                             variant="ghost"
                             size="sm"
                             className="text-primary h-7"
-                            onClick={() => handleToggleSave(msg.id)}
+                            onClick={() => handleSavePost(msg.id)}
                           >
                             <BookmarkCheck className="w-4 h-4 mr-1" />
                             Unsave
@@ -950,11 +972,11 @@ const Chatroom = () => {
                                 placeholder="Add a comment..."
                                 value={commentText}
                                 onChange={(e) => setCommentText(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && commentText.trim() && handleAddComment(message.id)}
+                                onKeyPress={(e) => e.key === 'Enter' && commentText.trim() && handleChatReply(message.id, commentText)}
                               />
                               <Button
                                 size="sm"
-                                onClick={() => handleAddComment(message.id)}
+                                onClick={() => handleChatReply(message.id, commentText)}
                                 disabled={!commentText.trim()}
                               >
                                 <Send className="w-4 h-4" />
@@ -967,25 +989,13 @@ const Chatroom = () => {
                                 <div className="flex justify-center py-3">
                                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                                 </div>
-                              ) : (postComments[message.id] || []).length === 0 ? (
-                                <p className="text-xs text-muted-foreground text-center py-2">No comments yet</p>
                               ) : (
-                                (postComments[message.id] || []).map((comment) => (
-                                  <div key={comment.id} className="flex gap-2">
-                                    <Avatar className="w-6 h-6 shrink-0">
-                                      <AvatarFallback className="bg-secondary text-xs">
-                                        {comment.author_name?.[0]?.toUpperCase() || '?'}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">{comment.author_name}</span>
-                                        <span className="text-xs text-muted-foreground">{formatTimeAgo(comment.created_at)}</span>
-                                      </div>
-                                      <p className="text-sm text-foreground/90">{comment.content}</p>
-                                    </div>
-                                  </div>
-                                ))
+                                <CommentThread
+                                  comments={postComments[message.id] || []}
+                                  currentUserEmail={user?.email}
+                                  onReply={(content, parentId) => handleChatReply(message.id, content, parentId)}
+                                  onDelete={(commentId) => handleDeleteComment(message.id, commentId)}
+                                />
                               )}
                             </div>
                           </div>

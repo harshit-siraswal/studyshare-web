@@ -112,7 +112,7 @@ const Bookmarks = () => {
 
             {/* Main Content */}
             <div className="flex-1 flex justify-center">
-                <div className="w-full max-w-2xl border-x border-border min-h-screen">
+                <div className="w-full max-w-4xl border-x border-border min-h-screen">
                     {/* Twitter-style sticky header */}
                     <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
                         <div className="flex items-center gap-4 px-4 py-3">

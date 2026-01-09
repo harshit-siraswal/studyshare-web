@@ -504,6 +504,7 @@ export interface ChatComment {
     author_email: string;
     content: string;
     created_at: string;
+    parent_id?: string;
 }
 
 /**
@@ -519,11 +520,25 @@ export async function getChatComments(messageId: string): Promise<{ comments: Ch
 export async function addChatComment(
     messageId: string,
     content: string,
-    authorName?: string
+    authorName?: string,
+    parentId?: string
 ): Promise<{ message: string; id: string }> {
     return apiRequest('/api/chat/comments', {
         method: 'POST',
-        body: JSON.stringify({ messageId, content, authorName }),
+        body: JSON.stringify({ messageId, content, authorName, parentId }),
+    });
+}
+
+/**
+ * Delete a chat comment
+ */
+export async function deleteChatComment(
+    messageId: string,
+    commentId: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/comments/${commentId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ messageId }),
     });
 }
 
@@ -634,6 +649,7 @@ export interface NoticeComment {
     user_name: string;
     content: string;
     created_at: string;
+    parent_id?: string;
 }
 
 /**
@@ -649,11 +665,12 @@ export async function getNoticeComments(noticeId: string): Promise<{ comments: N
 export async function postNoticeComment(
     noticeId: string,
     content: string,
-    recaptchaToken?: string
+    recaptchaToken?: string,
+    parentId?: string
 ): Promise<{ comment: NoticeComment }> {
     return apiRequest(`/api/notices/${noticeId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ content, recaptchaToken }),
+        body: JSON.stringify({ content, recaptchaToken, parentId }),
     });
 }
 

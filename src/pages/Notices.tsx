@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  ArrowLeft, MessageCircle, Heart, Share, Search,
+  ArrowLeft, MessageCircle, Share, Search,
   Bell, FileText, Play, Bookmark, Send, Loader2, Trash2, X
 } from "lucide-react";
+import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -62,7 +63,7 @@ const Notices = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
-  const [likedNotices, setLikedNotices] = useState<string[]>([]);
+  const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllDepts, setShowAllDepts] = useState(false);
   const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
@@ -156,23 +157,7 @@ const Notices = () => {
     }
   };
 
-  const toggleLike = async (noticeId: string) => {
-    // Optimistic update
-    const wasLiked = likedNotices.includes(noticeId);
-    setLikedNotices(prev =>
-      wasLiked ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
-    );
 
-    try {
-      await api.toggleNoticeLike(noticeId);
-    } catch (error) {
-      // Revert on error
-      setLikedNotices(prev =>
-        wasLiked ? [...prev, noticeId] : prev.filter(id => id !== noticeId)
-      );
-      toast.error('Failed to update like');
-    }
-  };
 
   // Expand/collapse comments for a notice
   const toggleComments = async (noticeId: string) => {
@@ -201,23 +186,24 @@ const Notices = () => {
   };
 
   // Submit a new comment
-  const submitComment = async (noticeId: string) => {
-    if (!newComment.trim() || !user) {
+  // Submit a new comment or reply
+  const handleReply = async (noticeId: string, content: string, parentId?: string) => {
+    if (!content.trim() || !user) {
       if (!user) toast.error('Please login to comment');
       return;
     }
 
     setPostingComment(true);
     try {
-      const { comment } = await api.postNoticeComment(noticeId, newComment.trim());
+      const { comment } = await api.postNoticeComment(noticeId, content.trim(), undefined, parentId);
       setComments(prev => ({
         ...prev,
         [noticeId]: [...(prev[noticeId] || []), comment]
       }));
-      setNewComment('');
-      toast.success('Comment added!');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to post comment');
+      if (!parentId) setNewComment(''); // Clear main input
+      toast.success('Reply posted!');
+    } catch (error) {
+      toast.error(error.message || 'Failed to post reply');
     } finally {
       setPostingComment(false);
     }
@@ -279,7 +265,7 @@ const Notices = () => {
         title="Notices"
         description="Stay updated with the latest announcements and notices from your college departments."
       />
-      <div className="w-full max-w-[1000px] flex">
+      <div className="w-full max-w-[1200px] flex">
 
         {/* --- LEFT SIDEBAR (Who to follow) --- */}
         <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto border-r border-border/50">
@@ -333,7 +319,7 @@ const Notices = () => {
         </div>
 
         {/* --- MIDDLE COLUMN (Feed) --- */}
-        <main className="flex-1 min-w-[350px] max-w-[600px]">
+        <main className="flex-1 min-w-[400px] max-w-[750px]">
           {/* Header / Tabs with Back Button */}
           <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
             {/* Back button row (always visible) */}
@@ -458,17 +444,7 @@ const Notices = () => {
                           >
                             <MessageCircle className={cn("w-4 h-4 group-hover:scale-110 transition-transform", expandedNotice === notice.id && "fill-current")} />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "w-8 h-8 hover:text-pink-500 hover:bg-pink-500/10 rounded-full group",
-                              likedNotices.includes(notice.id) && "text-pink-500"
-                            )}
-                            onClick={(e) => { e.stopPropagation(); toggleLike(notice.id); }}
-                          >
-                            <Heart className={cn("w-4 h-4 group-hover:scale-110 transition-transform", likedNotices.includes(notice.id) && "fill-current")} />
-                          </Button>
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -638,7 +614,7 @@ const Notices = () => {
                     {/* Stats */}
                     <div className="flex gap-6 py-3 border-y border-border/50 text-muted-foreground text-sm mb-4">
                       <span><strong className="text-foreground">{(comments[selectedNotice.id]?.length || selectedNotice.comments)}</strong> Comments</span>
-                      <span><strong className="text-foreground">{selectedNotice.likes + (likedNotices.includes(selectedNotice.id) ? 1 : 0)}</strong> Likes</span>
+
                     </div>
 
                     {/* Action Bar */}
@@ -652,15 +628,7 @@ const Notices = () => {
                         <MessageCircle className={cn("w-5 h-5", expandedNotice === selectedNotice.id && "fill-current")} />
                         Comment
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn("flex-1 gap-2", likedNotices.includes(selectedNotice.id) && "text-pink-500")}
-                        onClick={() => toggleLike(selectedNotice.id)}
-                      >
-                        <Heart className={cn("w-5 h-5", likedNotices.includes(selectedNotice.id) && "fill-current")} />
-                        Like
-                      </Button>
+
                       <Button
                         variant="ghost"
                         size="sm"
@@ -689,10 +657,10 @@ const Notices = () => {
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           className="flex-1"
-                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(selectedNotice.id)}
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(selectedNotice.id, newComment)}
                         />
                         <Button
-                          onClick={() => submitComment(selectedNotice.id)}
+                          onClick={() => handleReply(selectedNotice.id, newComment)}
                           disabled={!newComment.trim() || postingComment}
                         >
                           {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reply'}
@@ -701,41 +669,18 @@ const Notices = () => {
                     </div>
 
                     {/* Comments List */}
+                    {/* Comments List */}
                     {loadingComments === selectedNotice.id ? (
                       <div className="flex justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                       </div>
-                    ) : (comments[selectedNotice.id] || []).length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to reply!</p>
                     ) : (
-                      <div className="space-y-4">
-                        {(comments[selectedNotice.id] || []).map((comment) => (
-                          <div key={comment.id} className="flex gap-3 group">
-                            <Avatar className="w-10 h-10 shrink-0">
-                              <AvatarFallback className="bg-secondary">
-                                {comment.user_name?.charAt(0).toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-bold">{comment.user_name}</span>
-                                <span className="text-muted-foreground text-sm">{formatTimeAgo(comment.created_at)}</span>
-                                {comment.user_email === user?.email && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => deleteComment(selectedNotice.id, comment.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                )}
-                              </div>
-                              <p className="text-foreground/90">{comment.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <CommentThread
+                        comments={comments[selectedNotice.id] || []}
+                        currentUserEmail={user?.email}
+                        onReply={(content, parentId) => handleReply(selectedNotice.id, content, parentId)}
+                        onDelete={(commentId) => deleteComment(selectedNotice.id, commentId)}
+                      />
                     )}
                   </div>
                 </ScrollArea>
@@ -764,7 +709,14 @@ const Notices = () => {
 };
 
 // Helper components
-const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+interface NavItemProps {
+  icon: React.ElementType;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}
+
+const NavItem = ({ icon: Icon, label, active, onClick }: NavItemProps) => (
   <div className={cn("inline-flex items-center gap-4 px-4 py-3 rounded-full hover:bg-secondary/50 cursor-pointer transition-colors text-xl w-auto pr-8", active && "font-bold")} onClick={onClick}>
     <Icon className={cn("w-7 h-7", active ? "stroke-[2.5px]" : "stroke-2")} />
     <span className="hidden xl:inline">{label}</span>

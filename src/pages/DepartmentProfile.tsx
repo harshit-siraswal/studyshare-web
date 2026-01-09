@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bell, Building, Users, Heart, MessageCircle, Share, Calendar, FileText, Video as VideoIcon, Image as ImageIcon, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, Building, Users, MessageCircle, Share, Calendar, FileText, Video as VideoIcon, Image as ImageIcon, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
+import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -55,7 +56,6 @@ const DepartmentProfile = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [isFollowing, setIsFollowing] = useState(false);
     const [followerCount, setFollowerCount] = useState(0);
-    const [likedNotices, setLikedNotices] = useState<string[]>([]);
     const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
     const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
         isOpen: false, url: "", title: ""
@@ -164,22 +164,7 @@ const DepartmentProfile = () => {
         }
     };
 
-    const toggleLike = async (noticeId: string) => {
-        const wasLiked = likedNotices.includes(noticeId);
-        setLikedNotices(prev =>
-            wasLiked ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
-        );
 
-        try {
-            await api.toggleNoticeLike(noticeId);
-        } catch (error) {
-            // Revert on error
-            setLikedNotices(prev =>
-                wasLiked ? [...prev, noticeId] : prev.filter(id => id !== noticeId)
-            );
-            toast.error('Failed to update like');
-        }
-    };
 
     // Expand/collapse comments
     const toggleComments = async (noticeId: string) => {
@@ -204,19 +189,20 @@ const DepartmentProfile = () => {
     };
 
     // Submit comment
-    const submitComment = async (noticeId: string) => {
-        if (!newComment.trim() || !user) return;
+    // Submit a new comment or reply
+    const handleReply = async (noticeId: string, content: string, parentId?: string) => {
+        if (!content.trim() || !user) return;
 
         setPostingComment(true);
         try {
-            const { comment } = await api.postNoticeComment(noticeId, newComment.trim());
+            const { comment } = await api.postNoticeComment(noticeId, content.trim(), undefined, parentId);
             setComments(prev => ({
                 ...prev,
                 [noticeId]: [...(prev[noticeId] || []), comment]
             }));
-            setNewComment('');
+            if (!parentId) setNewComment('');
             toast.success('Comment added!');
-        } catch (error: any) {
+        } catch (error) {
             toast.error(error.message || 'Failed to post comment');
         } finally {
             setPostingComment(false);
@@ -418,19 +404,7 @@ const DepartmentProfile = () => {
                                             )}
 
                                             <div className="flex items-center gap-6 mt-4">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleLike(notice.id);
-                                                    }}
-                                                    className={cn(
-                                                        "flex items-center gap-2 transition-colors",
-                                                        likedNotices.includes(notice.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"
-                                                    )}
-                                                >
-                                                    <Heart className={cn("w-5 h-5", likedNotices.includes(notice.id) && "fill-current")} />
-                                                    <span className="text-sm">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
-                                                </button>
+
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -483,12 +457,12 @@ const DepartmentProfile = () => {
                                                                 value={newComment}
                                                                 onChange={(e) => setNewComment(e.target.value)}
                                                                 className="flex-1 h-9 text-sm"
-                                                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(notice.id)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(notice.id, newComment)}
                                                             />
                                                             <Button
                                                                 size="icon"
                                                                 className="h-9 w-9 shrink-0"
-                                                                onClick={() => submitComment(notice.id)}
+                                                                onClick={() => handleReply(notice.id, newComment)}
                                                                 disabled={!newComment.trim() || postingComment}
                                                             >
                                                                 {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -553,6 +527,89 @@ const DepartmentProfile = () => {
                     </ScrollArea>
                 )}
             </div>
+
+            {/* Notice Modal */}
+            <Dialog open={!!selectedNotice} onOpenChange={(open) => !open && setSelectedNotice(null)}>
+                <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+                    {selectedNotice && (
+                        <div className="flex flex-col h-full max-h-[90vh]">
+                            <div className="p-4 border-b border-border flex items-center gap-3">
+                                <Avatar className="w-10 h-10">
+                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                        {department?.icon}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h3 className="font-semibold">{department?.label}</h3>
+                                    <p className="text-xs text-muted-foreground">{formatTimeAgo(selectedNotice.created_at)}</p>
+                                </div>
+                            </div>
+
+                            <ScrollArea className="flex-1 p-4">
+                                <div className="space-y-4">
+                                    {selectedNotice.title && (
+                                        <h2 className="text-xl font-bold">{selectedNotice.title}</h2>
+                                    )}
+                                    <p className="text-foreground whitespace-pre-wrap">{selectedNotice.content}</p>
+
+                                    {selectedNotice.file_url && (
+                                        <div className="rounded-lg overflow-hidden border border-border/50">
+                                            {selectedNotice.file_type === 'image' && (
+                                                <img src={selectedNotice.file_url} alt="Attachment" className="w-full" />
+                                            )}
+                                            {selectedNotice.file_type === 'video' && (
+                                                <video src={selectedNotice.file_url} controls className="w-full" />
+                                            )}
+                                            {selectedNotice.file_type === 'pdf' && (
+                                                <div className="p-4 flex items-center justify-between bg-secondary/20">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="w-8 h-8 text-primary" />
+                                                        <span className="font-medium">PDF Attachment</span>
+                                                    </div>
+                                                    <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank')}>
+                                                        View PDF
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="pt-4 border-t border-border">
+                                        <h4 className="font-semibold mb-3">Comments</h4>
+                                        <div className="space-y-4">
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    placeholder="Write a comment..."
+                                                    value={newComment}
+                                                    onChange={(e) => setNewComment(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            handleReply(selectedNotice.id, newComment);
+                                                        }
+                                                    }}
+                                                />
+                                                <Button size="icon" onClick={() => handleReply(selectedNotice.id, newComment)} disabled={!newComment.trim() || postingComment}>
+                                                    <Send className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <CommentThread
+                                                    comments={comments[selectedNotice.id] || []}
+                                                    currentUserEmail={user?.email}
+                                                    onReply={(content, parentId) => handleReply(selectedNotice.id, content, parentId)}
+                                                    onDelete={(commentId) => deleteComment(selectedNotice.id, commentId)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Image Viewer */}
             <ImageViewer
