@@ -46,9 +46,9 @@ router.post(
     async (req, res, next) => {
         try {
             const { noticeId } = req.params;
-            const { content } = req.body;
+            const { content, parentId } = req.body;
             const userEmail = req.user!.email;
-            const collegeId = req.userCollegeDomain || 'kiet.edu'; // College isolation
+            const collegeId = req.userCollegeDomain || 'kiet.edu';
 
             if (!content || typeof content !== 'string' || content.trim().length === 0) {
                 throw Errors.badRequest('Comment content is required');
@@ -60,21 +60,25 @@ router.post(
 
             const supabase = getSupabaseAdmin();
 
-            // Get user name from users table
+            // Get user info
             const { data: userData } = await supabase
                 .from('users')
-                .select('name')
+                .select('id, name')
                 .eq('email', userEmail)
                 .single();
 
+            const userName = userData?.name || userEmail.split('@')[0];
+
+            // Insert comment
             const { data, error } = await supabase
                 .from('notice_comments')
                 .insert({
                     notice_id: noticeId,
-                    college_id: collegeId, // Multi-tenant isolation
+                    college_id: collegeId,
                     user_email: userEmail,
-                    user_name: userData?.name || userEmail.split('@')[0],
+                    user_name: userName,
                     content: content.trim(),
+                    parent_id: parentId || null
                 })
                 .select()
                 .single();
@@ -82,6 +86,41 @@ router.post(
             if (error) {
                 console.error('[NoticeComments] Create error:', error);
                 throw Errors.internal('Failed to create comment');
+            }
+
+            // Handle Notification if reply
+            if (parentId) {
+                try {
+                    // Fetch parent comment author
+                    const { data: parentComment } = await supabase
+                        .from('notice_comments')
+                        .select('user_email')
+                        .eq('id', parentId)
+                        .single();
+
+                    if (parentComment && parentComment.user_email !== userEmail) {
+                        // Fetch parent author user ID
+                        const { data: parentAuthor } = await supabase
+                            .from('users')
+                            .select('id')
+                            .eq('email', parentComment.user_email)
+                            .single();
+
+                        if (parentAuthor) {
+                            const { createNotification } = await import('../services/notification.service');
+                            await createNotification(
+                                parentAuthor.id,
+                                'New Reply',
+                                `${userName} replied to your comment in notices`,
+                                'notice',
+                                `/notices?id=${noticeId}`
+                            );
+                        }
+                    }
+                } catch (notifyError) {
+                    console.error('[NoticeComments] Notification error:', notifyError);
+                    // Don't fail the request if notification fails
+                }
             }
 
             res.status(201).json({ comment: data });

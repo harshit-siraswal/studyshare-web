@@ -217,7 +217,7 @@ export async function addComment(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { messageId, content } = req.body;
+        const { messageId, content, parentId } = req.body;
         const userEmail = req.user!.email;
         const userName = req.body.authorName || userEmail.split('@')[0];
 
@@ -226,7 +226,7 @@ export async function addComment(
             return;
         }
 
-        const result = await chatService.addComment(messageId, userName, userEmail, content);
+        const result = await chatService.addComment(messageId, userName, userEmail, content, parentId);
 
         res.status(201).json({ message: 'Comment added', ...result });
     } catch (error) {

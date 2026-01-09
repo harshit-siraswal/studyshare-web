@@ -19,7 +19,8 @@ import {
   rejectFollowRequest,
   markNotificationRead,
   markAllNotificationsRead,
-  getPendingFollowRequests
+  getPendingFollowRequests,
+  deleteAllNotifications
 } from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -207,6 +208,20 @@ const NotificationButton = () => {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (!user?.email) return;
+
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      setUnreadCount(followRequests.length);
+      toast.success('All notifications cleared');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      toast.error('Failed to clear notifications');
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'resource_approved':
@@ -258,16 +273,6 @@ const NotificationButton = () => {
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b">
           <h3 className="font-semibold">Notifications</h3>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={markAllAsRead}
-              className="h-7 text-xs"
-            >
-              Mark all read
-            </Button>
-          )}
         </div>
 
         {/* Follow Requests Section */}
@@ -373,15 +378,26 @@ const NotificationButton = () => {
         )}
 
         {/* Footer */}
-        {(notifications.length > 0 || followRequests.length > 0) && (
-          <div className="p-2 border-t">
+        {/* Footer Actions */}
+        {(notifications.length > 0) && (
+          <div className="p-2 border-t grid grid-cols-2 gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="w-full text-xs"
-              onClick={() => setOpen(false)}
+              className="text-xs h-8"
+              onClick={markAllAsRead}
+              disabled={loading || notifications.every(n => n.read)}
             >
-              Close
+              Mark all read
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="text-xs h-8"
+              onClick={clearAllNotifications}
+              disabled={loading}
+            >
+              Clear all
             </Button>
           </div>
         )}

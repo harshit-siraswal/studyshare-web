@@ -357,7 +357,8 @@ export async function addComment(
     messageId: string,
     authorName: string,
     authorEmail: string,
-    content: string
+    content: string,
+    parentId?: string
 ): Promise<{ id: string }> {
     const supabase = getSupabaseAdmin();
 
@@ -368,6 +369,7 @@ export async function addComment(
             author_name: authorName,
             author_email: authorEmail,
             content,
+            parent_id: parentId || null
         })
         .select('id')
         .single();
@@ -375,6 +377,47 @@ export async function addComment(
     if (error) {
         console.error('[ChatService] Add comment error:', error);
         throw Errors.internal('Failed to add comment');
+    }
+
+    // Handle Notification if reply
+    if (parentId) {
+        try {
+            // Fetch parent comment author
+            const { data: parentComment } = await supabase
+                .from('room_post_comments')
+                .select('author_email')
+                .eq('id', parentId)
+                .single();
+
+            if (parentComment && parentComment.author_email !== authorEmail) {
+                // Fetch parent author user ID
+                const { data: parentAuthor } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('email', parentComment.author_email)
+                    .single();
+
+                if (parentAuthor) {
+                    const { createNotification } = await import('./notification.service');
+                    // Get room id for link
+                    const { data: message } = await supabase
+                        .from('room_messages')
+                        .select('room_id')
+                        .eq('id', messageId)
+                        .single();
+
+                    await createNotification(
+                        parentAuthor.id,
+                        'New Reply',
+                        `${authorName} replied to your comment in chatroom`,
+                        'chat',
+                        message ? `/chatroom/${message.room_id}` : '/chatroom'
+                    );
+                }
+            }
+        } catch (notifyError) {
+            console.error('[ChatService] Notification error:', notifyError);
+        }
     }
 
     return { id: data.id };

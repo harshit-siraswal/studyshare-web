@@ -232,16 +232,7 @@ const NotificationCenter = () => {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b border-border">
           <h3 className="font-semibold text-foreground">Notifications</h3>
-          {notifications.some(n => !n.read) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={markAllAsReadHandler}
-              className="text-xs h-7 px-3 bg-primary/10 text-primary hover:bg-primary/20 border-primary/30"
-            >
-              Mark all read
-            </Button>
-          )}
+
         </div>
 
         <ScrollArea className="max-h-96">
@@ -350,6 +341,30 @@ const NotificationCenter = () => {
             </div>
           )}
         </ScrollArea>
+
+        {/* Footer Actions */}
+        {(notifications.length > 0) && (
+          <div className="p-2 border-t border-border grid grid-cols-2 gap-2 bg-background">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              onClick={markAllAsReadHandler}
+              disabled={loading || notifications.every(n => n.read)}
+            >
+              Mark all read
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="text-xs h-8"
+              onClick={clearAllNotificationsHandler}
+              disabled={loading}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
       </PopoverContent >
     </Popover >
   );
