@@ -9,6 +9,7 @@ import notificationRoutes from './notification.routes';
 import chatRoutes from './chat.routes';
 import userRoutes from './user.routes';
 import syllabusRoutes from './syllabus.routes';
+import noticeRoutes from './notice.routes';
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use('/notifications', notificationRoutes);
 router.use('/chat', chatRoutes);
 router.use('/users', userRoutes);
 router.use('/syllabus', syllabusRoutes);
+router.use('/notices', noticeRoutes);
 
 export default router;

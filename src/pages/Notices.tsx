@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Heart, Share, Search,
-  Bell, FileText, Play, Bookmark
+  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -66,6 +67,13 @@ const Notices = () => {
   const [videoPlayer, setVideoPlayer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false, url: "", title: ""
   });
+
+  // Expandable Comments State
+  const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, api.NoticeComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
 
   // Bookmarks hook
   const { isBookmarked, toggleBookmark } = useBookmarks();
@@ -138,6 +146,69 @@ const Notices = () => {
     setLikedNotices(prev =>
       prev.includes(noticeId) ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
     );
+  };
+
+  // Expand/collapse comments for a notice
+  const toggleComments = async (noticeId: string) => {
+    if (expandedNotice === noticeId) {
+      // Collapse
+      setExpandedNotice(null);
+      return;
+    }
+
+    // Expand and fetch comments
+    setExpandedNotice(noticeId);
+
+    // Only fetch if not already loaded
+    if (!comments[noticeId]) {
+      setLoadingComments(noticeId);
+      try {
+        const { comments: fetchedComments } = await api.getNoticeComments(noticeId);
+        setComments(prev => ({ ...prev, [noticeId]: fetchedComments }));
+      } catch (error) {
+        console.error('Failed to fetch comments:', error);
+        toast.error('Failed to load comments');
+      } finally {
+        setLoadingComments(null);
+      }
+    }
+  };
+
+  // Submit a new comment
+  const submitComment = async (noticeId: string) => {
+    if (!newComment.trim() || !user) {
+      if (!user) toast.error('Please login to comment');
+      return;
+    }
+
+    setPostingComment(true);
+    try {
+      const { comment } = await api.postNoticeComment(noticeId, newComment.trim());
+      setComments(prev => ({
+        ...prev,
+        [noticeId]: [...(prev[noticeId] || []), comment]
+      }));
+      setNewComment('');
+      toast.success('Comment added!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to post comment');
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  // Delete own comment
+  const deleteComment = async (noticeId: string, commentId: string) => {
+    try {
+      await api.deleteNoticeComment(noticeId, commentId);
+      setComments(prev => ({
+        ...prev,
+        [noticeId]: (prev[noticeId] || []).filter(c => c.id !== commentId)
+      }));
+      toast.success('Comment deleted');
+    } catch (error) {
+      toast.error('Failed to delete comment');
+    }
   };
 
   const getDeptInfo = (deptCode: string) => {
@@ -214,15 +285,6 @@ const Notices = () => {
             </div>
             <div className="px-2 text-primary text-sm cursor-pointer hover:underline">Show more</div>
           </Card>
-
-          <div className="mt-6 px-4 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            <span className="hover:underline cursor-pointer">Terms of Service</span>
-            <span className="hover:underline cursor-pointer">Privacy Policy</span>
-            <span className="hover:underline cursor-pointer">Cookie Policy</span>
-            <span className="hover:underline cursor-pointer">Accessibility</span>
-            <span className="hover:underline cursor-pointer">Ads info</span>
-            <span>© 2026 Studyspace</span>
-          </div>
         </div>
 
         {/* --- MIDDLE COLUMN (Feed) --- */}
@@ -340,8 +402,16 @@ const Notices = () => {
 
                         {/* Action Bar */}
                         <div className="flex items-center justify-between mt-3 max-w-[425px] text-muted-foreground">
-                          <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-blue-400 hover:bg-blue-400/10 rounded-full group">
-                            <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "w-8 h-8 hover:text-blue-400 hover:bg-blue-400/10 rounded-full group",
+                              expandedNotice === notice.id && "text-blue-400"
+                            )}
+                            onClick={(e) => { e.stopPropagation(); toggleComments(notice.id); }}
+                          >
+                            <MessageCircle className={cn("w-4 h-4 group-hover:scale-110 transition-transform", expandedNotice === notice.id && "fill-current")} />
                           </Button>
                           <Button
                             variant="ghost"
@@ -369,6 +439,75 @@ const Notices = () => {
                             <Share className="w-4 h-4 group-hover:scale-110 transition-transform" />
                           </Button>
                         </div>
+
+                        {/* Expandable Comments Section */}
+                        {expandedNotice === notice.id && (
+                          <div className="mt-4 pt-3 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                            {/* Comment Input */}
+                            <div className="flex gap-2 mb-4">
+                              <Avatar className="w-8 h-8 shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                  {user?.email?.charAt(0).toUpperCase() || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 flex gap-2">
+                                <Input
+                                  placeholder="Add a comment..."
+                                  value={newComment}
+                                  onChange={(e) => setNewComment(e.target.value)}
+                                  className="flex-1 h-9 text-sm"
+                                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(notice.id)}
+                                />
+                                <Button
+                                  size="icon"
+                                  className="h-9 w-9 shrink-0"
+                                  onClick={() => submitComment(notice.id)}
+                                  disabled={!newComment.trim() || postingComment}
+                                >
+                                  {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Comments List */}
+                            {loadingComments === notice.id ? (
+                              <div className="flex justify-center py-4">
+                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : (comments[notice.id] || []).length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-3">No comments yet. Be the first!</p>
+                            ) : (
+                              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                                {(comments[notice.id] || []).map((comment) => (
+                                  <div key={comment.id} className="flex gap-2 group">
+                                    <Avatar className="w-7 h-7 shrink-0">
+                                      <AvatarFallback className="bg-secondary text-xs">
+                                        {comment.user_name?.charAt(0).toUpperCase() || '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{comment.user_name}</span>
+                                        <span className="text-xs text-muted-foreground">{formatTimeAgo(comment.created_at)}</span>
+                                        {comment.user_email === user?.email && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="w-6 h-6 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => deleteComment(notice.id, comment.id)}
+                                          >
+                                            <Trash2 className="w-3 h-3 text-destructive" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-foreground/90">{comment.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

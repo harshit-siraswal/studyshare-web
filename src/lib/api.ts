@@ -600,3 +600,49 @@ export async function createSyllabus(
 export async function deleteSyllabus(id: string): Promise<{ message: string }> {
     return apiRequest(`/api/syllabus/${id}`, { method: 'DELETE' });
 }
+
+// ============================================
+// NOTICE COMMENTS
+// ============================================
+
+export interface NoticeComment {
+    id: string;
+    notice_id: string;
+    user_email: string;
+    user_name: string;
+    content: string;
+    created_at: string;
+}
+
+/**
+ * Get comments for a notice
+ */
+export async function getNoticeComments(noticeId: string): Promise<{ comments: NoticeComment[] }> {
+    return apiRequest(`/api/notices/${noticeId}/comments`);
+}
+
+/**
+ * Post a comment on a notice
+ */
+export async function postNoticeComment(
+    noticeId: string,
+    content: string,
+    recaptchaToken?: string
+): Promise<{ comment: NoticeComment }> {
+    return apiRequest(`/api/notices/${noticeId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, recaptchaToken }),
+    });
+}
+
+/**
+ * Delete a comment
+ */
+export async function deleteNoticeComment(
+    noticeId: string,
+    commentId: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/notices/${noticeId}/comments/${commentId}`, {
+        method: 'DELETE',
+    });
+}
