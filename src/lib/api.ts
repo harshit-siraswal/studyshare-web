@@ -646,3 +646,35 @@ export async function deleteNoticeComment(
         method: 'DELETE',
     });
 }
+
+// ============================================
+// NOTICE & COMMENT LIKES
+// ============================================
+
+/**
+ * Toggle like on a notice
+ */
+export async function toggleNoticeLike(noticeId: string): Promise<{ liked: boolean; message: string }> {
+    return apiRequest(`/api/notices/${noticeId}/like`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Get like count and user's like status for a notice
+ */
+export async function getNoticeLikes(noticeId: string): Promise<{ count: number; userLiked: boolean }> {
+    return apiRequest(`/api/notices/${noticeId}/likes`);
+}
+
+/**
+ * Toggle like on a comment
+ */
+export async function toggleCommentLike(
+    noticeId: string,
+    commentId: string
+): Promise<{ liked: boolean; message: string }> {
+    return apiRequest(`/api/notices/${noticeId}/comments/${commentId}/like`, {
+        method: 'POST',
+    });
+}

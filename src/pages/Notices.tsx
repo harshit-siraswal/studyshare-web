@@ -142,10 +142,22 @@ const Notices = () => {
     }
   };
 
-  const toggleLike = (noticeId: string) => {
+  const toggleLike = async (noticeId: string) => {
+    // Optimistic update
+    const wasLiked = likedNotices.includes(noticeId);
     setLikedNotices(prev =>
-      prev.includes(noticeId) ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
+      wasLiked ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
     );
+
+    try {
+      await api.toggleNoticeLike(noticeId);
+    } catch (error) {
+      // Revert on error
+      setLikedNotices(prev =>
+        wasLiked ? [...prev, noticeId] : prev.filter(id => id !== noticeId)
+      );
+      toast.error('Failed to update like');
+    }
   };
 
   // Expand/collapse comments for a notice
