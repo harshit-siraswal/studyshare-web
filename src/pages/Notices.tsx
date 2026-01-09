@@ -63,6 +63,8 @@ const Notices = () => {
   const [loading, setLoading] = useState(true);
   const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
   const [likedNotices, setLikedNotices] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllDepts, setShowAllDepts] = useState(false);
   const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false, url: "", title: ""
   });
@@ -256,10 +258,20 @@ const Notices = () => {
     }
   };
 
-  // Filter notices
-  const displayedNotices = activeTab === 'following'
-    ? notices.filter(n => followedDeptIds.includes(n.department))
-    : notices;
+  // Filter notices by tab and search
+  const displayedNotices = notices
+    .filter(n => activeTab === 'following' ? followedDeptIds.includes(n.department) : true)
+    .filter(n => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      const dept = getDeptInfo(n.department);
+      return (
+        n.title?.toLowerCase().includes(query) ||
+        n.content.toLowerCase().includes(query) ||
+        dept.label.toLowerCase().includes(query) ||
+        n.department.toLowerCase().includes(query)
+      );
+    });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
@@ -275,16 +287,20 @@ const Notices = () => {
           <div className="sticky top-0 bg-background pb-3 z-10">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input placeholder="Search notices..." className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background" />
+              <Input
+                placeholder="Search notices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background"
+              />
             </div>
           </div>
 
           {/* Who to follow card */}
           <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
             <h2 className="font-bold text-xl px-2">Who to follow</h2>
-            <div className="space-y-4">
-              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, 5).map(dept => {
-                const isFollowing = followedDeptIds.includes(dept.value);
+            <div className="space-y-3">
+              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, showAllDepts ? undefined : 5).map(dept => {
                 return (
                   <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
                     <div className="flex items-center gap-3">
@@ -307,7 +323,12 @@ const Notices = () => {
                 );
               })}
             </div>
-            <div className="px-2 text-primary text-sm cursor-pointer hover:underline">Show more</div>
+            <div
+              className="px-2 text-primary text-sm cursor-pointer hover:underline"
+              onClick={() => setShowAllDepts(!showAllDepts)}
+            >
+              {showAllDepts ? 'Show less' : 'Show more'}
+            </div>
           </Card>
         </div>
 
