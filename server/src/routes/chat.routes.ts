@@ -54,4 +54,10 @@ router.post('/saved', rateLimit('write'), chatController.toggleSavePost);
  */
 router.post('/comments', rateLimit('write'), chatController.addComment);
 
+/**
+ * GET /api/chat/comments/:messageId
+ * Get comments for a message
+ */
+router.get('/comments/:messageId', rateLimit('default'), chatController.getComments);
+
 export default router;

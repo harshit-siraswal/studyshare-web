@@ -491,6 +491,22 @@ export async function toggleSaveChatPost(
     });
 }
 
+export interface ChatComment {
+    id: string;
+    message_id: string;
+    author_name: string;
+    author_email: string;
+    content: string;
+    created_at: string;
+}
+
+/**
+ * Get comments for a chat post
+ */
+export async function getChatComments(messageId: string): Promise<{ comments: ChatComment[] }> {
+    return apiRequest(`/api/chat/comments/${messageId}`);
+}
+
 /**
  * Add a comment to a chat post
  */

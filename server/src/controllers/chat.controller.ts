@@ -211,3 +211,28 @@ export async function addComment(
         next(error);
     }
 }
+
+/**
+ * GET /api/chat/comments/:messageId
+ * Get comments for a message
+ */
+export async function getComments(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { messageId } = req.params;
+
+        if (!messageId) {
+            res.status(400).json({ message: 'messageId is required' });
+            return;
+        }
+
+        const result = await chatService.getComments(messageId);
+
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}

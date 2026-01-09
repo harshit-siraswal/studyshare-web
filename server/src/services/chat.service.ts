@@ -303,6 +303,28 @@ export async function addComment(
     return { id: data.id };
 }
 
+/**
+ * Get comments for a post
+ */
+export async function getComments(
+    messageId: string
+): Promise<{ comments: any[] }> {
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase
+        .from('room_post_comments')
+        .select('*')
+        .eq('message_id', messageId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('[ChatService] Get comments error:', error);
+        throw Errors.internal('Failed to fetch comments');
+    }
+
+    return { comments: data || [] };
+}
+
 function generateJoinCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';

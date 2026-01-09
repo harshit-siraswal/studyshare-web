@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bell, Building, Users, Heart, MessageCircle, Share, Calendar, FileText, Video as VideoIcon, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, Bell, Building, Users, Heart, MessageCircle, Share, Calendar, FileText, Video as VideoIcon, Image as ImageIcon, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
 import * as api from "@/lib/api";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 const DEPARTMENTS = [
     { value: 'all', label: 'All Departments', icon: '🏛️' },
@@ -62,6 +63,16 @@ const DepartmentProfile = () => {
     const [videoPlayer, setVideoPlayer] = useState<{ isOpen: boolean; url: string; title: string }>({
         isOpen: false, url: "", title: ""
     });
+
+    // Expandable comments state
+    const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+    const [comments, setComments] = useState<Record<string, api.NoticeComment[]>>({});
+    const [loadingComments, setLoadingComments] = useState<string | null>(null);
+    const [newComment, setNewComment] = useState('');
+    const [postingComment, setPostingComment] = useState(false);
+
+    // Bookmarks hook
+    const { isBookmarked, toggleBookmark } = useBookmarks();
 
     const department = DEPARTMENTS.find(d => d.value === deptId);
 
@@ -153,10 +164,77 @@ const DepartmentProfile = () => {
         }
     };
 
-    const toggleLike = (noticeId: string) => {
+    const toggleLike = async (noticeId: string) => {
+        const wasLiked = likedNotices.includes(noticeId);
         setLikedNotices(prev =>
-            prev.includes(noticeId) ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
+            wasLiked ? prev.filter(id => id !== noticeId) : [...prev, noticeId]
         );
+
+        try {
+            await api.toggleNoticeLike(noticeId);
+        } catch (error) {
+            // Revert on error
+            setLikedNotices(prev =>
+                wasLiked ? [...prev, noticeId] : prev.filter(id => id !== noticeId)
+            );
+            toast.error('Failed to update like');
+        }
+    };
+
+    // Expand/collapse comments
+    const toggleComments = async (noticeId: string) => {
+        if (expandedNotice === noticeId) {
+            setExpandedNotice(null);
+            return;
+        }
+
+        setExpandedNotice(noticeId);
+
+        if (!comments[noticeId]) {
+            setLoadingComments(noticeId);
+            try {
+                const { comments: fetchedComments } = await api.getNoticeComments(noticeId);
+                setComments(prev => ({ ...prev, [noticeId]: fetchedComments }));
+            } catch (error) {
+                toast.error('Failed to load comments');
+            } finally {
+                setLoadingComments(null);
+            }
+        }
+    };
+
+    // Submit comment
+    const submitComment = async (noticeId: string) => {
+        if (!newComment.trim() || !user) return;
+
+        setPostingComment(true);
+        try {
+            const { comment } = await api.postNoticeComment(noticeId, newComment.trim());
+            setComments(prev => ({
+                ...prev,
+                [noticeId]: [...(prev[noticeId] || []), comment]
+            }));
+            setNewComment('');
+            toast.success('Comment added!');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to post comment');
+        } finally {
+            setPostingComment(false);
+        }
+    };
+
+    // Delete comment
+    const deleteComment = async (noticeId: string, commentId: string) => {
+        try {
+            await api.deleteNoticeComment(noticeId, commentId);
+            setComments(prev => ({
+                ...prev,
+                [noticeId]: (prev[noticeId] || []).filter(c => c.id !== commentId)
+            }));
+            toast.success('Comment deleted');
+        } catch (error) {
+            toast.error('Failed to delete comment');
+        }
     };
 
     const handleShare = async (notice: Notice) => {
@@ -339,7 +417,7 @@ const DepartmentProfile = () => {
                                                 </div>
                                             )}
 
-                                            <div className="flex items-center gap-8 mt-4">
+                                            <div className="flex items-center gap-6 mt-4">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -353,9 +431,30 @@ const DepartmentProfile = () => {
                                                     <Heart className={cn("w-5 h-5", likedNotices.includes(notice.id) && "fill-current")} />
                                                     <span className="text-sm">{notice.likes + (likedNotices.includes(notice.id) ? 1 : 0)}</span>
                                                 </button>
-                                                <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-                                                    <MessageCircle className="w-5 h-5" />
-                                                    <span className="text-sm">{notice.comments}</span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleComments(notice.id);
+                                                    }}
+                                                    className={cn(
+                                                        "flex items-center gap-2 transition-colors",
+                                                        expandedNotice === notice.id ? "text-primary" : "text-muted-foreground hover:text-primary"
+                                                    )}
+                                                >
+                                                    <MessageCircle className={cn("w-5 h-5", expandedNotice === notice.id && "fill-current")} />
+                                                    <span className="text-sm">{(comments[notice.id]?.length || notice.comments)}</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleBookmark(notice.id, 'notice');
+                                                    }}
+                                                    className={cn(
+                                                        "flex items-center gap-2 transition-colors",
+                                                        isBookmarked(notice.id) ? "text-primary" : "text-muted-foreground hover:text-primary"
+                                                    )}
+                                                >
+                                                    <Bookmark className={cn("w-5 h-5", isBookmarked(notice.id) && "fill-current")} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
@@ -367,6 +466,75 @@ const DepartmentProfile = () => {
                                                     <Share className="w-5 h-5" />
                                                 </button>
                                             </div>
+
+                                            {/* Expandable Comments Section */}
+                                            {expandedNotice === notice.id && (
+                                                <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                                                    {/* Comment Input */}
+                                                    <div className="flex gap-2 mb-4">
+                                                        <Avatar className="w-8 h-8 shrink-0">
+                                                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                                                {user?.email?.charAt(0).toUpperCase() || '?'}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 flex gap-2">
+                                                            <Input
+                                                                placeholder="Add a comment..."
+                                                                value={newComment}
+                                                                onChange={(e) => setNewComment(e.target.value)}
+                                                                className="flex-1 h-9 text-sm"
+                                                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(notice.id)}
+                                                            />
+                                                            <Button
+                                                                size="icon"
+                                                                className="h-9 w-9 shrink-0"
+                                                                onClick={() => submitComment(notice.id)}
+                                                                disabled={!newComment.trim() || postingComment}
+                                                            >
+                                                                {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Comments List */}
+                                                    {loadingComments === notice.id ? (
+                                                        <div className="flex justify-center py-4">
+                                                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                                        </div>
+                                                    ) : (comments[notice.id] || []).length === 0 ? (
+                                                        <p className="text-sm text-muted-foreground text-center py-3">No comments yet. Be the first!</p>
+                                                    ) : (
+                                                        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                                                            {(comments[notice.id] || []).map((comment) => (
+                                                                <div key={comment.id} className="flex gap-2 group">
+                                                                    <Avatar className="w-7 h-7 shrink-0">
+                                                                        <AvatarFallback className="bg-secondary text-xs">
+                                                                            {comment.user_name?.charAt(0).toUpperCase() || '?'}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-medium">{comment.user_name}</span>
+                                                                            <span className="text-xs text-muted-foreground">{formatTimeAgo(comment.created_at)}</span>
+                                                                            {comment.user_email === user?.email && (
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="w-6 h-6 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    onClick={() => deleteComment(notice.id, comment.id)}
+                                                                                >
+                                                                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                                                                </Button>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm text-foreground/90">{comment.content}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </Card>

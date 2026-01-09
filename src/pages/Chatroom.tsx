@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, getChatComments, ChatComment } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -66,6 +66,8 @@ const Chatroom = () => {
   const [commentText, setCommentText] = useState("");
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
+  const [postComments, setPostComments] = useState<Record<string, ChatComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
@@ -380,16 +382,58 @@ const Chatroom = () => {
     }
   };
 
+  // Fetch comments for a post
+  const fetchCommentsForPost = async (messageId: string) => {
+    if (postComments[messageId]) return; // Already fetched
+
+    setLoadingComments(messageId);
+    try {
+      const { comments } = await getChatComments(messageId);
+      setPostComments(prev => ({ ...prev, [messageId]: comments }));
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setLoadingComments(null);
+    }
+  };
+
+  // Toggle comments visibility and fetch if needed
+  const togglePostComments = (messageId: string) => {
+    if (showComments === messageId) {
+      setShowComments(null);
+    } else {
+      setShowComments(messageId);
+      fetchCommentsForPost(messageId);
+    }
+  };
+
   const handleAddComment = async (messageId: string) => {
     if (!user?.email || !commentText.trim()) return;
 
     try {
+      const authorName = user.displayName || user.email?.split('@')[0] || 'User';
+
       // Use backend API for secure comment posting
-      await addChatComment(
+      const result = await addChatComment(
         messageId,
         commentText.trim(),
-        user.displayName || user.email?.split('@')[0] || 'User'
+        authorName
       );
+
+      // Add to local state
+      const newComment: ChatComment = {
+        id: result.id,
+        message_id: messageId,
+        author_name: authorName,
+        author_email: user.email!,
+        content: commentText.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      setPostComments(prev => ({
+        ...prev,
+        [messageId]: [...(prev[messageId] || []), newComment]
+      }));
 
       setCommentText('');
       toast.success('Comment added!');
@@ -796,11 +840,14 @@ const Chatroom = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground"
-                            onClick={() => setShowComments(showComments === message.id ? null : message.id)}
+                            className={cn(
+                              "text-muted-foreground",
+                              showComments === message.id && "text-primary"
+                            )}
+                            onClick={() => togglePostComments(message.id)}
                           >
-                            <MessageCircle className="w-4 h-4 mr-1" />
-                            Comment
+                            <MessageCircle className={cn("w-4 h-4 mr-1", showComments === message.id && "fill-current")} />
+                            {(postComments[message.id]?.length || 0) > 0 ? `${postComments[message.id]?.length}` : 'Comment'}
                           </Button>
                         </div>
 
@@ -826,9 +873,32 @@ const Chatroom = () => {
                               </Button>
                             </div>
 
-                            {/* Comments List - Placeholder */}
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground text-center py-2">No comments yet</p>
+                            {/* Comments List */}
+                            <div className="space-y-3">
+                              {loadingComments === message.id ? (
+                                <div className="flex justify-center py-3">
+                                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : (postComments[message.id] || []).length === 0 ? (
+                                <p className="text-xs text-muted-foreground text-center py-2">No comments yet</p>
+                              ) : (
+                                (postComments[message.id] || []).map((comment) => (
+                                  <div key={comment.id} className="flex gap-2">
+                                    <Avatar className="w-6 h-6 shrink-0">
+                                      <AvatarFallback className="bg-secondary text-xs">
+                                        {comment.author_name?.[0]?.toUpperCase() || '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{comment.author_name}</span>
+                                        <span className="text-xs text-muted-foreground">{formatTimeAgo(comment.created_at)}</span>
+                                      </div>
+                                      <p className="text-sm text-foreground/90">{comment.content}</p>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
                             </div>
                           </div>
                         )}
