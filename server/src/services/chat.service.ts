@@ -151,14 +151,23 @@ export async function joinRoomById(
 /**
  * Add a member to a room
  */
-export async function addMember(roomId: string, userEmail: string, collegeId: string): Promise<void> {
+export async function addMember(
+    roomId: string,
+    userEmail: string,
+    collegeId: string,
+    userName?: string
+): Promise<void> {
     const supabase = getSupabaseAdmin();
+
+    // Derive user_name from email if not provided
+    const derivedUserName = userName || userEmail.split('@')[0];
 
     const { error } = await supabase
         .from('room_members')
         .insert({
             room_id: roomId,
             user_email: userEmail,
+            user_name: derivedUserName,
             college_id: collegeId,
         });
 
