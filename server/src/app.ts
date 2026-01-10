@@ -60,7 +60,7 @@ export function createApp(): Express {
     app.use(cors({
         origin: env.isDev
             ? ['http://localhost:5173', 'http://localhost:3000']
-            : ['https://new-exex.vercel.app', 'https://studyspace-kiet.vercel.app'],
+            : ['https://new-exex.vercel.app', 'https://studyspace-kiet.vercel.app', 'https://www.mystudyspace.me', 'https://mystudyspace.me'],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
