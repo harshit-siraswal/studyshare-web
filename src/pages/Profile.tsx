@@ -677,18 +677,10 @@ const Profile = () => {
         reader.readAsDataURL(croppedBlob);
       });
 
-      console.log('Image cropped, updating database...');
+      console.log('Image cropped, updating via API...');
 
-      // Save base64 directly to database
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ profile_photo_url: base64 })
-        .eq('id', authUser.uid);
-
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        throw updateError;
-      }
+      // Use backend API which bypasses RLS
+      await api.updateProfile({ profile_photo_url: base64 });
 
       console.log('Profile photo updated successfully!');
 
@@ -724,7 +716,7 @@ const Profile = () => {
     }
 
     try {
-      // Check if username is taken
+      // Check if username is taken (via frontend read - allowed by RLS)
       if (editForm.username !== userProfile?.username) {
         const { data: existingUser } = await supabase
           .from('users')
@@ -738,29 +730,16 @@ const Profile = () => {
         }
       }
 
-      console.log('Updating profile for user:', authUser.uid);
-      console.log('Update data:', {
+      console.log('Updating profile via API for user:', authUser.uid);
+
+      // Use backend API which bypasses RLS
+      const result = await api.updateProfile({
         display_name: editForm.name,
         bio: editForm.bio,
         username: editForm.username,
       });
 
-      const { data, error } = await supabase
-        .from('users')
-        .update({
-          display_name: editForm.name,
-          bio: editForm.bio,
-          username: editForm.username,
-        })
-        .eq('id', authUser.uid)
-        .select();
-
-      if (error) {
-        console.error('Update error:', error);
-        throw error;
-      }
-
-      console.log('Update successful:', data);
+      console.log('Update successful:', result);
 
       setUserProfile(prev => prev ? {
         ...prev,
