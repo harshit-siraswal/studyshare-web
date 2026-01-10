@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../config/supabase';
 import { Errors } from '../middleware/errorHandler';
+import crypto from 'crypto';
 
 /**
  * Create a chat room
@@ -473,11 +474,80 @@ export async function deleteComment(
     }
 }
 
+/**
+ * Generate a cryptographically secure join code using Node crypto
+ */
 function generateJoinCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    // Use crypto.randomBytes for secure random generation
+    const bytes = crypto.randomBytes(4); // 4 bytes = 32 bits of entropy
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed ambiguous chars: 0,O,1,I,L
     let code = '';
     for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars.charAt(bytes[i % 4] % chars.length);
     }
     return code;
+}
+
+/**
+ * Get room info for viewing (public rooms accessible without joining)
+ */
+export async function getRoomInfo(
+    roomId: string,
+    userEmail?: string
+): Promise<{
+    room: {
+        id: string;
+        name: string;
+        description: string | null;
+        is_private: boolean;
+        member_count: number;
+        created_by: string;
+        created_at: string;
+        room_code?: string; // Only for admin
+    };
+    isMember: boolean;
+    isAdmin: boolean;
+}> {
+    const supabase = getSupabaseAdmin();
+
+    const { data: room, error } = await supabase
+        .from('chat_rooms')
+        .select('id, name, description, is_private, member_count, created_by, created_at, join_code')
+        .eq('id', roomId)
+        .single();
+
+    if (error || !room) {
+        throw Errors.notFound('Room');
+    }
+
+    // Check membership
+    let isMember = false;
+    let isAdmin = false;
+
+    if (userEmail) {
+        const { data: member } = await supabase
+            .from('room_members')
+            .select('id')
+            .eq('room_id', roomId)
+            .eq('user_email', userEmail)
+            .single();
+
+        isMember = !!member;
+        isAdmin = room.created_by === userEmail;
+    }
+
+    return {
+        room: {
+            id: room.id,
+            name: room.name,
+            description: room.description,
+            is_private: room.is_private,
+            member_count: room.member_count,
+            created_by: room.created_by,
+            created_at: room.created_at,
+            room_code: isAdmin ? room.join_code : undefined, // Only show code to admin
+        },
+        isMember,
+        isAdmin,
+    };
 }

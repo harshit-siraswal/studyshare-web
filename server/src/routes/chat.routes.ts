@@ -72,4 +72,10 @@ router.delete('/comments/:commentId', rateLimit('write'), chatController.deleteC
  */
 router.get('/rooms/:roomId/votes', rateLimit('default'), chatController.getUserVotes);
 
+/**
+ * GET /api/chat/rooms/:roomId/info
+ * Get room info including membership status (public rooms accessible without joining)
+ */
+router.get('/rooms/:roomId/info', rateLimit('default'), chatController.getRoomInfo);
+
 export default router;

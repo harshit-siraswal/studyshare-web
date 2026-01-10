@@ -485,6 +485,28 @@ export async function getUserChatVotes(roomId: string): Promise<{ votes: Record<
 }
 
 /**
+ * Get room info including membership status
+ */
+export interface ChatRoomInfo {
+    room: {
+        id: string;
+        name: string;
+        description: string | null;
+        is_private: boolean;
+        member_count: number;
+        created_by: string;
+        created_at: string;
+        room_code?: string;
+    };
+    isMember: boolean;
+    isAdmin: boolean;
+}
+
+export async function getChatRoomInfo(roomId: string): Promise<ChatRoomInfo> {
+    return apiRequest(`/api/chat/rooms/${roomId}/info`);
+}
+
+/**
  * Toggle save a chat post
  */
 export async function toggleSaveChatPost(

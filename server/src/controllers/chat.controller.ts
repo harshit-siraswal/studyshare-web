@@ -284,3 +284,29 @@ export async function deleteComment(
         next(error);
     }
 }
+
+/**
+ * GET /api/chat/rooms/:roomId/info
+ * Get room info including membership status
+ */
+export async function getRoomInfo(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const userEmail = req.user?.email;
+
+        if (!roomId) {
+            res.status(400).json({ message: 'roomId is required' });
+            return;
+        }
+
+        const result = await chatService.getRoomInfo(roomId, userEmail);
+
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}
