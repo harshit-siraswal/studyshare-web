@@ -22,6 +22,7 @@ import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useResources } from "@/hooks/useResources";
