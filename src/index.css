@@ -112,27 +112,22 @@
     @apply border-border;
   }
 
-  /* Mobile viewport height fix - use dvh for modern browsers */
-  html,
-  body {
-    height: 100%;
+  /* Mobile viewport fix - prevent horizontal overflow only */
+  html {
     overflow-x: hidden;
   }
 
-  /* Mobile height fix - account for browser chrome */
-  @supports (height: 100dvh) {
-
-    html,
+  /* Mobile height fix - use dvh for modern browsers */
+  @supports (min-height: 100dvh) {
     body {
       min-height: 100dvh;
     }
   }
 
-  /* Fallback for older browsers */
-  @supports not (height: 100dvh) {
-
-    html,
+  /* Fallback for older browsers and iOS Safari */
+  @supports not (min-height: 100dvh) {
     body {
+      min-height: 100vh;
       min-height: -webkit-fill-available;
     }
   }
@@ -140,6 +135,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   h1,
