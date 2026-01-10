@@ -170,19 +170,19 @@ const ResourceCard = ({
     <>
       <Card
         variant="interactive"
-        className="p-4 group cursor-pointer"
+        className="p-3 md:p-4 group cursor-pointer"
         onClick={handleCardClick}
       >
-        <div className="flex gap-4">
+        <div className="flex gap-3 md:gap-4">
           {/* Thumbnail / Icon */}
           <div className={cn(
-            "w-16 h-16 md:w-20 md:h-20 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+            "w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
             type === "video" && "bg-red-500/10",
             type === "notes" && "bg-blue-500/10",
             type === "pyq" && "bg-amber-500/10",
           )}>
             <Icon className={cn(
-              "w-6 h-6 md:w-8 md:h-8",
+              "w-5 h-5 md:w-6 md:h-6 lg:w-8 lg:h-8",
               type === "video" && "text-red-500",
               type === "notes" && "text-blue-500",
               type === "pyq" && "text-amber-500",
@@ -221,16 +221,16 @@ const ResourceCard = ({
             </div>
 
             {/* Actions - SIMPLIFIED WITH ONLY NET VOTES */}
-            <div className="flex items-center gap-2 mt-3">
-              <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
+            <div className="flex items-center gap-1.5 md:gap-2 mt-2 md:mt-3">
+              <div className="flex items-center gap-0.5 md:gap-1 bg-secondary/50 rounded-lg p-0.5 md:p-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-10 w-10", userVote === "upvote" && "text-green-500 bg-green-500/10")}
+                  className={cn("h-8 w-8 md:h-10 md:w-10", userVote === "upvote" && "text-green-500 bg-green-500/10")}
                   onClick={(e) => handleVote("upvote", e)}
                   disabled={loading}
                 >
-                  <ThumbsUp className="w-4 h-4" />
+                  <ThumbsUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Button>
 
                 {/* ONLY NET VOTES - SINGLE NUMBER */}
@@ -246,22 +246,22 @@ const ResourceCard = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-10 w-10", userVote === "downvote" && "text-red-500 bg-red-500/10")}
+                  className={cn("h-8 w-8 md:h-10 md:w-10", userVote === "downvote" && "text-red-500 bg-red-500/10")}
                   onClick={(e) => handleVote("downvote", e)}
                   disabled={loading}
                 >
-                  <ThumbsDown className="w-4 h-4" />
+                  <ThumbsDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Button>
               </div>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-10 w-10", isBookmarked && "text-amber-500")}
+                className={cn("h-8 w-8 md:h-10 md:w-10", isBookmarked && "text-amber-500")}
                 onClick={handleBookmark}
                 disabled={loading}
               >
-                <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-current")} />
+                <Bookmark className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isBookmarked && "fill-current")} />
               </Button>
 
               <span className="ml-auto text-xs text-muted-foreground hidden md:inline">

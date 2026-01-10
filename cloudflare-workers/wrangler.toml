@@ -7,7 +7,8 @@ compatibility_date = "2024-01-01"
 # Then paste the ID below
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "YOUR_KV_NAMESPACE_ID_HERE"
+id = "22baa8a1f66b4d1e86f64926a65fed51"
+
 
 # Environment variables
 [vars]
@@ -16,5 +17,5 @@ ENVIRONMENT = "production"
 # Routes - Update with your actual domain
 # Uncomment after setting up your domain in Cloudflare
 # [[routes]]
-# pattern = "api.yourdomain.me/*"
-# zone_name = "yourdomain.me"
+# pattern = "api.mystudyspace.me/"
+# zone_name = "mystudyspace.me"
