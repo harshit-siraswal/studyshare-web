@@ -117,9 +117,12 @@ const NotificationCenter = () => {
       // Use backend API for secure follow request approval
       await approveFollowRequest(request.id);
 
+      // Get requester name for success message
+      const requesterName = request.requester_email?.split('@')[0] || 'User';
+
       // Remove from local state
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
-      toast.success('Follow request accepted!');
+      toast.success(`Accepted follow request from ${requesterName}`);
     } catch (error: any) {
       console.error('Error accepting request:', error);
       toast.error(error.message || 'Failed to accept request');
@@ -135,8 +138,11 @@ const NotificationCenter = () => {
       // Use backend API for secure rejection
       await rejectFollowRequest(request.id);
 
+      // Get requester name for success message
+      const requesterName = request.requester_email?.split('@')[0] || 'User';
+
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
-      toast.success('Follow request declined');
+      toast.success(`Declined follow request from ${requesterName}`);
     } catch (error: any) {
       console.error('Error rejecting request:', error);
       toast.error(error.message || 'Failed to decline request');
@@ -259,7 +265,7 @@ const NotificationCenter = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">Follow Request</p>
                       <p className="text-xs text-muted-foreground">
-                        {request.requester_email?.split('@')[0] || 'Someone'} wants to follow you
+                        Someone wants to follow you
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatTime(request.created_at)}

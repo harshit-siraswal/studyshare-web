@@ -61,6 +61,12 @@ router.post('/comments', rateLimit('write'), chatController.addComment);
 router.get('/comments/:messageId', rateLimit('default'), chatController.getComments);
 
 /**
+ * DELETE /api/chat/comments/:commentId
+ * Delete a comment
+ */
+router.delete('/comments/:commentId', rateLimit('write'), chatController.deleteComment);
+
+/**
  * GET /api/chat/rooms/:roomId/votes
  * Get user's votes for a room
  */

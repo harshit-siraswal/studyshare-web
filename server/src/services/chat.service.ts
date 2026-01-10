@@ -389,31 +389,23 @@ export async function addComment(
                 .eq('id', parentId)
                 .single();
 
+            // Self-notification prevention: don't notify if replying to own comment
             if (parentComment && parentComment.author_email !== authorEmail) {
-                // Fetch parent author user ID
-                const { data: parentAuthor } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('email', parentComment.author_email)
+                const { createNotification } = await import('./notification.service');
+                // Get room id for link
+                const { data: message } = await supabase
+                    .from('room_messages')
+                    .select('room_id')
+                    .eq('id', messageId)
                     .single();
 
-                if (parentAuthor) {
-                    const { createNotification } = await import('./notification.service');
-                    // Get room id for link
-                    const { data: message } = await supabase
-                        .from('room_messages')
-                        .select('room_id')
-                        .eq('id', messageId)
-                        .single();
-
-                    await createNotification(
-                        parentAuthor.id,
-                        'New Reply',
-                        `${authorName} replied to your comment in chatroom`,
-                        'chat',
-                        message ? `/chatroom/${message.room_id}` : '/chatroom'
-                    );
-                }
+                await createNotification(
+                    parentComment.author_email,
+                    'New Reply',
+                    `${authorName} replied to your comment in chatroom`,
+                    'chat',
+                    message ? `/chatroom/${message.room_id}` : '/chatroom'
+                );
             }
         } catch (notifyError) {
             console.error('[ChatService] Notification error:', notifyError);
@@ -424,7 +416,7 @@ export async function addComment(
 }
 
 /**
- * Get comments for a post
+ * Get comments for a post with explicit column selection
  */
 export async function getComments(
     messageId: string
@@ -433,7 +425,7 @@ export async function getComments(
 
     const { data, error } = await supabase
         .from('room_post_comments')
-        .select('*')
+        .select('id, message_id, author_name, author_email, content, parent_id, created_at')
         .eq('message_id', messageId)
         .order('created_at', { ascending: true });
 
@@ -443,6 +435,42 @@ export async function getComments(
     }
 
     return { comments: data || [] };
+}
+
+/**
+ * Delete a comment (with ownership verification)
+ */
+export async function deleteComment(
+    commentId: string,
+    authorEmail: string
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    // Verify ownership
+    const { data: existing } = await supabase
+        .from('room_post_comments')
+        .select('author_email')
+        .eq('id', commentId)
+        .single();
+
+    if (!existing) {
+        throw Errors.notFound('Comment');
+    }
+
+    if (existing.author_email !== authorEmail) {
+        throw Errors.forbidden('You can only delete your own comments');
+    }
+
+    // Delete - ON DELETE CASCADE will handle child replies
+    const { error } = await supabase
+        .from('room_post_comments')
+        .delete()
+        .eq('id', commentId);
+
+    if (error) {
+        console.error('[ChatService] Delete comment error:', error);
+        throw Errors.internal('Failed to delete comment');
+    }
 }
 
 function generateJoinCode(): string {

@@ -20,7 +20,17 @@ const DepartmentProfile = lazy(() => import("./pages/DepartmentProfile"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+// Optimized QueryClient configuration for better caching and reduced network requests
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes - data considered fresh
+      gcTime: 1000 * 60 * 30, // 30 minutes - cache retention (formerly cacheTime)
+      refetchOnWindowFocus: false, // Don't refetch when user switches tabs
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
 
 // Loading fallback component
 const PageLoader = () => (

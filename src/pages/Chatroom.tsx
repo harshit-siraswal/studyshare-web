@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2 } from "lucide-react";
+import { SEO } from "@/components/SEO";
 import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -524,6 +525,10 @@ const Chatroom = () => {
   if (!roomId) {
     return (
       <div className="min-h-screen bg-background">
+        <SEO
+          title="Chat Rooms"
+          description="Join chat rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
+        />
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3">
             <div className="flex items-center gap-4">
@@ -736,6 +741,10 @@ const Chatroom = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      <SEO
+        title={currentRoom?.name || "Chat Room"}
+        description={currentRoom?.description || "Join the conversation in this chat room."}
+      />
       {/* Sidebar - Room list */}
       <div className="w-64 border-r border-border hidden md:block">
         <div className="p-4 border-b border-border">

@@ -7,6 +7,9 @@ import { Trash2, MessageCircle, CornerDownRight, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
+// Maximum nesting depth to prevent abuse (Reddit uses ~10, we use 5 for mobile UX)
+const MAX_DEPTH = 5;
+
 // Unified comment interface supporting both Notices (user_name) and Chat (author_name)
 export interface CommentData {
     id: string;
@@ -32,10 +35,12 @@ interface CommentThreadProps {
 }
 
 export function CommentThread({ comments, currentUserEmail, onReply, onDelete, className }: CommentThreadProps) {
-    // Build tree
-    const buildTree = (parentId: string | undefined = undefined) => {
+    // Build tree with defensive null handling
+    const buildTree = (parentId: string | null | undefined = undefined) => {
+        // Normalize parent_id to handle null/undefined consistently
+        const normalizedParentId = parentId ?? null;
         return comments
-            .filter(c => c.parent_id === parentId || (!parentId && !c.parent_id))
+            .filter(c => (c.parent_id ?? null) === normalizedParentId)
             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Oldest first
             .map(comment => ({
                 ...comment,
@@ -172,8 +177,8 @@ function CommentItem({ comment, replies, currentUserEmail, onReply, onDelete, de
                 </div>
             </div>
 
-            {/* Nested Replies */}
-            {replies.length > 0 && (
+            {/* Nested Replies - with depth limiting */}
+            {replies.length > 0 && depth < MAX_DEPTH && (
                 <div className="ml-4 pl-4 border-l border-border/50 mt-3 space-y-3">
                     {replies.map((reply: any) => (
                         <CommentItem
@@ -186,6 +191,14 @@ function CommentItem({ comment, replies, currentUserEmail, onReply, onDelete, de
                             depth={depth + 1}
                         />
                     ))}
+                </div>
+            )}
+            {/* Show indicator when max depth reached but there are more replies */}
+            {replies.length > 0 && depth >= MAX_DEPTH && (
+                <div className="ml-4 pl-4 mt-2">
+                    <span className="text-xs text-muted-foreground italic">
+                        {replies.length} more {replies.length === 1 ? 'reply' : 'replies'}...
+                    </span>
                 </div>
             )}
         </div>

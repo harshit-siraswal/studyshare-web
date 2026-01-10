@@ -11,19 +11,20 @@ export async function createNotification(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { targetUserId, title, message, type, link } = req.body;
+        const { targetUserEmail, title, message, type, link, collegeId } = req.body;
 
-        if (!targetUserId || !title || !message || !type) {
-            res.status(400).json({ message: 'targetUserId, title, message, and type are required' });
+        if (!targetUserEmail || !title || !message || !type) {
+            res.status(400).json({ message: 'targetUserEmail, title, message, and type are required' });
             return;
         }
 
         const notification = await notificationService.createNotification(
-            targetUserId,
+            targetUserEmail,
             title,
             message,
             type,
-            link
+            link,
+            collegeId
         );
 
         res.status(201).json({ notification });
@@ -43,9 +44,9 @@ export async function markAsRead(
 ): Promise<void> {
     try {
         const { id } = req.params;
-        const userId = req.user!.uid;
+        const userEmail = req.user!.email;
 
-        await notificationService.markAsRead(id, userId);
+        await notificationService.markAsRead(id, userEmail);
 
         res.json({ message: 'Notification marked as read' });
     } catch (error) {
@@ -63,9 +64,9 @@ export async function markAllAsRead(
     next: NextFunction
 ): Promise<void> {
     try {
-        const userId = req.user!.uid;
+        const userEmail = req.user!.email;
 
-        await notificationService.markAllAsRead(userId);
+        await notificationService.markAllAsRead(userEmail);
 
         res.json({ message: 'All notifications marked as read' });
     } catch (error) {
@@ -84,9 +85,9 @@ export async function deleteNotification(
 ): Promise<void> {
     try {
         const { id } = req.params;
-        const userId = req.user!.uid;
+        const userEmail = req.user!.email;
 
-        await notificationService.deleteNotification(id, userId);
+        await notificationService.deleteNotification(id, userEmail);
 
         res.json({ message: 'Notification deleted' });
     } catch (error) {
@@ -104,9 +105,9 @@ export async function deleteAllNotifications(
     next: NextFunction
 ): Promise<void> {
     try {
-        const userId = req.user!.uid;
+        const userEmail = req.user!.email;
 
-        await notificationService.deleteAllNotifications(userId);
+        await notificationService.deleteAllNotifications(userEmail);
 
         res.json({ message: 'All notifications deleted' });
     } catch (error) {

@@ -33,6 +33,7 @@ import StudyTimer from "@/components/StudyTimer";
 import MusicPlayer from "@/components/MusicPlayer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SEO } from "@/components/SEO";
 
 // Department info helper
 const DEPARTMENTS: Record<string, { label: string; icon: string }> = {
@@ -105,6 +106,10 @@ const Bookmarks = () => {
 
     return (
         <div className="min-h-screen bg-background flex">
+            <SEO
+                title="Bookmarks"
+                description="Access your saved resources and notices. Your personal collection of study materials and important announcements."
+            />
             {/* Desktop Sidebar */}
             <div className="hidden md:block shrink-0">
                 <StudySidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />

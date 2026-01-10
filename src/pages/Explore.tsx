@@ -17,6 +17,7 @@ import * as api from "@/lib/api";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import FollowButton from "@/components/FollowButton";
+import { SEO } from "@/components/SEO";
 
 interface User {
     id: string;
@@ -122,6 +123,10 @@ const Explore = () => {
 
     return (
         <div className="min-h-screen bg-background">
+            <SEO
+                title="Explore Students"
+                description="Discover and connect with students from your college. Find classmates, follow peers, and build your academic network."
+            />
             {/* Header */}
             <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
                 <div className="max-w-4xl mx-auto px-4 py-3">

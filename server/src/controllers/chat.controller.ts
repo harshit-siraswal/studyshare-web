@@ -258,3 +258,29 @@ export async function getComments(
         next(error);
     }
 }
+
+/**
+ * DELETE /api/chat/comments/:commentId
+ * Delete a comment
+ */
+export async function deleteComment(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { commentId } = req.params;
+        const userEmail = req.user!.email;
+
+        if (!commentId) {
+            res.status(400).json({ message: 'commentId is required' });
+            return;
+        }
+
+        await chatService.deleteComment(commentId, userEmail);
+
+        res.json({ message: 'Comment deleted' });
+    } catch (error) {
+        next(error);
+    }
+}

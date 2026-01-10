@@ -22,6 +22,7 @@ import EditResourceDialog from "@/components/EditResourceDialog";
 import FollowButton from "@/components/FollowButton";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "../supabase";
+import { SEO } from "@/components/SEO";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -818,6 +819,13 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title={isViewingOther ? `${displayName}'s Profile` : "Your Profile"}
+        description={isViewingOther
+          ? `View ${displayName}'s profile and contributions on StudySpace.`
+          : "Manage your profile, view your contributions, and connect with other students."
+        }
+      />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/90 backdrop-blur-lg border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">

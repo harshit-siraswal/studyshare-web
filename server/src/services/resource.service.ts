@@ -87,6 +87,24 @@ export async function createResource(
         throw Errors.internal('Failed to create resource');
     }
 
+    // Notify followers about the new resource
+    // Note: Resources are pending approval, so followers will be notified
+    // when resource is approved. For now, we still trigger it since
+    // it won't hurt if resource is later rejected (notifications can be dismissed)
+    try {
+        const { notifyUserFollowers } = await import('./notification.service');
+        await notifyUserFollowers(
+            userEmail,
+            input.title,
+            'resource',
+            `/study?resource=${data.id}`,
+            collegeId
+        );
+    } catch (notifyError) {
+        console.error('[ResourceService] Notification error:', notifyError);
+        // Don't fail the request if notification fails
+    }
+
     return mapResource(data);
 }
 

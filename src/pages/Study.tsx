@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Timer } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, X, Users } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,11 +22,9 @@ import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
-import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/use-debounce";
-import { supabase } from "../supabase";
-import { toast } from "sonner";
+import { useResources } from "@/hooks/useResources";
 
 const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const branches = ["cse", "ece", "me", "ce", "eee", "aiml", "ds", "it"];
@@ -76,9 +75,12 @@ const Study = () => {
   const [sortBy, setSortBy] = useState<SortOption>("votes");
   const [showMobileTools, setShowMobileTools] = useState(false);
 
-  // Supabase state
-  const [resources, setResources] = useState<any[]>([]);
-  const [loadingResources, setLoadingResources] = useState(true);
+  // React Query: Fetch resources with caching
+  const { resources, isLoading: loadingResources, refresh: handleRefresh } = useResources({
+    semester: selectedSemester,
+    branch: selectedBranch,
+    subject: selectedSubject,
+  });
 
   // Read tab from URL and sync with searchMode
   useEffect(() => {
@@ -103,57 +105,6 @@ const Study = () => {
     }
   }, [user, loading, navigate]);
 
-  // Fetch resources from Supabase
-  useEffect(() => {
-    fetchResources();
-  }, [selectedSemester, selectedBranch, selectedSubject]);
-
-  const fetchResources = async () => {
-    setLoadingResources(true);
-    try {
-      // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.domain || 'kiet.edu';
-
-      let query = supabase
-        .from('resources')
-        .select('*')
-        .eq('status', 'approved') // Only show approved resources
-        .eq('college_id', collegeId) // Policy: College data isolation
-        .order('created_at', { ascending: false });
-
-      // Apply filters (skip if value is 'all')
-      if (selectedSemester && selectedSemester !== 'all') {
-        query = query.eq('semester', selectedSemester);
-      }
-      if (selectedBranch && selectedBranch !== 'all') {
-        query = query.eq('branch', selectedBranch);
-      }
-      if (selectedSubject && selectedSubject !== 'all') {
-        query = query.eq('subject', selectedSubject);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Transform data to include upvotes/downvotes and calculate net votes
-      const transformed = data?.map(resource => ({
-        ...resource,
-        upvotes: resource.upvotes || 0,
-        downvotes: resource.downvotes || 0,
-        votes: (resource.upvotes || 0) - (resource.downvotes || 0), // Net votes for sorting
-      })) || [];
-
-      setResources(transformed);
-    } catch (error) {
-      console.error('Error fetching resources:', error);
-      toast.error('Failed to load resources');
-      setResources([]); // Set empty array on error
-    } finally {
-      setLoadingResources(false);
-    }
-  };
-
   if (loading) return null;
   if (!user) return null;
 
@@ -161,6 +112,7 @@ const Study = () => {
     ? subjects[selectedBranch as keyof typeof subjects] || []
     : [];
 
+  // Filter and sort resources (memoized for performance)
   const filteredResources = resources
     .filter((resource) => {
       const query = debouncedSearchQuery.toLowerCase();
@@ -183,11 +135,6 @@ const Study = () => {
           return (b.votes || 0) - (a.votes || 0);
       }
     });
-
-  const handleRefresh = () => {
-    fetchResources();
-    toast.success('Resources refreshed');
-  };
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
@@ -428,29 +375,40 @@ const Study = () => {
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredResources.map((resource) => (
-                    <ResourceCard
-                      key={resource.id}
-                      id={resource.id}
-                      title={resource.title}
-                      type={resource.type as ResourceType}
-                      author={resource.uploaded_by_name || "Anonymous"}
-                      authorType="student"
-                      upvotes={resource.upvotes || 0}
-                      downvotes={resource.downvotes || 0}
-                      votes={resource.votes || 0}
-                      subject={resource.subject}
-                      chapter={resource.chapter || "General"}
-                      pdfUrl={resource.file_url}
-                      videoUrl={resource.video_url}
-                      semester={resource.semester}
-                      branch={resource.branch}
-                      uploaded_by_email={resource.uploaded_by_email}
-                      created_at={resource.created_at}
-                    />
-                  ))}
-                </div>
+                /* Virtualized grid for performance - only renders visible items */
+                <VirtuosoGrid
+                  style={{ height: 'calc(100vh - 280px)' }}
+                  totalCount={filteredResources.length}
+                  listClassName="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  itemClassName=""
+                  itemContent={(index) => {
+                    const resource = filteredResources[index];
+                    return (
+                      <ResourceCard
+                        key={resource.id}
+                        id={resource.id}
+                        title={resource.title}
+                        type={resource.type as ResourceType}
+                        author={resource.uploaded_by_name || "Anonymous"}
+                        authorType="student"
+                        upvotes={resource.upvotes || 0}
+                        downvotes={resource.downvotes || 0}
+                        votes={resource.votes || 0}
+                        subject={resource.subject}
+                        chapter={resource.chapter || "General"}
+                        pdfUrl={resource.file_url}
+                        videoUrl={resource.video_url}
+                        semester={resource.semester}
+                        branch={resource.branch}
+                        uploaded_by_email={resource.uploaded_by_email}
+                        created_at={resource.created_at}
+                      />
+                    );
+                  }}
+                  components={{
+                    Footer: () => <div className="h-20" />,
+                  }}
+                />
               )}
             </div>
           ) : searchMode === "following" ? (

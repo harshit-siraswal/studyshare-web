@@ -19,7 +19,7 @@ router.get('/:noticeId/comments', rateLimit('default'), async (req, res, next) =
 
         const { data, error } = await supabase
             .from('notice_comments')
-            .select('*')
+            .select('id, notice_id, user_email, user_name, content, parent_id, created_at')
             .eq('notice_id', noticeId)
             .order('created_at', { ascending: true });
 
@@ -98,24 +98,17 @@ router.post(
                         .eq('id', parentId)
                         .single();
 
+                    // Notify parent comment author (if not replying to own comment)
                     if (parentComment && parentComment.user_email !== userEmail) {
-                        // Fetch parent author user ID
-                        const { data: parentAuthor } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('email', parentComment.user_email)
-                            .single();
-
-                        if (parentAuthor) {
-                            const { createNotification } = await import('../services/notification.service');
-                            await createNotification(
-                                parentAuthor.id,
-                                'New Reply',
-                                `${userName} replied to your comment in notices`,
-                                'notice',
-                                `/notices?id=${noticeId}`
-                            );
-                        }
+                        const { createNotification } = await import('../services/notification.service');
+                        await createNotification(
+                            parentComment.user_email,
+                            'New Reply',
+                            `${userName} replied to your comment in notices`,
+                            'notice',
+                            `/notices?id=${noticeId}`,
+                            collegeId
+                        );
                     }
                 } catch (notifyError) {
                     console.error('[NoticeComments] Notification error:', notifyError);

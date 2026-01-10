@@ -17,28 +17,11 @@ import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
 import { SEO } from "@/components/SEO";
-import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
-
-// --- Types ---
-interface Notice {
-  id: string;
-  title: string;
-  content: string;
-  department: string;
-  priority: string;
-  file_url: string | null;
-  file_type: 'pdf' | 'video' | 'image' | null;
-  created_by: string;
-  created_at: string;
-  expires_at: string | null;
-  is_active: boolean;
-  likes: number;
-  comments: number;
-}
+import { useNotices, Notice } from "@/hooks/useNotices";
 
 // --- Constants ---
 const DEPARTMENTS = [
@@ -58,10 +41,11 @@ const Notices = () => {
   const location = useLocation();
   const { user } = useAuth();
 
+  // React Query: Fetch notices with caching
+  const { notices, isLoading: loading } = useNotices();
+
   // State
   const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou');
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(true);
   const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,9 +70,8 @@ const Notices = () => {
   // Selected notice for modal view
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  // Fetch logic
+  // Fetch followed departments on mount
   useEffect(() => {
-    fetchNotices();
     if (user?.email) {
       fetchFollowedDepartments();
     }
@@ -100,31 +83,6 @@ const Notices = () => {
       toggleComments(selectedNotice.id);
     }
   }, [selectedNotice]);
-
-  const fetchNotices = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('notices')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const validNotices = (data || []).map(n => ({
-        ...n,
-        likes: n.likes || 0, // Fallback if column missing/null
-        comments: n.comments || 0
-      }));
-
-      setNotices(validNotices);
-    } catch (error) {
-      console.error('Error fetching notices:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchFollowedDepartments = async () => {
     if (!user?.email) return;
