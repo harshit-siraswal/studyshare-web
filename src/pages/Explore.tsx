@@ -129,8 +129,8 @@ const Explore = () => {
             />
             {/* Header */}
             <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-                <div className="max-w-4xl mx-auto px-4 py-3">
-                    <div className="flex items-center gap-4">
+                <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3">
+                    <div className="flex items-center gap-3 sm:gap-4">
                         <Button variant="ghost" size="icon" onClick={() => navigate("/study")}>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -146,7 +146,7 @@ const Explore = () => {
                 </div>
             </header>
 
-            <div className="max-w-4xl mx-auto p-4">
+            <div className="max-w-4xl mx-auto p-3 sm:p-4 pb-20 sm:pb-4">
                 {/* Domain Filter Notice */}
                 <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
                     <p className="text-sm text-primary">
