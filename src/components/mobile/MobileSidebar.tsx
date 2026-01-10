@@ -89,24 +89,33 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 </div>
 
                 {/* User Profile - Clickable to go to profile */}
-                {user && (
-                    <div
-                        className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleNavigate('/profile')}
-                    >
-                        <div className="flex items-center gap-3">
-                            <Avatar className="w-12 h-12">
-                                <AvatarImage src={user.photoURL || undefined} />
-                                <AvatarFallback>{getInitials(user.email || 'U')}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium truncate">{user.displayName || 'User'}</p>
-                                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                                <p className="text-xs text-primary">View Profile →</p>
+                {user && (() => {
+                    const selectedCollege = JSON.parse(localStorage.getItem("selectedCollege") || "{}");
+                    return (
+                        <div
+                            className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => handleNavigate('/profile')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Avatar className="w-12 h-12">
+                                    <AvatarImage src={user.photoURL || undefined} />
+                                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                        {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">
+                                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                        {selectedCollege?.name || 'Your College'}
+                                    </p>
+                                    <p className="text-xs text-primary">View Profile →</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Navigation */}
                 <nav className="p-2">

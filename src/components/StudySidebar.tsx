@@ -42,6 +42,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   const { logout } = useAuth();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const selectedCollege = JSON.parse(localStorage.getItem("selectedCollege") || "{}");
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -292,8 +293,12 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             )}
           </Avatar>
           <div className="flex-1 min-w-0 text-left">
-            <p className="font-medium text-sidebar-foreground truncate">{userProfile?.display_name || user.name || user.displayName || "Student"}</p>
-            <p className="text-xs text-muted-foreground truncate">{userProfile?.college || user.college || "College"}</p>
+            <p className="font-medium text-sidebar-foreground truncate">
+              {userProfile?.display_name || user.displayName || user.name || user.email?.split('@')[0] || "User"}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {selectedCollege?.name || userProfile?.college || "Your College"}
+            </p>
           </div>
         </button>
         <div className="flex items-center gap-1">
