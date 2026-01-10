@@ -25,6 +25,7 @@ export async function createRoom(
             is_private: isPrivate,
             join_code: joinCode,
             created_by: createdBy,
+            created_by_email: createdBy, // DB requires this NOT NULL column
             college_id: collegeId,
             member_count: 1,
         })
