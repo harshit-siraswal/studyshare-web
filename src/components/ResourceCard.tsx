@@ -268,34 +268,6 @@ const ResourceCard = ({
                 Click to {type === "video" ? "watch" : "view"}
               </span>
             </div>
-
-            {/* Uploader Info with Follow Button */}
-            {uploaded_by_email && (
-              <div className="flex items-center justify-between pt-3 mt-3 border-t">
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
-                      {author?.charAt(0).toUpperCase() || 'A'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{author || 'Anonymous'}</p>
-                    {created_at && (
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(created_at).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <FollowButton
-                  targetUserEmail={uploaded_by_email}
-                  targetUserName={author}
-                  size="sm"
-                  variant="outline"
-                />
-              </div>
-            )}
           </div>
         </div>
       </Card>

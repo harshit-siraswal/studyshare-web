@@ -435,12 +435,12 @@ const Notices = () => {
                                   value={newComment}
                                   onChange={(e) => setNewComment(e.target.value)}
                                   className="flex-1 h-9 text-sm"
-                                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submitComment(notice.id)}
+                                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(notice.id, newComment)}
                                 />
                                 <Button
                                   size="icon"
                                   className="h-9 w-9 shrink-0"
-                                  onClick={() => submitComment(notice.id)}
+                                  onClick={() => handleReply(notice.id, newComment)}
                                   disabled={!newComment.trim() || postingComment}
                                 >
                                   {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
