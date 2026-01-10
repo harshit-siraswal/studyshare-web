@@ -78,4 +78,10 @@ router.get('/rooms/:roomId/votes', rateLimit('default'), chatController.getUserV
  */
 router.get('/rooms/:roomId/info', rateLimit('default'), chatController.getRoomInfo);
 
+/**
+ * GET /api/chat/rooms
+ * Get all rooms for discovery
+ */
+router.get('/rooms', rateLimit('default'), chatController.getAllRooms);
+
 export default router;

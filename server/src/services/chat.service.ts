@@ -197,6 +197,11 @@ export async function postMessage(
         throw Errors.internal('Failed to post message');
     }
 
+    // Send notifications to room members (async, don't block response)
+    notifyRoomMembers(roomId, authorName, authorEmail, content).catch(err => {
+        console.error('[ChatService] Notification error:', err);
+    });
+
     return { id: data.id };
 }
 
@@ -489,6 +494,57 @@ function generateJoinCode(): string {
 }
 
 /**
+ * Notify room members about new post (async helper, doesn't throw)
+ */
+async function notifyRoomMembers(
+    roomId: string,
+    authorName: string,
+    authorEmail: string,
+    content: string
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    // Get room info
+    const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('name')
+        .eq('id', roomId)
+        .single();
+
+    if (!room) return;
+
+    // Get all room members except the author
+    const { data: members } = await supabase
+        .from('room_members')
+        .select('user_email')
+        .eq('room_id', roomId)
+        .neq('user_email', authorEmail);
+
+    if (!members || members.length === 0) return;
+
+    // Import notification service
+    const { createNotification } = await import('./notification.service');
+
+    // Send notifications (batch, max 50 at a time to avoid overload)
+    const truncatedContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
+
+    for (const member of members.slice(0, 50)) {
+        try {
+            await createNotification(
+                member.user_email,
+                `New post in ${room.name}`,
+                `${authorName}: ${truncatedContent}`,
+                'chat',
+                `/chatroom/${roomId}`
+            );
+        } catch (err) {
+            // Don't fail if individual notification fails
+            console.error(`[ChatService] Failed to notify ${member.user_email}:`, err);
+        }
+    }
+}
+
+/**
  * Get room info for viewing (public rooms accessible without joining)
  */
 export async function getRoomInfo(
@@ -510,13 +566,15 @@ export async function getRoomInfo(
 }> {
     const supabase = getSupabaseAdmin();
 
+    // Use * to avoid errors if join_code column doesn't exist yet
     const { data: room, error } = await supabase
         .from('chat_rooms')
-        .select('id, name, description, is_private, member_count, created_by, created_at, join_code')
+        .select('*')
         .eq('id', roomId)
         .single();
 
     if (error || !room) {
+        console.error('[ChatService] getRoomInfo error:', error);
         throw Errors.notFound('Room');
     }
 
@@ -551,3 +609,36 @@ export async function getRoomInfo(
         isAdmin,
     };
 }
+
+/**
+ * Get all rooms for a college (for room listing/discovery)
+ */
+export async function getAllRooms(
+    collegeId: string
+): Promise<{
+    rooms: Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        is_private: boolean;
+        member_count: number;
+        created_by: string;
+        created_at: string;
+    }>;
+}> {
+    const supabase = getSupabaseAdmin();
+
+    const { data: rooms, error } = await supabase
+        .from('chat_rooms')
+        .select('id, name, description, is_private, member_count, created_by, created_at')
+        .eq('college_id', collegeId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('[ChatService] getAllRooms error:', error);
+        throw Errors.internal('Failed to fetch rooms');
+    }
+
+    return { rooms: rooms || [] };
+}
+

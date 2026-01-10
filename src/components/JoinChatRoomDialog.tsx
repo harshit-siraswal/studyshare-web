@@ -17,10 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { joinChatRoomById } from "@/lib/api";
+import { joinChatRoomById, joinChatRoom } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import bcrypt from "bcryptjs";
 
 interface JoinChatRoomDialogProps {
   trigger: React.ReactNode;
@@ -45,7 +44,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
   const [joining, setJoining] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [password, setPassword] = useState("");
+  const [joinCode, setJoinCode] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -81,7 +80,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
       return;
     }
 
-    // If private room, show password input
+    // If private room, show code input
     if (room.is_private && !selectedRoom) {
       setSelectedRoom(room);
       return;
@@ -104,39 +103,23 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
         return;
       }
 
-      // Verify password for private rooms (read password hash is allowed)
+      // For private rooms, use join by code
       if (room.is_private) {
-        const { data: roomData } = await supabase
-          .from('chat_rooms')
-          .select('password')
-          .eq('id', room.id)
-          .single();
-
-        if (!roomData?.password) {
-          toast.error("Room password not found");
-          setJoining(null);
-          return;
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, roomData.password);
-        if (!isPasswordValid) {
-          toast.error("Incorrect password");
-          setJoining(null);
-          return;
-        }
+        await joinChatRoom(joinCode, selectedCollege?.domain);
+        toast.success("Joined room successfully!");
+      } else {
+        // For public rooms, join directly by ID
+        await joinChatRoomById(
+          room.id,
+          user.displayName || user.email?.split('@')[0] || 'User',
+          selectedCollege?.domain || 'kiet.edu'
+        );
+        toast.success("Joined room successfully!");
       }
 
-      // Use backend API for secure member insertion
-      await joinChatRoomById(
-        room.id,
-        user.displayName || user.email?.split('@')[0] || 'User',
-        selectedCollege?.domain || 'kiet.edu'
-      );
-
-      toast.success("Joined room successfully!");
       setOpen(false);
       setSelectedRoom(null);
-      setPassword("");
+      setJoinCode("");
       navigate(`/chatroom/${room.id}`);
     } catch (error: any) {
       console.error('Error joining room:', error);
@@ -156,7 +139,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
       setOpen(newOpen);
       if (!newOpen) {
         setSelectedRoom(null);
-        setPassword("");
+        setJoinCode("");
         setSearchQuery("");
       }
     }}>
@@ -170,25 +153,30 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
         </DialogHeader>
 
         {selectedRoom ? (
-          // Password input for private room
+          // Code input for private room
           <div className="space-y-4 py-4">
             <div className="p-4 bg-muted rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Lock className="w-4 h-4 text-primary" />
+                <Lock className="w-4 h-4 text-amber-500" />
                 <h3 className="font-semibold">{selectedRoom.name}</h3>
+                <Badge variant="outline">Private</Badge>
               </div>
               <p className="text-sm text-muted-foreground">{selectedRoom.description}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="joinCode">Room Code</Label>
               <Input
-                id="password"
-                type="password"
-                placeholder="Enter room password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="joinCode"
+                placeholder="Enter 6-digit room code"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                className="font-mono text-center text-lg tracking-widest"
               />
+              <p className="text-xs text-muted-foreground">
+                Ask the room admin for the invite code
+              </p>
             </div>
 
             <div className="flex gap-2">
@@ -196,7 +184,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
                 variant="outline"
                 onClick={() => {
                   setSelectedRoom(null);
-                  setPassword("");
+                  setJoinCode("");
                 }}
                 className="flex-1"
               >
@@ -204,7 +192,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
               </Button>
               <Button
                 onClick={() => handleJoin(selectedRoom)}
-                disabled={!password || !!joining}
+                disabled={joinCode.length < 6 || !!joining}
                 className="flex-1"
               >
                 {joining ? (
@@ -267,7 +255,7 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
                               <Users className="w-3 h-3" />
                               <span>{room.member_count} members</span>
                             </div>
-                            <span>by {room.created_by}</span>
+                            <span>by {room.created_by?.split('@')[0] || 'Unknown'}</span>
                           </div>
                         </div>
                         <Button

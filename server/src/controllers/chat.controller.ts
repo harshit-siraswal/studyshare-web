@@ -310,3 +310,23 @@ export async function getRoomInfo(
         next(error);
     }
 }
+
+/**
+ * GET /api/chat/rooms
+ * Get all rooms for discovery
+ */
+export async function getAllRooms(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const collegeId = req.query.collegeId as string || 'kiet.edu';
+
+        const result = await chatService.getAllRooms(collegeId);
+
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+}
