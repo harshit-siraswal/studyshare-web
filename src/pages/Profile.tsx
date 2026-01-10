@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import PDFViewer from "@/components/PDFViewer";
 import EditResourceDialog from "@/components/EditResourceDialog";
 import FollowButton from "@/components/FollowButton";
+import ImageCropper from "@/components/ImageCropper";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "../supabase";
 import { SEO } from "@/components/SEO";
@@ -167,6 +168,10 @@ const Profile = () => {
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
   const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
   const [discoverSearch, setDiscoverSearch] = useState("");
+
+  // Image Cropper State
+  const [cropperImage, setCropperImage] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
 
@@ -635,26 +640,44 @@ const Profile = () => {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB limit for base64
-      toast.error('Image must be less than 2MB');
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit before crop
+      toast.error('Image must be less than 5MB');
       return;
     }
 
+    // Convert to data URL for cropper
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropperImage(reader.result as string);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  // Handle cropped image from ImageCropper
+  const handleCroppedImage = async (croppedBlob: Blob) => {
+    if (!authUser) return;
+
     setUploadingPhoto(true);
     try {
-      console.log('Converting image to base64...');
+      console.log('Converting cropped image to base64...');
 
-      // Convert image to base64 and store directly in database
+      // Convert blob to base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           resolve(reader.result as string);
         };
         reader.onerror = reject;
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(croppedBlob);
       });
 
-      console.log('Image converted, updating database...');
+      console.log('Image cropped, updating database...');
 
       // Save base64 directly to database
       const { error: updateError } = await supabase
@@ -672,6 +695,10 @@ const Profile = () => {
       // Update local state
       setUserProfile(prev => prev ? { ...prev, profile_photo_url: base64 } : null);
       setEditForm(prev => ({ ...prev, profilePhoto: base64 }));
+
+      // Close cropper
+      setShowCropper(false);
+      setCropperImage(null);
 
       toast.success('Profile photo updated!');
     } catch (error: any) {
@@ -1553,6 +1580,20 @@ const Profile = () => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Image Cropper Modal */}
+      {cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          isOpen={showCropper}
+          onClose={() => {
+            setShowCropper(false);
+            setCropperImage(null);
+          }}
+          onCropComplete={handleCroppedImage}
+          aspectRatio={1}
+        />
+      )}
     </div >
   );
 };
