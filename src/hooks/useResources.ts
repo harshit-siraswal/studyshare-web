@@ -19,6 +19,7 @@ export interface Resource {
     votes: number;
     uploaded_by_name: string;
     uploaded_by_email: string;
+    uploaded_by_role?: 'student' | 'admin' | 'teacher';
     created_at: string;
     status: string;
     college_id: string;

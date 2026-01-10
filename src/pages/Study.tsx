@@ -132,6 +132,12 @@ const Study = () => {
           return (b.votes || 0) - (a.votes || 0);
         case "recent":
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "teacher":
+          // Teacher/admin content first, then by votes
+          const aIsTeacher = (a as any).uploaded_by_role === 'admin' || (a as any).uploaded_by_role === 'teacher' ? 1 : 0;
+          const bIsTeacher = (b as any).uploaded_by_role === 'admin' || (b as any).uploaded_by_role === 'teacher' ? 1 : 0;
+          if (bIsTeacher !== aIsTeacher) return bIsTeacher - aIsTeacher;
+          return (b.votes || 0) - (a.votes || 0);
         default:
           return (b.votes || 0) - (a.votes || 0);
       }
@@ -318,6 +324,9 @@ const Study = () => {
                       <DropdownMenuItem onClick={() => setSortBy("recent")}>
                         Most Recent
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy("teacher")}>
+                        Teacher Content
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
@@ -384,6 +393,10 @@ const Study = () => {
                   itemClassName=""
                   itemContent={(index) => {
                     const resource = filteredResources[index];
+                    // Determine author type based on uploaded_by_role
+                    const authorType = (resource.uploaded_by_role === 'admin' || resource.uploaded_by_role === 'teacher')
+                      ? 'teacher'
+                      : 'student';
                     return (
                       <ResourceCard
                         key={resource.id}
@@ -391,7 +404,7 @@ const Study = () => {
                         title={resource.title}
                         type={resource.type as ResourceType}
                         author={resource.uploaded_by_name || "Anonymous"}
-                        authorType="student"
+                        authorType={authorType}
                         upvotes={resource.upvotes || 0}
                         downvotes={resource.downvotes || 0}
                         votes={resource.votes || 0}

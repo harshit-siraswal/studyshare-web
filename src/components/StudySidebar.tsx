@@ -197,6 +197,20 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => navigate("/explore")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Search className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Explore Students</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => navigate("/notices")}
                     className="text-muted-foreground hover:text-foreground relative"
                   >
@@ -307,7 +321,20 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             </Button>
           </div>
 
-          {/* College Notices - Now a button */}
+          {/* Explore Students */}
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
+              onClick={() => navigate("/explore")}
+            >
+              <Search className="w-4 h-4" />
+              <span>Explore Students</span>
+              <ExternalLink className="w-3 h-3 ml-auto" />
+            </Button>
+          </div>
+
+          {/* College Notices */}
           <div>
             <Button
               variant="ghost"
@@ -321,19 +348,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             </Button>
           </div>
 
-          {/* Explore - Now a button */}
-          <div>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
-              onClick={() => navigate("/explore")}
-            >
-              <Search className="w-4 h-4" />
-              <span>Explore Students</span>
-            </Button>
-          </div>
-
-          {/* Chat Rooms - Now a button */}
+          {/* Chat Rooms */}
           <div>
             <Button
               variant="ghost"
