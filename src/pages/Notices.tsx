@@ -331,11 +331,11 @@ const Notices = () => {
               displayedNotices.map((notice) => {
                 const dept = getDeptInfo(notice.department);
                 return (
-                  <Card key={notice.id} className="p-4 mb-3 hover:bg-secondary/10 transition-colors cursor-pointer border-border/50" onClick={() => setSelectedNotice(notice)}>
-                    <div className="flex gap-3">
+                  <Card key={notice.id} className="p-2 sm:p-4 mb-2 sm:mb-3 hover:bg-secondary/10 transition-colors cursor-pointer border-border/50" onClick={() => setSelectedNotice(notice)}>
+                    <div className="flex gap-2 sm:gap-3">
                       <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
-                        <Avatar className="w-10 h-10 border border-border">
-                          <AvatarFallback className="bg-secondary text-lg">{dept.icon}</AvatarFallback>
+                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 border border-border">
+                          <AvatarFallback className="bg-secondary text-sm sm:text-lg">{dept.icon}</AvatarFallback>
                         </Avatar>
                       </div>
                       <div className="flex-1 min-w-0">

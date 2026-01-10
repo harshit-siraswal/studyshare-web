@@ -72,6 +72,8 @@ const Chatroom = () => {
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<number>(0);
+  const [isMember, setIsMember] = useState<boolean>(true);
 
   // Pinned rooms from localStorage
   const [pinnedRooms, setPinnedRooms] = useState<Set<string>>(() => {
@@ -200,25 +202,41 @@ const Chatroom = () => {
   };
 
   const subscribeToMessages = () => {
-    if (!roomId) return;
+    if (!roomId || !user?.email) return;
 
-    const subscription = supabase
-      .channel(`room:${roomId}`)
-      .on('postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'room_messages',
-          filter: `room_id=eq.${roomId}`
-        },
-        (payload) => {
-          setMessages(prev => [payload.new as Message, ...prev]);
-        }
-      )
-      .subscribe();
+    const channel = supabase.channel(`room:${roomId}`, {
+      config: {
+        presence: { key: user.email },
+      },
+    });
+
+    // Track presence for active users
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      setActiveUsers(Object.keys(state).length);
+    });
+
+    // Subscribe to new messages
+    channel.on('postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'room_messages',
+        filter: `room_id=eq.${roomId}`
+      },
+      (payload) => {
+        setMessages(prev => [payload.new as Message, ...prev]);
+      }
+    );
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ user_email: user.email, online_at: new Date().toISOString() });
+      }
+    });
 
     return () => {
-      subscription.unsubscribe();
+      channel.unsubscribe();
     };
   };
 
@@ -911,12 +929,20 @@ const Chatroom = () => {
                       {/* Content */}
                       <div className="flex-1 p-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <Avatar className="w-6 h-6">
+                          <Avatar
+                            className="w-6 h-6 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                            onClick={() => navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`)}
+                          >
                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
                               {message.author_name[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-foreground">{message.author_name}</span>
+                          <button
+                            className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                            onClick={() => navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`)}
+                          >
+                            {message.author_name}
+                          </button>
                           <span>·</span>
                           <span>{formatTimeAgo(message.created_at)}</span>
                         </div>
@@ -1024,6 +1050,63 @@ const Chatroom = () => {
             )}
           </div>
         </ScrollArea>
+      </div>
+
+      {/* Right Sidebar - Room Info (Reddit-style) */}
+      <div className="w-72 border-l border-border hidden lg:block sticky top-0 h-screen overflow-hidden">
+        <div className="p-4 border-b border-border bg-primary/5">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            {currentRoom?.is_private ? <Lock className="w-4 h-4 text-amber-500" /> : <Hash className="w-4 h-4 text-primary" />}
+            r/{currentRoom?.name}
+          </h2>
+          {currentRoom?.description && (
+            <p className="text-sm text-muted-foreground mt-1">{currentRoom.description}</p>
+          )}
+        </div>
+        <div className="p-4 space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <p className="text-xl font-bold">{currentRoom?.member_count || 0}</p>
+              <p className="text-xs text-muted-foreground">Members</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-green-500">{activeUsers}</p>
+              <p className="text-xs text-muted-foreground">Online Now</p>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              <Users className="w-4 h-4" />
+              <span>Created by</span>
+            </div>
+            <button
+              className="font-medium text-foreground hover:text-primary transition-colors"
+              onClick={() => navigate(`/profile/${currentRoom?.created_by?.split('@')[0]}`)}
+            >
+              {currentRoom?.created_by?.split('@')[0] || 'Unknown'}
+            </button>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <div className="text-sm text-muted-foreground">
+              Created {currentRoom?.created_at ? new Date(currentRoom.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown'}
+            </div>
+          </div>
+
+          {/* Join/Leave button for non-members */}
+          {!isMember && (
+            <Button className="w-full" onClick={() => {
+              // TODO: Implement join room logic
+              toast.success("Joined room!");
+              setIsMember(true);
+            }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Join Community
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Image Viewer Modal */}

@@ -211,9 +211,9 @@ const Explore = () => {
                         filteredUsers.map((user) => (
                             <Card
                                 key={user.id}
-                                className="p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                                className="p-2 sm:p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                             >
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 sm:gap-4">
                                     <Avatar
                                         className="w-12 h-12 cursor-pointer"
                                         onClick={() => navigate(`/profile/${user.username}`)}
