@@ -746,7 +746,7 @@ const Chatroom = () => {
         description={currentRoom?.description || "Join the conversation in this chat room."}
       />
       {/* Sidebar - Room list */}
-      <div className="w-64 border-r border-border hidden md:block">
+      <div className="w-64 border-r border-border hidden md:block sticky top-0 h-screen overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="font-semibold text-foreground">Your Rooms</h2>
         </div>
@@ -755,7 +755,7 @@ const Chatroom = () => {
             {rooms.map((room) => (
               <button
                 key={room.id}
-                onClick={() => navigate(`/ chatroom / ${room.id}`)}
+                onClick={() => navigate(`/chatroom/${room.id}`)}
                 className={cn(
                   "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
                   room.id === roomId
