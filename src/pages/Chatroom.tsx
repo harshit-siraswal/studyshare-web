@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2, Copy, Settings } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, deleteChatComment, getChatComments, ChatComment, getUserChatVotes } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, deleteChatComment, getChatComments, ChatComment, getUserChatVotes, getChatRoomInfo, joinChatRoomById } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -74,6 +74,8 @@ const Chatroom = () => {
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [activeUsers, setActiveUsers] = useState<number>(0);
   const [isMember, setIsMember] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
 
   // Pinned rooms from localStorage
   const [pinnedRooms, setPinnedRooms] = useState<Set<string>>(() => {
@@ -166,14 +168,21 @@ const Chatroom = () => {
     if (!roomId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('chat_rooms')
-        .select('*')
-        .eq('id', roomId)
-        .single();
+      // Use new API to get room info with membership check
+      const { room, isMember: memberStatus, isAdmin: adminStatus } = await getChatRoomInfo(roomId);
 
-      if (error) throw error;
-      setCurrentRoom(data);
+      setCurrentRoom({
+        id: room.id,
+        name: room.name,
+        description: room.description,
+        is_private: room.is_private,
+        member_count: room.member_count,
+        created_by: room.created_by,
+        created_at: room.created_at,
+      });
+      setIsMember(memberStatus);
+      setIsAdmin(adminStatus);
+      setRoomCode(room.room_code || null);
     } catch (error) {
       console.error('Error fetching room:', error);
       toast.error("Room not found");
@@ -834,60 +843,82 @@ const Chatroom = () => {
 
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-4 pb-20">
-            {/* New post */}
-            <Card className="p-4">
-              <Textarea
-                placeholder="Share something with the room..."
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                className="mb-3 min-h-[80px]"
-              />
-              {postImage && (
-                <div className="relative mb-3 inline-block">
-                  <img src={postImage} alt="Preview" className="h-32 rounded-lg object-cover" />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6"
-                    onClick={() => setPostImage(null)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <div className="flex gap-2">
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={uploadingImage}
-                  >
-                    {uploadingImage ? (
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            {/* New post - only for members */}
+            {isMember ? (
+              <Card className="p-4">
+                <Textarea
+                  placeholder="Share something with the room..."
+                  value={newPost}
+                  onChange={(e) => setNewPost(e.target.value)}
+                  className="mb-3 min-h-[80px]"
+                />
+                {postImage && (
+                  <div className="relative mb-3 inline-block">
+                    <img src={postImage} alt="Preview" className="h-32 rounded-lg object-cover" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={() => setPostImage(null)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <div className="flex gap-2">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 mr-1" />
+                      )}
+                      Image
+                    </Button>
+                  </div>
+                  <Button onClick={handlePost} disabled={posting || (!newPost.trim() && !postImage)}>
+                    {posting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <ImageIcon className="w-4 h-4 mr-1" />
+                      <Plus className="w-4 h-4 mr-2" />
                     )}
-                    Image
+                    Post
                   </Button>
                 </div>
-                <Button onClick={handlePost} disabled={posting || (!newPost.trim() && !postImage)}>
-                  {posting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
+              </Card>
+            ) : (
+              <Card className="p-4 bg-muted/30 border-dashed">
+                <div className="text-center py-4">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-3">Join this community to post</p>
+                  <Button onClick={async () => {
+                    try {
+                      await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollege?.domain);
+                      toast.success("Joined room!");
+                      setIsMember(true);
+                      fetchRoomDetails();
+                    } catch (error: any) {
+                      toast.error(error.message || "Failed to join room");
+                    }
+                  }}>
                     <Plus className="w-4 h-4 mr-2" />
-                  )}
-                  Post
-                </Button>
-              </div>
-            </Card>
+                    Join Community
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             {/* Posts */}
             {loading ? (
@@ -1097,14 +1128,55 @@ const Chatroom = () => {
 
           {/* Join/Leave button for non-members */}
           {!isMember && (
-            <Button className="w-full" onClick={() => {
-              // TODO: Implement join room logic
-              toast.success("Joined room!");
-              setIsMember(true);
+            <Button className="w-full" onClick={async () => {
+              try {
+                await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollege?.domain);
+                toast.success("Joined room!");
+                setIsMember(true);
+                // Refresh room details to get updated member count
+                fetchRoomDetails();
+              } catch (error: any) {
+                toast.error(error.message || "Failed to join room");
+              }
             }}>
               <Plus className="w-4 h-4 mr-2" />
               Join Community
             </Button>
+          )}
+
+          {/* Member badge */}
+          {isMember && (
+            <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 px-3 py-2 rounded-lg">
+              <Users className="w-4 h-4" />
+              <span>You're a member</span>
+            </div>
+          )}
+
+          {/* Admin Room Code (only visible to admin of private rooms) */}
+          {isAdmin && roomCode && (
+            <div className="border-t border-border pt-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Settings className="w-4 h-4" />
+                <span>Admin Settings</span>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Room Code (share to invite)</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono bg-background px-2 py-1 rounded">{roomCode}</code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      navigator.clipboard.writeText(roomCode);
+                      toast.success("Code copied!");
+                    }}
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
