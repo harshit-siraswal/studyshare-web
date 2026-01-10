@@ -3,7 +3,7 @@
 // Hidden on auth and college selection pages
 
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Plus, Bell, MessageCircle } from 'lucide-react';
+import { Home, Bookmark, Plus, Bell, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import UploadResourceDialog from '@/components/UploadResourceDialog';
@@ -18,7 +18,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { icon: <Home className="w-5 h-5" />, label: 'Home', path: '/study' },
-    { icon: <Search className="w-5 h-5" />, label: 'Explore', path: '/explore' },
+    { icon: <Bookmark className="w-5 h-5" />, label: 'Saved', path: '/bookmarks' },
     { icon: <Plus className="w-6 h-6" />, label: 'Share', path: '', isCenter: true, action: 'upload' },
     { icon: <Bell className="w-5 h-5" />, label: 'Notices', path: '/notices' },
     { icon: <MessageCircle className="w-5 h-5" />, label: 'Chat', path: '/chatroom' },

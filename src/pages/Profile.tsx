@@ -952,6 +952,10 @@ const Profile = () => {
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
                 <span className="text-muted-foreground">{displayCollege}</span>
                 <div className="flex gap-3 sm:gap-4">
+                  <span className="text-foreground font-medium">
+                    <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                    {contributions.length} contributions
+                  </span>
                   <button
                     className="text-foreground font-medium hover:underline cursor-pointer"
                     onClick={() => setShowFollowersDialog(true)}

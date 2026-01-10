@@ -106,3 +106,100 @@ export async function createUserProfile(
 
     return data;
 }
+
+/**
+ * Check if a user is banned (globally or for a specific college)
+ * Used by admin-studyspace for ban feature integration
+ */
+export async function isUserBanned(email: string, collegeId?: string): Promise<boolean> {
+    const supabase = getSupabaseAdmin();
+
+    try {
+        // Check for ban: either global (college_id is null) or specific college
+        let query = supabase
+            .from('banned_users')
+            .select('id')
+            .eq('email', email);
+
+        if (collegeId) {
+            // Check for global ban OR college-specific ban
+            query = query.or(`college_id.is.null,college_id.eq.${collegeId}`);
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) {
+            console.error('[UserService] Check ban error:', error);
+            return false; // Fail open - don't block on error
+        }
+
+        return !!data;
+    } catch (error) {
+        console.error('[UserService] isUserBanned error:', error);
+        return false;
+    }
+}
+
+/**
+ * Ban a user (for admin-studyspace integration)
+ */
+export async function banUser(
+    email: string,
+    bannedBy: string,
+    reason?: string,
+    collegeId?: string
+): Promise<boolean> {
+    const supabase = getSupabaseAdmin();
+
+    try {
+        const { error } = await supabase
+            .from('banned_users')
+            .insert({
+                email,
+                banned_by: bannedBy,
+                reason: reason || 'Banned by admin',
+                college_id: collegeId || null,
+                banned_at: new Date().toISOString()
+            });
+
+        if (error) {
+            console.error('[UserService] Ban user error:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('[UserService] banUser error:', error);
+        return false;
+    }
+}
+
+/**
+ * Unban a user
+ */
+export async function unbanUser(email: string, collegeId?: string): Promise<boolean> {
+    const supabase = getSupabaseAdmin();
+
+    try {
+        let query = supabase
+            .from('banned_users')
+            .delete()
+            .eq('email', email);
+
+        if (collegeId) {
+            query = query.eq('college_id', collegeId);
+        }
+
+        const { error } = await query;
+
+        if (error) {
+            console.error('[UserService] Unban user error:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('[UserService] unbanUser error:', error);
+        return false;
+    }
+}
