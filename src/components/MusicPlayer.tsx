@@ -1,17 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Music, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MusicPlayerModal from "./MusicPlayerModal";
 
-const playlists = [
+interface Playlist {
+  id: number;
+  name: string;
+  embedId: string;
+  isCustom?: boolean;
+}
+
+const defaultPlaylists: Playlist[] = [
   { id: 1, name: "Lo-Fi Beats", embedId: "0vvXsWCC9xrXsKd4FyS8kM" },
   { id: 2, name: "Classical", embedId: "1h0CEZCm6IbFTbxThn6Xcs" },
   { id: 3, name: "Ambient", embedId: "37i9dQZF1DX3Ogo9pFvBkY" },
 ];
 
+const STORAGE_KEY = "studyspace_custom_playlists";
+
 const MusicPlayer = () => {
-  const [currentPlaylist, setCurrentPlaylist] = useState(playlists[0]);
+  const [customPlaylists, setCustomPlaylists] = useState<Playlist[]>([]);
+  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist>(defaultPlaylists[0]);
   const [showModal, setShowModal] = useState(false);
+
+  // Load custom playlists from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCustomPlaylists(parsed);
+      } catch (e) {
+        console.error("Failed to parse saved playlists", e);
+      }
+    }
+  }, []);
+
+  const allPlaylists = [...defaultPlaylists, ...customPlaylists];
+
+  // Callback when modal updates playlists
+  const handlePlaylistsChange = useCallback((playlists: Playlist[]) => {
+    const custom = playlists.filter(p => p.isCustom);
+    setCustomPlaylists(custom);
+  }, []);
 
   return (
     <>
@@ -59,13 +90,13 @@ const MusicPlayer = () => {
         <div className="p-4 pt-2 border-t border-border bg-muted/20">
           <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Quick Switch</p>
           <div className="flex gap-2 flex-wrap">
-            {playlists.map((playlist) => (
+            {allPlaylists.map((playlist) => (
               <button
                 key={playlist.id}
                 onClick={() => setCurrentPlaylist(playlist)}
                 className={`px-3 py-1.5 text-xs rounded-md transition-all font-medium ${currentPlaylist.id === playlist.id
-                    ? "bg-green-500 text-white shadow-sm"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                  ? "bg-green-500 text-white shadow-sm"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                   }`}
               >
                 {playlist.name}
@@ -78,6 +109,7 @@ const MusicPlayer = () => {
       <MusicPlayerModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
+        onPlaylistsChange={handlePlaylistsChange}
       />
     </>
   );
