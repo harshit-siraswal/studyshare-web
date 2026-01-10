@@ -104,7 +104,7 @@ export interface FollowRequest {
  */
 export async function sendFollowRequest(
     targetEmail: string,
-    recaptchaToken: string
+    recaptchaToken?: string
 ): Promise<{ message: string; request: FollowRequest }> {
     return apiRequest('/api/follow/request', {
         method: 'POST',

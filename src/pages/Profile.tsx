@@ -449,7 +449,7 @@ const Profile = () => {
 
         // Check if we're following them via backend API
         try {
-          const statusResult = await api.getFollowStatus(otherProfile.email);
+          const statusResult = await api.checkFollowStatus(otherProfile.email);
           setIsFollowingOther(statusResult.status === 'following');
         } catch (err) {
           console.error('Error checking follow status:', err);
