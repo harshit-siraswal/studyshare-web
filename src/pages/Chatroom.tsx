@@ -535,7 +535,7 @@ const Chatroom = () => {
   // Policy: Hide chat for readonly users
   if (isReadOnly) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen-safe bg-background flex items-center justify-center">
         <div className="text-center p-8">
           <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-xl font-semibold mb-2">Chat Rooms</h2>
@@ -552,7 +552,7 @@ const Chatroom = () => {
 
   if (!roomId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen-safe bg-background">
         <SEO
           title="Chat Rooms"
           description="Join chat rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
@@ -768,7 +768,7 @@ const Chatroom = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen-safe bg-background flex">
       <SEO
         title={currentRoom?.name || "Chat Room"}
         description={currentRoom?.description || "Join the conversation in this chat room."}

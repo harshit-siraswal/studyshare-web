@@ -218,7 +218,7 @@ const Notices = () => {
     });
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
+    <div className="min-h-screen-safe bg-background text-foreground flex justify-center">
       <SEO
         title="Notices"
         description="Stay updated with the latest announcements and notices from your college departments."

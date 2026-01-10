@@ -106,7 +106,7 @@ const Explore = () => {
     // Policy: Show message for readonly users
     if (isReadOnly) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="min-h-screen-safe bg-background flex items-center justify-center">
                 <div className="text-center p-8">
                     <AlertCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                     <h2 className="text-xl font-semibold mb-2">Explore Students</h2>
@@ -122,7 +122,7 @@ const Explore = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen-safe bg-background">
             <SEO
                 title="Explore Students"
                 description="Discover and connect with students from your college. Find classmates, follow peers, and build your academic network."
