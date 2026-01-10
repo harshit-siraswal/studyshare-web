@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, Lock, Globe, Loader2 } from "lucide-react";
+import { Lock, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,6 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
   const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
-  const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -43,11 +42,6 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
 
     if (!roomName.trim()) {
       toast.error("Please enter a room name");
-      return;
-    }
-
-    if (isPrivate && !password.trim()) {
-      toast.error("Please set a password for private room");
       return;
     }
 
@@ -75,9 +69,12 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
       );
 
       toast.success("Room created successfully!");
-      if (result.joinCode) {
-        toast.info(`Join code: ${result.joinCode}`, { duration: 10000 });
+
+      // Show join code for private rooms
+      if (result.joinCode && isPrivate) {
+        toast.info(`Share this code to invite others: ${result.joinCode}`, { duration: 15000 });
       }
+
       setOpen(false);
       handleReset();
 
@@ -95,7 +92,6 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
     setRoomName("");
     setDescription("");
     setIsPrivate(false);
-    setPassword("");
   };
 
   return (
@@ -138,11 +134,11 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
 
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div className="flex items-center gap-3">
-              {isPrivate ? <Lock className="w-4 h-4 text-primary" /> : <Globe className="w-4 h-4 text-primary" />}
+              {isPrivate ? <Lock className="w-4 h-4 text-amber-500" /> : <Globe className="w-4 h-4 text-primary" />}
               <div>
                 <p className="text-sm font-medium">{isPrivate ? "Private Room" : "Public Room"}</p>
                 <p className="text-xs text-muted-foreground">
-                  {isPrivate ? "Requires password to join" : "Anyone can join"}
+                  {isPrivate ? "Requires code to join" : "Anyone can join directly"}
                 </p>
               </div>
             </div>
@@ -150,16 +146,9 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
           </div>
 
           {isPrivate && (
-            <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Set a password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground bg-amber-500/10 p-3 rounded-lg">
+              💡 A unique join code will be auto-generated. Share it with people you want to invite.
+            </p>
           )}
 
           <Button onClick={handleCreate} className="w-full" disabled={creating}>

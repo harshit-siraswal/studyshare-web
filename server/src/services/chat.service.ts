@@ -11,29 +11,23 @@ export async function createRoom(
     isPrivate: boolean,
     createdBy: string,
     collegeId: string
-): Promise<{ id: string; joinCode?: string }> {
+): Promise<{ id: string; joinCode: string }> {
     const supabase = getSupabaseAdmin();
 
-    const joinCode = isPrivate ? generateJoinCode() : null;
-
-    // Build insert object - only include join_code if it has a value
-    const insertData: Record<string, any> = {
-        name,
-        description,
-        is_private: isPrivate,
-        created_by: createdBy,
-        college_id: collegeId,
-        member_count: 1,
-    };
-
-    // Only add join_code if private room (column may not exist in older DBs)
-    if (joinCode) {
-        insertData.join_code = joinCode;
-    }
+    // Generate join code for ALL rooms (public and private)
+    const joinCode = generateJoinCode();
 
     const { data, error } = await supabase
         .from('chat_rooms')
-        .insert(insertData)
+        .insert({
+            name,
+            description,
+            is_private: isPrivate,
+            join_code: joinCode,
+            created_by: createdBy,
+            college_id: collegeId,
+            member_count: 1,
+        })
         .select()
         .single();
 
@@ -45,7 +39,7 @@ export async function createRoom(
     // Add creator as first member
     await addMember(data.id, createdBy, collegeId);
 
-    return { id: data.id, joinCode: joinCode || undefined };
+    return { id: data.id, joinCode };
 }
 
 /**
