@@ -565,6 +565,88 @@ export async function deleteChatComment(
 }
 
 // ============================================
+// ROOM SETTINGS ENDPOINTS
+// ============================================
+
+export interface RoomMember {
+    user_email: string;
+    user_name: string;
+    is_banned: boolean;
+    notifications_muted: boolean;
+    joined_at: string;
+}
+
+/**
+ * Toggle mute notifications for a room
+ */
+export async function toggleRoomMute(
+    roomId: string,
+    muted: boolean
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/mute`, {
+        method: 'POST',
+        body: JSON.stringify({ muted }),
+    });
+}
+
+/**
+ * Regenerate room code (admin only)
+ */
+export async function regenerateRoomCode(
+    roomId: string
+): Promise<{ message: string; newCode: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/regenerate-code`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Ban a member from room (admin only)
+ */
+export async function banRoomMember(
+    roomId: string,
+    targetEmail: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/ban`, {
+        method: 'POST',
+        body: JSON.stringify({ targetEmail }),
+    });
+}
+
+/**
+ * Unban a member (admin only)
+ */
+export async function unbanRoomMember(
+    roomId: string,
+    targetEmail: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/unban`, {
+        method: 'POST',
+        body: JSON.stringify({ targetEmail }),
+    });
+}
+
+/**
+ * Delete a room (admin only)
+ */
+export async function deleteRoom(
+    roomId: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}`, {
+        method: 'DELETE',
+    });
+}
+
+/**
+ * Get room members list
+ */
+export async function getRoomMembers(
+    roomId: string
+): Promise<{ members: RoomMember[] }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/members`);
+}
+
+// ============================================
 // USER PROFILE ENDPOINTS
 // ============================================
 

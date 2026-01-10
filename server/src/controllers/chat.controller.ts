@@ -330,3 +330,146 @@ export async function getAllRooms(
         next(error);
     }
 }
+
+// ========================================
+// ROOM SETTINGS CONTROLLERS
+// ========================================
+
+/**
+ * POST /api/chat/rooms/:roomId/mute
+ * Toggle mute notifications
+ */
+export async function toggleMuteNotifications(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const { muted } = req.body;
+        const userEmail = req.user!.email;
+
+        await chatService.toggleMuteNotifications(roomId, userEmail, muted === true);
+
+        res.json({ message: muted ? 'Notifications muted' : 'Notifications unmuted' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/chat/rooms/:roomId/regenerate-code
+ * Regenerate room code (admin only)
+ */
+export async function regenerateRoomCode(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const adminEmail = req.user!.email;
+
+        const result = await chatService.regenerateRoomCode(roomId, adminEmail);
+
+        res.json({ message: 'Code regenerated', ...result });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/chat/rooms/:roomId/ban
+ * Ban a member (admin only)
+ */
+export async function banMember(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const { targetEmail } = req.body;
+        const adminEmail = req.user!.email;
+
+        if (!targetEmail) {
+            res.status(400).json({ message: 'targetEmail is required' });
+            return;
+        }
+
+        await chatService.banMember(roomId, adminEmail, targetEmail);
+
+        res.json({ message: 'Member banned' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/chat/rooms/:roomId/unban
+ * Unban a member (admin only)
+ */
+export async function unbanMember(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const { targetEmail } = req.body;
+        const adminEmail = req.user!.email;
+
+        if (!targetEmail) {
+            res.status(400).json({ message: 'targetEmail is required' });
+            return;
+        }
+
+        await chatService.unbanMember(roomId, adminEmail, targetEmail);
+
+        res.json({ message: 'Member unbanned' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * DELETE /api/chat/rooms/:roomId
+ * Delete a room (admin only)
+ */
+export async function deleteRoom(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+        const adminEmail = req.user!.email;
+
+        await chatService.deleteRoom(roomId, adminEmail);
+
+        res.json({ message: 'Room deleted' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/chat/rooms/:roomId/members
+ * Get room members list
+ */
+export async function getRoomMembers(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { roomId } = req.params;
+
+        const members = await chatService.getRoomMembers(roomId);
+
+        res.json({ members });
+    } catch (error) {
+        next(error);
+    }
+}
+

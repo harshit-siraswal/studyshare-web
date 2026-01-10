@@ -524,14 +524,19 @@ async function notifyRoomMembers(
 
     if (!room) return;
 
-    // Get all room members except the author
+    // Get all room members except the author, excluding muted and banned members
     const { data: members } = await supabase
         .from('room_members')
-        .select('user_email')
+        .select('user_email, notifications_muted, is_banned')
         .eq('room_id', roomId)
         .neq('user_email', authorEmail);
 
     if (!members || members.length === 0) return;
+
+    // Filter out muted and banned members
+    const eligibleMembers = members.filter(m => !m.notifications_muted && !m.is_banned);
+
+    if (eligibleMembers.length === 0) return;
 
     // Import notification service
     const { createNotification } = await import('./notification.service');
@@ -539,7 +544,7 @@ async function notifyRoomMembers(
     // Send notifications (batch, max 50 at a time to avoid overload)
     const truncatedContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
 
-    for (const member of members.slice(0, 50)) {
+    for (const member of eligibleMembers.slice(0, 50)) {
         try {
             await createNotification(
                 member.user_email,
@@ -653,3 +658,220 @@ export async function getAllRooms(
     return { rooms: rooms || [] };
 }
 
+// ========================================
+// ROOM SETTINGS FUNCTIONS
+// ========================================
+
+/**
+ * Toggle mute notifications for a member
+ */
+export async function toggleMuteNotifications(
+    roomId: string,
+    userEmail: string,
+    muted: boolean
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    const { error } = await supabase
+        .from('room_members')
+        .update({ notifications_muted: muted })
+        .eq('room_id', roomId)
+        .eq('user_email', userEmail);
+
+    if (error) {
+        console.error('[ChatService] Toggle mute error:', error);
+        throw Errors.internal('Failed to update notification settings');
+    }
+}
+
+/**
+ * Regenerate room code (admin only)
+ */
+export async function regenerateRoomCode(
+    roomId: string,
+    adminEmail: string
+): Promise<{ newCode: string }> {
+    const supabase = getSupabaseAdmin();
+
+    // Verify admin
+    const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('created_by, created_by_email')
+        .eq('id', roomId)
+        .single();
+
+    if (!room || (room.created_by !== adminEmail && room.created_by_email !== adminEmail)) {
+        throw Errors.forbidden('Only room admin can regenerate code');
+    }
+
+    const newCode = generateJoinCode();
+
+    const { error } = await supabase
+        .from('chat_rooms')
+        .update({ join_code: newCode })
+        .eq('id', roomId);
+
+    if (error) {
+        console.error('[ChatService] Regenerate code error:', error);
+        throw Errors.internal('Failed to regenerate code');
+    }
+
+    return { newCode };
+}
+
+/**
+ * Ban a member from the room (admin only)
+ */
+export async function banMember(
+    roomId: string,
+    adminEmail: string,
+    targetEmail: string
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    // Verify admin
+    const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('created_by, created_by_email')
+        .eq('id', roomId)
+        .single();
+
+    if (!room || (room.created_by !== adminEmail && room.created_by_email !== adminEmail)) {
+        throw Errors.forbidden('Only room admin can ban members');
+    }
+
+    // Can't ban yourself
+    if (targetEmail === adminEmail) {
+        throw Errors.badRequest('Cannot ban yourself');
+    }
+
+    const { error } = await supabase
+        .from('room_members')
+        .update({
+            is_banned: true,
+            banned_at: new Date().toISOString(),
+            banned_by: adminEmail,
+        })
+        .eq('room_id', roomId)
+        .eq('user_email', targetEmail);
+
+    if (error) {
+        console.error('[ChatService] Ban member error:', error);
+        throw Errors.internal('Failed to ban member');
+    }
+}
+
+/**
+ * Unban a member (admin only)
+ */
+export async function unbanMember(
+    roomId: string,
+    adminEmail: string,
+    targetEmail: string
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    // Verify admin
+    const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('created_by, created_by_email')
+        .eq('id', roomId)
+        .single();
+
+    if (!room || (room.created_by !== adminEmail && room.created_by_email !== adminEmail)) {
+        throw Errors.forbidden('Only room admin can unban members');
+    }
+
+    const { error } = await supabase
+        .from('room_members')
+        .update({
+            is_banned: false,
+            banned_at: null,
+            banned_by: null,
+        })
+        .eq('room_id', roomId)
+        .eq('user_email', targetEmail);
+
+    if (error) {
+        console.error('[ChatService] Unban member error:', error);
+        throw Errors.internal('Failed to unban member');
+    }
+}
+
+/**
+ * Delete a room (admin only)
+ */
+export async function deleteRoom(
+    roomId: string,
+    adminEmail: string
+): Promise<void> {
+    const supabase = getSupabaseAdmin();
+
+    // Verify admin
+    const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('created_by, created_by_email')
+        .eq('id', roomId)
+        .single();
+
+    if (!room || (room.created_by !== adminEmail && room.created_by_email !== adminEmail)) {
+        throw Errors.forbidden('Only room admin can delete the room');
+    }
+
+    // Delete all members first
+    await supabase
+        .from('room_members')
+        .delete()
+        .eq('room_id', roomId);
+
+    // Delete all messages
+    await supabase
+        .from('room_messages')
+        .delete()
+        .eq('room_id', roomId);
+
+    // Delete the room
+    const { error } = await supabase
+        .from('chat_rooms')
+        .delete()
+        .eq('id', roomId);
+
+    if (error) {
+        console.error('[ChatService] Delete room error:', error);
+        throw Errors.internal('Failed to delete room');
+    }
+}
+
+/**
+ * Get room members (for admin settings)
+ */
+export async function getRoomMembers(
+    roomId: string
+): Promise<Array<{
+    user_email: string;
+    user_name: string;
+    is_banned: boolean;
+    notifications_muted: boolean;
+    joined_at: string;
+}>> {
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase
+        .from('room_members')
+        .select('user_email, user_name, is_banned, notifications_muted, created_at')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('[ChatService] Get members error:', error);
+        throw Errors.internal('Failed to fetch members');
+    }
+
+    return (data || []).map(m => ({
+        user_email: m.user_email,
+        user_name: m.user_name || m.user_email.split('@')[0],
+        is_banned: m.is_banned || false,
+        notifications_muted: m.notifications_muted || false,
+        joined_at: m.created_at,
+    }));
+}

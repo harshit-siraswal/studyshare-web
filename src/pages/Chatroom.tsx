@@ -20,6 +20,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { uploadChatImage } from "@/lib/uploadChatImage";
 import CreateChatRoomDialog from "@/components/CreateChatRoomDialog";
 import JoinChatRoomDialog from "@/components/JoinChatRoomDialog";
+import RoomSettingsModal from "@/components/RoomSettingsModal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Message {
@@ -1144,38 +1145,25 @@ const Chatroom = () => {
             </Button>
           )}
 
-          {/* Member badge */}
+          {/* Member badge with settings */}
           {isMember && (
-            <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 px-3 py-2 rounded-lg">
-              <Users className="w-4 h-4" />
-              <span>You're a member</span>
-            </div>
-          )}
-
-          {/* Admin Room Code (only visible to admin of private rooms) */}
-          {isAdmin && roomCode && (
-            <div className="border-t border-border pt-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Settings className="w-4 h-4" />
-                <span>Admin Settings</span>
+            <div className="flex items-center justify-between p-2 bg-green-500/10 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-green-500">
+                <Users className="w-4 h-4" />
+                <span>You're a member</span>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground mb-1">Room Code (share to invite)</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm font-mono bg-background px-2 py-1 rounded">{roomCode}</code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      navigator.clipboard.writeText(roomCode);
-                      toast.success("Code copied!");
-                    }}
-                  >
-                    <Copy className="w-3 h-3" />
+              <RoomSettingsModal
+                roomId={roomId!}
+                roomName={currentRoom?.name || 'Room'}
+                roomCode={roomCode}
+                isAdmin={isAdmin}
+                onCodeRegenerated={(newCode) => setRoomCode(newCode)}
+                trigger={
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="w-4 h-4" />
                   </Button>
-                </div>
-              </div>
+                }
+              />
             </div>
           )}
         </div>

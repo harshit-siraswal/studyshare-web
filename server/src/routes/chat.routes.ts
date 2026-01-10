@@ -84,4 +84,45 @@ router.get('/rooms/:roomId/info', rateLimit('default'), chatController.getRoomIn
  */
 router.get('/rooms', rateLimit('default'), chatController.getAllRooms);
 
+// ========================================
+// ROOM SETTINGS ROUTES
+// ========================================
+
+/**
+ * POST /api/chat/rooms/:roomId/mute
+ * Toggle mute notifications for current user
+ */
+router.post('/rooms/:roomId/mute', rateLimit('default'), chatController.toggleMuteNotifications);
+
+/**
+ * POST /api/chat/rooms/:roomId/regenerate-code
+ * Regenerate room code (admin only)
+ */
+router.post('/rooms/:roomId/regenerate-code', rateLimit('default'), chatController.regenerateRoomCode);
+
+/**
+ * POST /api/chat/rooms/:roomId/ban
+ * Ban a member (admin only)
+ */
+router.post('/rooms/:roomId/ban', rateLimit('default'), chatController.banMember);
+
+/**
+ * POST /api/chat/rooms/:roomId/unban
+ * Unban a member (admin only)
+ */
+router.post('/rooms/:roomId/unban', rateLimit('default'), chatController.unbanMember);
+
+/**
+ * DELETE /api/chat/rooms/:roomId
+ * Delete a room (admin only)
+ */
+router.delete('/rooms/:roomId', rateLimit('default'), chatController.deleteRoom);
+
+/**
+ * GET /api/chat/rooms/:roomId/members
+ * Get room members list
+ */
+router.get('/rooms/:roomId/members', rateLimit('default'), chatController.getRoomMembers);
+
 export default router;
+
