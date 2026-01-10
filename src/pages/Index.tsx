@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,25 +6,50 @@ import { Card } from "@/components/ui/card";
 import { GraduationCap, Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
+import { supabase } from "../supabase";
 
-const colleges = [
-  { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 12500 },
-  { id: 2, name: "Indian Institute of Technology Bombay", location: "Mumbai", students: 11000 },
-  { id: 3, name: "Indian Institute of Technology Madras", location: "Chennai", students: 10500 },
-  { id: 4, name: "Delhi University", location: "New Delhi", students: 132000 },
-  { id: 5, name: "Birla Institute of Technology", location: "Pilani", students: 15000 },
-  { id: 6, name: "Vellore Institute of Technology", location: "Vellore", students: 25000 },
-  { id: 7, name: "National Institute of Technology", location: "Trichy", students: 8000 },
-  { id: 8, name: "Anna University", location: "Chennai", students: 85000 },
-  { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 5000 },
-  { id: 10, name: "Amity University", location: "Noida", students: 45000 },
-  { id: 11, name: "SRM Institute of Technology", location: "Chennai", students: 38000 },
-  { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 20000 },
+// College data - KIET (id 9) will show actual user count
+const initialColleges = [
+  { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 12500, domain: null },
+  { id: 2, name: "Indian Institute of Technology Bombay", location: "Mumbai", students: 11000, domain: null },
+  { id: 3, name: "Indian Institute of Technology Madras", location: "Chennai", students: 10500, domain: null },
+  { id: 4, name: "Delhi University", location: "New Delhi", students: 132000, domain: null },
+  { id: 5, name: "Birla Institute of Technology", location: "Pilani", students: 15000, domain: null },
+  { id: 6, name: "Vellore Institute of Technology", location: "Vellore", students: 25000, domain: null },
+  { id: 7, name: "National Institute of Technology", location: "Trichy", students: 8000, domain: null },
+  { id: 8, name: "Anna University", location: "Chennai", students: 85000, domain: null },
+  { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
+  { id: 10, name: "Amity University", location: "Noida", students: 45000, domain: null },
+  { id: 11, name: "SRM Institute of Technology", location: "Chennai", students: 38000, domain: null },
+  { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 20000, domain: null },
 ];
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [colleges, setColleges] = useState(initialColleges);
   const navigate = useNavigate();
+
+  // Fetch actual user count for KIET
+  useEffect(() => {
+    const fetchKietUserCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .ilike('email', '%@kiet.edu');
+
+        if (!error && count !== null) {
+          setColleges(prev => prev.map(c =>
+            c.id === 9 ? { ...c, students: count } : c
+          ));
+        }
+      } catch (err) {
+        console.error('Failed to fetch KIET user count:', err);
+      }
+    };
+
+    fetchKietUserCount();
+  }, []);
 
   const filteredColleges = colleges.filter((college) =>
     college.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,7 +153,12 @@ const Index = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full shrink-0">
                     <Users className="w-3.5 h-3.5" />
-                    <span>{(college.students / 1000).toFixed(0)}k+</span>
+                    <span>
+                      {college.domain
+                        ? (college.students > 0 ? college.students : '...')
+                        : `${(college.students / 1000).toFixed(0)}k+`
+                      }
+                    </span>
                   </div>
                 </div>
               </Card>
