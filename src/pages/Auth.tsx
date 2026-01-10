@@ -27,7 +27,8 @@ import {
   signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendEmailVerification
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +38,8 @@ const Auth = () => {
   const { user, loading } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -47,12 +50,56 @@ const Auth = () => {
     localStorage.getItem("selectedCollege") || "{}"
   );
 
-  // Redirect to /study when user is authenticated
+  // Redirect to /study only when user is authenticated AND email is verified
   useEffect(() => {
     if (!loading && user) {
-      navigate("/study", { replace: true });
+      // Google auth users are auto-verified, email/password users need to verify
+      if (user.emailVerified) {
+        navigate("/study", { replace: true });
+      } else {
+        // User exists but email not verified - show verification pending
+        setVerificationPending(true);
+      }
     }
   }, [user, loading, navigate]);
+
+  // Handle resend verification email
+  const handleResendVerification = async () => {
+    if (!user) return;
+
+    setResendingEmail(true);
+    try {
+      await sendEmailVerification(user);
+      toast.success("Verification email sent! Check your inbox.");
+    } catch (error: any) {
+      console.error("Resend error:", error);
+      if (error.code === "auth/too-many-requests") {
+        toast.error("Too many requests. Please wait a few minutes.");
+      } else {
+        toast.error("Failed to send verification email");
+      }
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
+  // Refresh user to check if verified
+  const handleCheckVerification = async () => {
+    if (!user) return;
+
+    try {
+      await user.reload();
+      if (user.emailVerified) {
+        toast.success("Email verified! Redirecting...");
+        navigate("/study", { replace: true });
+      } else {
+        toast.info("Email not verified yet. Check your inbox.");
+      }
+    } catch (error) {
+      console.error("Reload error:", error);
+      toast.error("Please try again");
+    }
+  };
 
   /* ---------------------------------------------------------------- */
   /* 🔵 GOOGLE LOGIN — FIREBASE ONLY */
@@ -144,7 +191,11 @@ const Auth = () => {
           { merge: true }
         );
 
-        toast.success("Account created successfully!");
+        // Send verification email
+        await sendEmailVerification(user);
+
+        toast.success("Account created! Check your email to verify.");
+        setVerificationPending(true);
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -161,6 +212,67 @@ const Auth = () => {
       }
     }
   };
+
+  // Show verification pending UI if user exists but email not verified
+  if (verificationPending && user && !user.emailVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-2xl bg-amber-500">
+                  <Mail className="w-7 h-7 text-white" />
+                </div>
+              </div>
+              <CardTitle>Verify Your Email</CardTitle>
+              <CardDescription className="mt-2">
+                We've sent a verification email to:
+                <span className="block mt-2 font-medium text-foreground">
+                  {user.email}
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Click the link in the email to verify your account.
+                Check your spam folder if you don't see it.
+              </p>
+
+              <Button
+                className="w-full"
+                onClick={handleCheckVerification}
+              >
+                I've Verified - Continue
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleResendVerification}
+                disabled={resendingEmail}
+              >
+                {resendingEmail ? "Sending..." : "Resend Verification Email"}
+              </Button>
+
+              <div className="text-center">
+                <Button
+                  variant="link"
+                  onClick={async () => {
+                    await auth.signOut();
+                    setVerificationPending(false);
+                  }}
+                  className="text-muted-foreground"
+                >
+                  Use a different email
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
