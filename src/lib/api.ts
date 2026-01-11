@@ -67,6 +67,8 @@ export interface UserInfo {
     role: string;
     collegeDomain: string | null;
     isCollegeUser: boolean;
+    isBanned?: boolean;
+    banReason?: string;
     profile?: {
         displayName?: string;
         avatarUrl?: string;

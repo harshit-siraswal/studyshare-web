@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getUserInfo } from '../services/auth.service';
+import { isUserBanned, getBanInfo } from '../services/user.service';
 
 /**
  * GET /api/auth/me
@@ -18,9 +19,14 @@ export async function getMe(
 
         const userInfo = await getUserInfo(req.user.email);
 
+        // Check ban status
+        const banInfo = await getBanInfo(req.user.email);
+
         res.json({
             uid: req.user.uid,
             ...userInfo,
+            isBanned: banInfo.isBanned,
+            banReason: banInfo.reason,
         });
     } catch (error) {
         next(error);
@@ -45,10 +51,15 @@ export async function verifyTokenEndpoint(
 
         const userInfo = await getUserInfo(req.user.email);
 
+        // Check ban status - this is critical for blocking banned users
+        const banInfo = await getBanInfo(req.user.email);
+
         res.json({
             valid: true,
             uid: req.user.uid,
             ...userInfo,
+            isBanned: banInfo.isBanned,
+            banReason: banInfo.reason,
         });
     } catch (error) {
         next(error);

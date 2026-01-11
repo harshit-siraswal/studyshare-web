@@ -38,7 +38,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, isBanned, banReason, logout } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
   const [verificationPending, setVerificationPending] = useState(false);
@@ -56,9 +56,14 @@ const Auth = () => {
     localStorage.getItem("selectedCollege") || "{}"
   );
 
-  // Redirect to /study only when user is authenticated AND email is verified
+  // Redirect to /study only when user is authenticated, email verified, AND NOT banned
   useEffect(() => {
     if (!loading && user) {
+      // Don't redirect if user is banned - they'll see the ban message
+      if (isBanned) {
+        return;
+      }
+
       // Google auth users are auto-verified, email/password users need to verify
       if (user.emailVerified) {
         navigate("/study", { replace: true });
@@ -67,7 +72,7 @@ const Auth = () => {
         setVerificationPending(true);
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, isBanned, navigate]);
 
   // Handle resend verification email
   const handleResendVerification = async () => {
@@ -273,6 +278,54 @@ const Auth = () => {
                   Use a different email
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show banned message if user is banned
+  if (isBanned && user) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="border-red-500/50 bg-red-50 dark:bg-red-900/20">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-2xl bg-red-500">
+                  <Lock className="w-7 h-7 text-white" />
+                </div>
+              </div>
+              <CardTitle className="text-red-600 dark:text-red-400">
+                Account Banned
+              </CardTitle>
+              <CardDescription className="text-red-500/80 dark:text-red-400/80">
+                Your access to MyStudySpace has been suspended.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-red-100 dark:bg-red-900/40 rounded-lg text-center">
+                <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                  Reason:
+                </p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                  {banReason || "You have been banned by an administrator."}
+                </p>
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                If you believe this is a mistake, please contact the administrator.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full border-red-500/50 text-red-600 hover:bg-red-100"
+                onClick={async () => {
+                  await logout();
+                  window.location.reload();
+                }}
+              >
+                Sign Out
+              </Button>
             </CardContent>
           </Card>
         </div>

@@ -141,6 +141,35 @@ export async function isUserBanned(email: string, collegeId?: string): Promise<b
 }
 
 /**
+ * Get ban info including reason (for displaying to banned users)
+ */
+export async function getBanInfo(email: string): Promise<{ isBanned: boolean; reason: string | null }> {
+    const supabase = getSupabaseAdmin();
+
+    try {
+        const { data, error } = await supabase
+            .from('banned_users')
+            .select('reason, banned_at')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (error) {
+            console.error('[UserService] getBanInfo error:', error);
+            return { isBanned: false, reason: null };
+        }
+
+        if (data) {
+            return { isBanned: true, reason: data.reason || 'You have been banned by an administrator' };
+        }
+
+        return { isBanned: false, reason: null };
+    } catch (error) {
+        console.error('[UserService] getBanInfo error:', error);
+        return { isBanned: false, reason: null };
+    }
+}
+
+/**
  * Ban a user (for admin-studyspace integration)
  */
 export async function banUser(
