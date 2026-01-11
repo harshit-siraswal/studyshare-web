@@ -15,12 +15,12 @@ interface MobileSidebarProps {
     onClose: () => void;
 }
 
-// Per user request: Resources, Syllabus, Following, Bookmarks
+// Per user request: Resources, Syllabus, Following, Explore Students
 const menuItems = [
     { icon: FileText, label: 'Resources', path: '/study' },
     { icon: BookOpenCheck, label: 'Syllabus', path: '/study?tab=syllabus' },
     { icon: Users, label: 'Following', path: '/study?tab=following' },
-    { icon: Bookmark, label: 'Bookmarks', path: '/bookmarks' },
+    { icon: Users, label: 'Explore Students', path: '/profile' },
 ];
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {

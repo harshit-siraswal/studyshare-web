@@ -18,7 +18,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { icon: <Home className="w-5 h-5" />, label: 'Home', path: '/study' },
-    { icon: <Bookmark className="w-5 h-5" />, label: 'Saved', path: '/bookmarks' },
+    { icon: <Bookmark className="w-5 h-5" />, label: 'Bookmarks', path: '/bookmarks' },
     { icon: <Plus className="w-6 h-6" />, label: 'Share', path: '', isCenter: true, action: 'upload' },
     { icon: <Bell className="w-5 h-5" />, label: 'Notices', path: '/notices' },
     { icon: <MessageCircle className="w-5 h-5" />, label: 'Chat', path: '/chatroom' },
