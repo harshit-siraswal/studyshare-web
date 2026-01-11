@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { useCollege } from '@/context/CollegeContext';
 
 export interface Notice {
     id: string;
@@ -15,13 +16,15 @@ export interface Notice {
     is_active: boolean;
     likes: number;
     comments: number;
+    college_id?: string;
 }
 
-async function fetchNotices(): Promise<Notice[]> {
+async function fetchNotices(collegeId: string): Promise<Notice[]> {
     const { data, error } = await supabase
         .from('notices')
         .select('*')
         .eq('is_active', true)
+        .eq('college_id', collegeId)
         .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -36,19 +39,22 @@ async function fetchNotices(): Promise<Notice[]> {
 
 /**
  * Custom hook for fetching notices with React Query caching.
- * Replaces manual useEffect + useState pattern for better performance.
+ * Filters notices by selected college for data isolation.
  */
 export function useNotices() {
+    const { selectedCollege } = useCollege();
     const queryClient = useQueryClient();
+    const collegeId = selectedCollege?.domain || 'kiet.edu';
 
     const query = useQuery({
-        queryKey: ['notices'],
-        queryFn: fetchNotices,
+        queryKey: ['notices', collegeId],
+        queryFn: () => fetchNotices(collegeId),
+        enabled: !!collegeId,
     });
 
     // Manual refresh function
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['notices'] });
+        queryClient.invalidateQueries({ queryKey: ['notices', collegeId] });
     };
 
     return {
