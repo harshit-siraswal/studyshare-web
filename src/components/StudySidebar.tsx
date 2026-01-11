@@ -39,9 +39,11 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+  // Use authUser from context, fallback to localStorage
+  const user = authUser || localUser;
   const selectedCollege = JSON.parse(localStorage.getItem("selectedCollege") || "{}");
 
   const getInitials = (name: string) => {
@@ -57,13 +59,14 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   // Fetch user profile from Supabase
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!user?.uid) return;
+      const userId = authUser?.uid || localUser?.uid;
+      if (!userId) return;
 
       try {
         const { data } = await supabase
           .from('users')
           .select('*')
-          .eq('id', user.uid)
+          .eq('id', userId)
           .single();
 
         if (data) {
@@ -75,7 +78,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     };
 
     fetchUserProfile();
-  }, [user?.uid]);
+  }, [authUser?.uid, localUser?.uid]);
 
   useEffect(() => {
     const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
