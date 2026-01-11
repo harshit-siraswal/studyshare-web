@@ -1012,7 +1012,7 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="contributions">
-            <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-500px)]">
+            <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(() => {
                   // Phase 3: Filter contributions by search query

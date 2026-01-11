@@ -368,7 +368,7 @@ const Auth = () => {
               </div>
 
               {isLogin && !forgotPasswordMode && (
-                <div className="text-right">
+                <div className="text-left">
                   <Button
                     type="button"
                     variant="link"

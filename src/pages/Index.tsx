@@ -105,7 +105,7 @@ const Index = () => {
               <GraduationCap className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl md:text-5xl font-bold">
-              Study<span className="text-gradient">Space</span>
+              My<span className="text-gradient">StudySpace</span>
             </h1>
           </div>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">

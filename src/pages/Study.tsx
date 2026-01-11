@@ -387,7 +387,7 @@ const Study = () => {
               ) : (
                 /* Virtualized grid for performance - only renders visible items */
                 <VirtuosoGrid
-                  style={{ height: 'calc(100vh - 240px)', minHeight: '400px' }}
+                  style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}
                   totalCount={filteredResources.length}
                   listClassName="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"
                   itemClassName=""
