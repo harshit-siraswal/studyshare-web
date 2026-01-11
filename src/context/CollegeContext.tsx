@@ -14,10 +14,14 @@ export interface College {
     logoUrl?: string;
 }
 
-// Predefined colleges
+// All active colleges with verified domains
 export const COLLEGES: College[] = [
-    { id: 'kiet', name: 'KIET Group of Institutions', domain: 'kiet.edu' },
-    { id: 'iiitbh', name: 'Indian Institute of Information Technology Bhagalpur', domain: 'iiitbh.ac.in' },
+    { id: 'kiet', name: 'Krishna Institute of Engineering and Technology', domain: 'kiet.edu' },
+    { id: 'iiitbh', name: 'IIIT Bhagalpur', domain: 'iiitbh.ac.in' },
+    { id: 'iiitsonepat', name: 'IIIT Sonepat', domain: 'iiitsonepat.ac.in' },
+    { id: 'abes', name: 'ABES Engineering College', domain: 'abes.ac.in' },
+    { id: 'du', name: 'Delhi University', domain: 'du.ac.in' },
+    { id: 'du-students', name: 'Delhi University (Students)', domain: 'students.du.ac.in' },
 ];
 
 type AccessLevel = 'full' | 'readonly';
@@ -33,7 +37,30 @@ interface CollegeContextType {
 
 const CollegeContext = createContext<CollegeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'selectedCollegeId';
+// Helper to get college from localStorage (stored by Index.tsx as full object)
+const getCollegeFromLocalStorage = (): College | null => {
+    try {
+        const stored = localStorage.getItem('selectedCollege');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // The Index.tsx stores the full college object with domain
+            if (parsed && parsed.domain) {
+                // Find matching college from our list or create one
+                const matched = COLLEGES.find(c => c.domain === parsed.domain);
+                if (matched) return matched;
+                // If not in our list, create from stored data
+                return {
+                    id: parsed.domain,
+                    name: parsed.name || 'Unknown College',
+                    domain: parsed.domain,
+                };
+            }
+        }
+    } catch (e) {
+        console.error('[CollegeContext] Error reading localStorage:', e);
+    }
+    return null;
+};
 
 export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
@@ -51,35 +78,27 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
             if (matchedCollege) {
                 // User has college email - auto-select and grant full access
                 setSelectedCollege(matchedCollege);
-                localStorage.setItem(STORAGE_KEY, matchedCollege.id);
                 console.log(`[CollegeContext] Auto-detected college: ${matchedCollege.name} from email domain: ${userDomain}`);
                 return;
             }
 
             // Second: For non-college emails, try to load from localStorage
-            const savedCollegeId = localStorage.getItem(STORAGE_KEY);
-            if (savedCollegeId) {
-                const savedCollege = COLLEGES.find(c => c.id === savedCollegeId);
-                if (savedCollege) {
-                    setSelectedCollege(savedCollege);
-                    console.log(`[CollegeContext] Loaded from localStorage: ${savedCollege.name} (readonly mode)`);
-                    return;
-                }
+            const savedCollege = getCollegeFromLocalStorage();
+            if (savedCollege) {
+                setSelectedCollege(savedCollege);
+                console.log(`[CollegeContext] Loaded from localStorage: ${savedCollege.name} (readonly mode for ${userDomain})`);
+                return;
             }
 
             // Third: Default to first college for users without selection
             // This ensures they can at least view content (readonly)
             setSelectedCollege(COLLEGES[0]);
-            localStorage.setItem(STORAGE_KEY, COLLEGES[0].id);
             console.log(`[CollegeContext] Defaulting to: ${COLLEGES[0].name} (readonly mode)`);
         } else {
-            // No user logged in - try localStorage or default
-            const savedCollegeId = localStorage.getItem(STORAGE_KEY);
-            if (savedCollegeId) {
-                const savedCollege = COLLEGES.find(c => c.id === savedCollegeId);
-                if (savedCollege) {
-                    setSelectedCollege(savedCollege);
-                }
+            // No user logged in - try localStorage
+            const savedCollege = getCollegeFromLocalStorage();
+            if (savedCollege) {
+                setSelectedCollege(savedCollege);
             }
         }
     }, [user]);
@@ -89,7 +108,8 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
         const college = COLLEGES.find(c => c.id === collegeId);
         if (college) {
             setSelectedCollege(college);
-            localStorage.setItem(STORAGE_KEY, collegeId);
+            // Save full college object to match Index.tsx format
+            localStorage.setItem('selectedCollege', JSON.stringify(college));
         }
     };
 

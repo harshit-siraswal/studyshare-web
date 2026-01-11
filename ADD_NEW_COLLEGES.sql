@@ -1,38 +1,53 @@
 -- ============================================
 -- ADD_NEW_COLLEGES.sql
--- Add new colleges to the colleges table
+-- Add new colleges to existing colleges table
 -- Run in Supabase SQL Editor
 -- ============================================
 
--- Add colleges table if it doesn't exist
-CREATE TABLE IF NOT EXISTS colleges (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    location TEXT,
-    domain TEXT UNIQUE NOT NULL,
-    students_count INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- First, check the existing structure
+-- SELECT * FROM colleges LIMIT 1;
 
--- Insert new colleges (upsert - won't fail if already exists)
-INSERT INTO colleges (id, name, location, domain, is_active)
-VALUES 
-    (9, 'Krishna Institute of Engineering and Technology', 'Ghaziabad', 'kiet.edu', true),
-    (13, 'IIIT Bhagalpur', 'Bhagalpur, Bihar', 'iiitbh.ac.in', true),
-    (14, 'IIIT Sonepat', 'Sonepat, Haryana', 'iiitsonepat.ac.in', true),
-    (15, 'ABES Engineering College', 'Ghaziabad', 'abes.ac.in', true),
-    (16, 'Delhi University', 'New Delhi', 'du.ac.in', true)
-ON CONFLICT (domain) DO UPDATE SET
-    name = EXCLUDED.name,
-    location = EXCLUDED.location,
-    is_active = EXCLUDED.is_active;
+-- Add location column if it doesn't exist
+ALTER TABLE colleges ADD COLUMN IF NOT EXISTS location TEXT;
 
--- Also add students.du.ac.in as alternate domain for DU
-INSERT INTO colleges (id, name, location, domain, is_active)
-VALUES 
-    (17, 'Delhi University (Students)', 'New Delhi', 'students.du.ac.in', true)
-ON CONFLICT (domain) DO NOTHING;
+-- Add domain column if it doesn't exist
+ALTER TABLE colleges ADD COLUMN IF NOT EXISTS domain TEXT UNIQUE;
+
+-- Add is_active column if it doesn't exist
+ALTER TABLE colleges ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- Insert new colleges using actual column names
+-- If your table has different column names, adjust below
+
+-- KIET
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('Krishna Institute of Engineering and Technology', 'kiet.edu', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
+-- IIIT Bhagalpur
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('IIIT Bhagalpur', 'iiitbh.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
+-- IIIT Sonepat
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('IIIT Sonepat', 'iiitsonepat.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
+-- ABES Engineering College
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('ABES Engineering College', 'abes.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
+-- Delhi University
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('Delhi University', 'du.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
+-- Delhi University - alternate domain for students
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('Delhi University (Students)', 'students.du.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
 
 -- Verify colleges were added
-SELECT id, name, domain, is_active FROM colleges ORDER BY id;
+SELECT * FROM colleges WHERE is_active = true ORDER BY name;
