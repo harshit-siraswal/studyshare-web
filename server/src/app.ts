@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 
 import { env } from './config/env';
 import { notFoundHandler, rateLimit } from './middleware/index';
@@ -35,6 +36,15 @@ function formatUptime(seconds: number): string {
  */
 export function createApp(): Express {
     const app = express();
+
+    // Performance: Enable gzip compression (60-80% size reduction)
+    app.use(compression({
+        filter: (req, res) => {
+            if (req.headers['x-no-compression']) return false;
+            return compression.filter(req, res);
+        },
+        level: 6  // Balanced compression (1-9, higher = more compression but slower)
+    }));
 
     // Security middleware - Hardened configuration
     app.use(helmet({

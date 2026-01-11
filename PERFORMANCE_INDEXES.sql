@@ -60,10 +60,8 @@ ANALYZE chat_rooms;
 -- ============================================
 SELECT 
     tablename,
-    indexname,
-    pg_size_pretty(pg_relation_size(indexrelid)) as index_size
+    indexname
 FROM pg_indexes 
-JOIN pg_class ON indexname = relname
 WHERE schemaname = 'public'
 AND indexname LIKE 'idx_%'
 ORDER BY tablename, indexname;
