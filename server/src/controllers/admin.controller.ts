@@ -127,7 +127,8 @@ export async function getBannedUsers(
         const collegeId = req.query.collegeId as string | undefined;
         const bannedUsers = await userService.getBannedUsers(collegeId);
 
-        res.json({ bannedUsers });
+        // Return array directly for admin-studyspace compatibility
+        res.json(bannedUsers || []);
     } catch (error) {
         next(error);
     }
