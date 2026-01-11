@@ -88,7 +88,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-hero">
       <SEO
         title="Select Your College"
-        description="Join your college community on StudySpace. Access curated study materials, notes, videos, and connect with peers."
+        description="Join your college community on MyStudySpace. Access curated study materials, notes, videos, and connect with peers."
       />
       {/* Background decorations */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">

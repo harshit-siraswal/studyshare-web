@@ -835,7 +835,7 @@ const Profile = () => {
       <SEO
         title={isViewingOther ? `${displayName}'s Profile` : "Your Profile"}
         description={isViewingOther
-          ? `View ${displayName}'s profile and contributions on StudySpace.`
+          ? `View ${displayName}'s profile and contributions on MyStudySpace.`
           : "Manage your profile, view your contributions, and connect with other students."
         }
       />

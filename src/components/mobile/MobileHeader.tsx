@@ -26,13 +26,13 @@ export function MobileHeader({
         if (title) return title;
 
         const path = location.pathname;
-        if (path === '/study' || path === '/') return 'StudySpace';
+        if (path === '/study' || path === '/') return 'MyStudySpace';
         if (path === '/explore') return 'Explore';
         if (path === '/notices') return 'Notifications';
         if (path === '/profile') return 'Profile';
         if (path.startsWith('/chatroom')) return 'Chatroom';
         if (path.startsWith('/messages')) return 'Messages';
-        return 'StudySpace';
+        return 'MyStudySpace';
     };
 
     return (

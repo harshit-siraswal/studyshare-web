@@ -1,5 +1,5 @@
 /**
- * API Client for StudySpace Backend
+ * API Client for MyStudySpace Backend
  * 
  * All privileged operations should go through these functions
  * instead of direct Supabase calls.
