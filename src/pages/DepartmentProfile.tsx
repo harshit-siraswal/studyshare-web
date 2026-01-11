@@ -121,7 +121,7 @@ const DepartmentProfile = () => {
         if (!user?.email || !deptId) return;
 
         try {
-            const response = await api.getFollowedDepartments();
+            const response = await api.getFollowedDepartments(collegeId);
             setIsFollowing(response.departments.includes(deptId));
         } catch (error) {
             console.error('Error checking follow status:', error);
@@ -135,7 +135,8 @@ const DepartmentProfile = () => {
             const { count, error } = await supabase
                 .from('department_followers')
                 .select('*', { count: 'exact', head: true })
-                .eq('department_id', deptId);
+                .eq('department_id', deptId)
+                .eq('college_id', collegeId);
 
             if (error) throw error;
             setFollowerCount(count || 0);
@@ -152,12 +153,12 @@ const DepartmentProfile = () => {
 
         try {
             if (isFollowing) {
-                await api.unfollowDepartment(deptId);
+                await api.unfollowDepartment(deptId, collegeId);
                 setIsFollowing(false);
                 setFollowerCount(prev => Math.max(0, prev - 1));
                 toast.success('Unfollowed department');
             } else {
-                await api.followDepartment(deptId);
+                await api.followDepartment(deptId, collegeId);
                 setIsFollowing(true);
                 setFollowerCount(prev => prev + 1);
                 toast.success('Following department!');

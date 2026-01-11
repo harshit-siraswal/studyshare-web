@@ -2,11 +2,12 @@ import { getSupabaseAdmin } from '../config/supabase';
 import { Errors } from '../middleware/errorHandler';
 
 /**
- * Follow a department
+ * Follow a department (with college isolation)
  */
 export async function followDepartment(
     userEmail: string,
-    departmentId: string
+    departmentId: string,
+    collegeId: string
 ): Promise<void> {
     const supabase = getSupabaseAdmin();
 
@@ -14,7 +15,8 @@ export async function followDepartment(
         .from('department_followers')
         .insert({
             follower_email: userEmail,
-            department_id: departmentId
+            department_id: departmentId,
+            college_id: collegeId
         });
 
     if (error) {
@@ -25,11 +27,12 @@ export async function followDepartment(
 }
 
 /**
- * Unfollow a department
+ * Unfollow a department (with college isolation)
  */
 export async function unfollowDepartment(
     userEmail: string,
-    departmentId: string
+    departmentId: string,
+    collegeId: string
 ): Promise<void> {
     const supabase = getSupabaseAdmin();
 
@@ -37,7 +40,8 @@ export async function unfollowDepartment(
         .from('department_followers')
         .delete()
         .eq('follower_email', userEmail)
-        .eq('department_id', departmentId);
+        .eq('department_id', departmentId)
+        .eq('college_id', collegeId);
 
     if (error) {
         console.error('[DepartmentService] Unfollow error:', error);
@@ -46,15 +50,19 @@ export async function unfollowDepartment(
 }
 
 /**
- * Get followed departments
+ * Get followed departments (with college isolation)
  */
-export async function getFollowedDepartments(userEmail: string): Promise<string[]> {
+export async function getFollowedDepartments(
+    userEmail: string,
+    collegeId: string
+): Promise<string[]> {
     const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
         .from('department_followers')
         .select('department_id')
-        .eq('follower_email', userEmail);
+        .eq('follower_email', userEmail)
+        .eq('college_id', collegeId);
 
     if (error) {
         console.error('[DepartmentService] Fetch error:', error);

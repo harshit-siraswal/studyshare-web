@@ -232,27 +232,27 @@ export async function isBookmarked(itemId: string): Promise<{ isBookmarked: bool
 // ============================================
 
 /**
- * Follow a department
+ * Follow a department (with college isolation)
  */
-export async function followDepartment(departmentId: string): Promise<{ message: string }> {
+export async function followDepartment(departmentId: string, collegeId: string): Promise<{ message: string }> {
     return apiRequest('/api/departments/follow', {
         method: 'POST',
-        body: JSON.stringify({ id: departmentId }),  // Backend expects { id }
+        body: JSON.stringify({ id: departmentId, collegeId }),
     });
 }
 
 /**
- * Unfollow a department
+ * Unfollow a department (with college isolation)
  */
-export async function unfollowDepartment(departmentId: string): Promise<{ message: string }> {
-    return apiRequest(`/api/departments/follow/${departmentId}`, { method: 'DELETE' });
+export async function unfollowDepartment(departmentId: string, collegeId: string): Promise<{ message: string }> {
+    return apiRequest(`/api/departments/follow/${departmentId}?collegeId=${encodeURIComponent(collegeId)}`, { method: 'DELETE' });
 }
 
 /**
- * Get followed departments
+ * Get followed departments (with college isolation)
  */
-export async function getFollowedDepartments(): Promise<{ departments: string[] }> {
-    return apiRequest('/api/departments/following');
+export async function getFollowedDepartments(collegeId: string): Promise<{ departments: string[] }> {
+    return apiRequest(`/api/departments/following?collegeId=${encodeURIComponent(collegeId)}`);
 }
 
 // ============================================

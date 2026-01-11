@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useNotices, Notice } from "@/hooks/useNotices";
+import { useCollege } from "@/context/CollegeContext";
 
 // --- Constants ---
 const DEPARTMENTS = [
@@ -43,6 +44,8 @@ const Notices = () => {
 
   // React Query: Fetch notices with caching
   const { notices, isLoading: loading } = useNotices();
+  const { selectedCollege } = useCollege();
+  const collegeId = selectedCollege?.domain || 'kiet.edu';
 
   // State
   const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou');
@@ -87,7 +90,7 @@ const Notices = () => {
   const fetchFollowedDepartments = async () => {
     if (!user?.email) return;
     try {
-      const response = await api.getFollowedDepartments();
+      const response = await api.getFollowedDepartments(collegeId);
       setFollowedDeptIds(response.departments);
     } catch (error) {
       console.error('Error fetching followed departments:', error);
@@ -102,11 +105,11 @@ const Notices = () => {
 
     try {
       if (followedDeptIds.includes(deptId)) {
-        await api.unfollowDepartment(deptId);
+        await api.unfollowDepartment(deptId, collegeId);
         setFollowedDeptIds(prev => prev.filter(id => id !== deptId));
         toast.success(`Unfollowed`);
       } else {
-        await api.followDepartment(deptId);
+        await api.followDepartment(deptId, collegeId);
         setFollowedDeptIds(prev => [...prev, deptId]);
         toast.success(`Following`);
       }

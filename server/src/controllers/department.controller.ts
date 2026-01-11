@@ -8,7 +8,7 @@ export async function followDepartment(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { id } = req.body; // Expecting { id: 'cse' }
+        const { id, collegeId } = req.body; // Expecting { id: 'cse', collegeId: 'kiet.edu' }
         const userEmail = req.user!.email;
 
         if (!id) {
@@ -16,7 +16,12 @@ export async function followDepartment(
             return;
         }
 
-        await departmentService.followDepartment(userEmail, id);
+        if (!collegeId) {
+            res.status(400).json({ message: 'College ID is required for data isolation' });
+            return;
+        }
+
+        await departmentService.followDepartment(userEmail, id, collegeId);
 
         await logActivity({
             userEmail,
@@ -39,9 +44,10 @@ export async function unfollowDepartment(
 ): Promise<void> {
     try {
         const { id } = req.params;
+        const collegeId = req.query.collegeId as string || 'kiet.edu';
         const userEmail = req.user!.email;
 
-        await departmentService.unfollowDepartment(userEmail, id);
+        await departmentService.unfollowDepartment(userEmail, id, collegeId);
 
         res.json({ message: 'Unfollowed department' });
     } catch (error) {
@@ -56,7 +62,9 @@ export async function getFollowedDepartments(
 ): Promise<void> {
     try {
         const userEmail = req.user!.email;
-        const departments = await departmentService.getFollowedDepartments(userEmail);
+        const collegeId = req.query.collegeId as string || 'kiet.edu';
+
+        const departments = await departmentService.getFollowedDepartments(userEmail, collegeId);
         res.json({ departments });
     } catch (error) {
         next(error);
