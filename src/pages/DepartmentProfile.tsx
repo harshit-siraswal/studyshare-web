@@ -17,6 +17,7 @@ import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
 import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useCollege } from "@/context/CollegeContext";
 
 const DEPARTMENTS = [
     { value: 'all', label: 'All Departments', icon: '🏛️' },
@@ -50,6 +51,8 @@ const DepartmentProfile = () => {
     const navigate = useNavigate();
     const { deptId } = useParams<{ deptId: string }>();
     const { user } = useAuth();
+    const { selectedCollege } = useCollege();
+    const collegeId = selectedCollege?.domain || 'kiet.edu';
 
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -92,6 +95,7 @@ const DepartmentProfile = () => {
                 .select('*')
                 .eq('department', deptId)
                 .eq('is_active', true)
+                .eq('college_id', collegeId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
