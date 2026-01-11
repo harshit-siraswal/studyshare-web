@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken } from '../middleware/auth';
+import { verifyAdminKey } from '../middleware/adminAuth';
 import { rateLimit } from '../middleware/rateLimit';
 import * as adminController from '../controllers/admin.controller';
 
@@ -7,8 +7,10 @@ const router = Router();
 
 /**
  * Admin routes for user management
- * All routes require authentication
+ * All routes require admin key authentication (key_hash from admin_keys table)
  * These endpoints are used by admin-studyspace dashboard
+ * 
+ * Admin dashboard sends: Authorization: Bearer ${session.key_hash}
  */
 
 /**
@@ -19,7 +21,7 @@ const router = Router();
 router.post(
     '/users/ban',
     rateLimit('write'),
-    verifyToken,
+    verifyAdminKey,
     adminController.banUser
 );
 
@@ -31,7 +33,7 @@ router.post(
 router.post(
     '/users/unban',
     rateLimit('write'),
-    verifyToken,
+    verifyAdminKey,
     adminController.unbanUser
 );
 
@@ -43,7 +45,7 @@ router.post(
 router.get(
     '/users/:email/banned',
     rateLimit('default'),
-    verifyToken,
+    verifyAdminKey,
     adminController.checkBanned
 );
 
@@ -55,7 +57,7 @@ router.get(
 router.get(
     '/users/banned',
     rateLimit('default'),
-    verifyToken,
+    verifyAdminKey,
     adminController.getBannedUsers
 );
 
