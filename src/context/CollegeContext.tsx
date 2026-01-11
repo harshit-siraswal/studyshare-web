@@ -66,41 +66,38 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
     const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
 
-    // FIX: Auto-detect college from user email domain FIRST
-    // Then fallback to localStorage for users with non-college emails
+    // FIXED: ALWAYS respect user's college SELECTION from localStorage
+    // Email domain is ONLY used for ACCESS LEVEL (full vs readonly)
+    // User can view any college, but only has full access to their own college
     useEffect(() => {
+        // First priority: Always try to load from localStorage (user's selection on landing page)
+        const savedCollege = getCollegeFromLocalStorage();
+
+        if (savedCollege) {
+            setSelectedCollege(savedCollege);
+            console.log(`[CollegeContext] Using selected college: ${savedCollege.name} (from localStorage)`);
+            return;
+        }
+
+        // Fallback: If no localStorage selection exists
         if (user?.email) {
             const userDomain = user.email.split('@')[1]?.toLowerCase();
 
-            // First: Try to match college by email domain
+            // Try to find a college matching user's email domain
             const matchedCollege = COLLEGES.find(c => c.domain.toLowerCase() === userDomain);
 
             if (matchedCollege) {
-                // User has college email - auto-select and grant full access
                 setSelectedCollege(matchedCollege);
-                console.log(`[CollegeContext] Auto-detected college: ${matchedCollege.name} from email domain: ${userDomain}`);
+                // Also save to localStorage so it persists
+                localStorage.setItem('selectedCollege', JSON.stringify(matchedCollege));
+                console.log(`[CollegeContext] No selection found, defaulting to email domain: ${matchedCollege.name}`);
                 return;
-            }
-
-            // Second: For non-college emails, try to load from localStorage
-            const savedCollege = getCollegeFromLocalStorage();
-            if (savedCollege) {
-                setSelectedCollege(savedCollege);
-                console.log(`[CollegeContext] Loaded from localStorage: ${savedCollege.name} (readonly mode for ${userDomain})`);
-                return;
-            }
-
-            // Third: Default to first college for users without selection
-            // This ensures they can at least view content (readonly)
-            setSelectedCollege(COLLEGES[0]);
-            console.log(`[CollegeContext] Defaulting to: ${COLLEGES[0].name} (readonly mode)`);
-        } else {
-            // No user logged in - try localStorage
-            const savedCollege = getCollegeFromLocalStorage();
-            if (savedCollege) {
-                setSelectedCollege(savedCollege);
             }
         }
+
+        // Last resort: Default to first college
+        setSelectedCollege(COLLEGES[0]);
+        console.log(`[CollegeContext] No selection found, defaulting to: ${COLLEGES[0].name}`);
     }, [user]);
 
     // Set college by ID (for manual selection by readonly users)
