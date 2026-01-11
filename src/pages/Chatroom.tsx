@@ -793,9 +793,9 @@ const Chatroom = () => {
           </div>
         </div>
 
-        {/* Floating Saved Posts Button - Mobile Accessible */}
+        {/* Floating Saved Posts Button - Mobile Only */}
         <Button
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 shadow-lg rounded-full h-12 px-4"
+          className="fixed bottom-20 right-4 z-40 shadow-lg rounded-full h-12 px-4 md:hidden"
           variant={showSavedOnly ? "default" : "secondary"}
           onClick={() => {
             const newState = !showSavedOnly;
