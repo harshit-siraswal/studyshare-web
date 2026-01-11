@@ -17,6 +17,8 @@ import {
   Lock,
   User,
   ArrowLeft,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ const Auth = () => {
   const [resendingEmail, setResendingEmail] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -357,14 +360,25 @@ const Auth = () => {
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
 
               {isLogin && !forgotPasswordMode && (
