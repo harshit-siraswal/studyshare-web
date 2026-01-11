@@ -30,9 +30,10 @@ export async function verifyAdminKey(
         const supabase = getSupabaseAdmin();
 
         // Look up the key_hash in admin_keys table
+        // Table columns: id, key_hash, admin_name, role, department, subject, is_active
         const { data: adminKey, error } = await supabase
             .from('admin_keys')
-            .select('id, email, role, department, subject, created_at')
+            .select('id, admin_name, role, department, subject, is_active')
             .eq('key_hash', keyHash)
             .single();
 
@@ -42,16 +43,23 @@ export async function verifyAdminKey(
             return;
         }
 
+        // Check if key is active
+        if (adminKey.is_active === false) {
+            console.warn('[AdminAuth] Inactive admin key used');
+            res.status(401).json({ message: 'Admin key is deactivated' });
+            return;
+        }
+
         // Attach admin info to request for use in controllers
         req.user = {
-            email: adminKey.email,
+            email: adminKey.admin_name,  // admin_name is the identifier
             uid: adminKey.id,
             role: adminKey.role,
             department: adminKey.department,
             subject: adminKey.subject,
         } as any;
 
-        console.log(`[AdminAuth] Admin authenticated: ${adminKey.email} (${adminKey.role})`);
+        console.log(`[AdminAuth] Admin authenticated: ${adminKey.admin_name} (${adminKey.role})`);
         next();
     } catch (error) {
         console.error('[AdminAuth] Error verifying admin key:', error);
@@ -86,13 +94,13 @@ export async function optionalAdminAuth(
 
         const { data: adminKey } = await supabase
             .from('admin_keys')
-            .select('id, email, role, department, subject')
+            .select('id, admin_name, role, department, subject')
             .eq('key_hash', keyHash)
             .single();
 
         if (adminKey) {
             req.user = {
-                email: adminKey.email,
+                email: adminKey.admin_name,
                 uid: adminKey.id,
                 role: adminKey.role,
                 department: adminKey.department,
