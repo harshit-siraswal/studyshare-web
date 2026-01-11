@@ -10,6 +10,7 @@ import chatRoutes from './chat.routes';
 import userRoutes from './user.routes';
 import syllabusRoutes from './syllabus.routes';
 import noticeRoutes from './notice.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use('/chat', chatRoutes);
 router.use('/users', userRoutes);
 router.use('/syllabus', syllabusRoutes);
 router.use('/notices', noticeRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

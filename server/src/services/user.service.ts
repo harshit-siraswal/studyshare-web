@@ -203,3 +203,39 @@ export async function unbanUser(email: string, collegeId?: string): Promise<bool
         return false;
     }
 }
+
+/**
+ * Get all banned users (optionally filtered by college)
+ */
+export async function getBannedUsers(collegeId?: string): Promise<Array<{
+    email: string;
+    banned_by: string;
+    reason: string;
+    college_id: string | null;
+    banned_at: string;
+}>> {
+    const supabase = getSupabaseAdmin();
+
+    try {
+        let query = supabase
+            .from('banned_users')
+            .select('email, banned_by, reason, college_id, banned_at')
+            .order('banned_at', { ascending: false });
+
+        if (collegeId) {
+            query = query.or(`college_id.eq.${collegeId},college_id.is.null`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('[UserService] Get banned users error:', error);
+            return [];
+        }
+
+        return data || [];
+    } catch (error) {
+        console.error('[UserService] getBannedUsers error:', error);
+        return [];
+    }
+}
