@@ -91,6 +91,31 @@ export function createApp(): Express {
         });
     });
 
+    // Performance: Request timing and slow query logging
+    app.use((req: Request, res: Response, next) => {
+        const start = Date.now();
+        res.on('finish', () => {
+            const duration = Date.now() - start;
+            // Log slow requests (>500ms)
+            if (duration > 500) {
+                console.warn(`[SLOW] ${req.method} ${req.path} - ${duration}ms`);
+            }
+        });
+        next();
+    });
+
+    // Performance: Cache headers for GET API responses
+    app.use('/api', (req: Request, res: Response, next) => {
+        if (req.method === 'GET') {
+            // Cache public GET responses for 60 seconds
+            res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+        } else {
+            // No cache for mutations
+            res.setHeader('Cache-Control', 'no-store');
+        }
+        next();
+    });
+
     // API routes with base rate limiting
     app.use('/api', rateLimit('default'), routes);
 
