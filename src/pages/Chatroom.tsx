@@ -78,6 +78,11 @@ const Chatroom = () => {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [roomCode, setRoomCode] = useState<string | null>(null);
 
+  // Pagination state for messages
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const MESSAGES_PER_PAGE = 50;
+
   // Pinned rooms from localStorage
   const [pinnedRooms, setPinnedRooms] = useState<Set<string>>(() => {
     try {
@@ -191,23 +196,47 @@ const Chatroom = () => {
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (loadMore = false) => {
     if (!roomId) return;
 
-    setLoading(true);
+    if (!loadMore) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
+      const offset = loadMore ? messages.length : 0;
+
       const { data, error } = await supabase
         .from('room_messages')
         .select('*')
         .eq('room_id', roomId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + MESSAGES_PER_PAGE - 1);
 
       if (error) throw error;
-      setMessages(data || []);
+
+      const newMessages = data || [];
+      setHasMoreMessages(newMessages.length === MESSAGES_PER_PAGE);
+
+      if (loadMore) {
+        setMessages(prev => [...prev, ...newMessages]);
+      } else {
+        setMessages(newMessages);
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load more messages when scrolling
+  const loadMoreMessages = () => {
+    if (!loadingMore && hasMoreMessages) {
+      fetchMessages(true);
     }
   };
 
@@ -1076,6 +1105,27 @@ const Chatroom = () => {
                   <div className="text-center py-12">
                     <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                     <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
+                  </div>
+                )}
+
+                {/* Load More Messages Button */}
+                {hasMoreMessages && filteredMessages.length > 0 && !showSavedOnly && (
+                  <div className="text-center py-4">
+                    <Button
+                      variant="outline"
+                      onClick={loadMoreMessages}
+                      disabled={loadingMore}
+                      className="min-w-[150px]"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        'Load Older Messages'
+                      )}
+                    </Button>
                   </div>
                 )}
               </>
