@@ -28,7 +28,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  sendEmailVerification
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
@@ -40,6 +41,8 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [verificationPending, setVerificationPending] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [sendingResetEmail, setSendingResetEmail] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -364,9 +367,65 @@ const Auth = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                {isLogin ? "Sign in" : "Sign up"}
-              </Button>
+              {isLogin && !forgotPasswordMode && (
+                <div className="text-right">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm text-muted-foreground hover:text-primary p-0 h-auto"
+                    onClick={() => setForgotPasswordMode(true)}
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
+              )}
+
+              {forgotPasswordMode ? (
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={sendingResetEmail || !formData.email}
+                    onClick={async () => {
+                      if (!formData.email) {
+                        toast.error("Please enter your email");
+                        return;
+                      }
+                      setSendingResetEmail(true);
+                      try {
+                        await sendPasswordResetEmail(auth, formData.email);
+                        toast.success("Password reset email sent! Check your inbox.");
+                        setForgotPasswordMode(false);
+                      } catch (error: any) {
+                        console.error("Reset error:", error);
+                        if (error.code === "auth/user-not-found") {
+                          toast.error("No account found with this email");
+                        } else if (error.code === "auth/too-many-requests") {
+                          toast.error("Too many requests. Please wait.");
+                        } else {
+                          toast.error("Failed to send reset email");
+                        }
+                      } finally {
+                        setSendingResetEmail(false);
+                      }
+                    }}
+                  >
+                    {sendingResetEmail ? "Sending..." : "Send Reset Email"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setForgotPasswordMode(false)}
+                  >
+                    Back to Sign in
+                  </Button>
+                </div>
+              ) : (
+                <Button type="submit" className="w-full">
+                  {isLogin ? "Sign in" : "Sign up"}
+                </Button>
+              )}
             </form>
 
             <div className="text-center text-sm">
