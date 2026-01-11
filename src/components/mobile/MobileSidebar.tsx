@@ -20,7 +20,7 @@ const menuItems = [
     { icon: FileText, label: 'Resources', path: '/study' },
     { icon: BookOpenCheck, label: 'Syllabus', path: '/study?tab=syllabus' },
     { icon: Users, label: 'Following', path: '/study?tab=following' },
-    { icon: Users, label: 'Explore Students', path: '/profile' },
+    { icon: Users, label: 'Explore Students', path: '/explore' },
 ];
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {

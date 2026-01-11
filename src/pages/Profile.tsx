@@ -310,8 +310,9 @@ const Profile = () => {
     }
   };
 
-  // Alias for refetching (used by follow button)
+  // Aliases for refetching (used by follow button and contribution refresh)
   const fetchFollowersFollowing = fetchProfileData;
+  const fetchContributions = fetchProfileData;
 
   useEffect(() => {
     fetchProfileData();
