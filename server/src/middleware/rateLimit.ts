@@ -26,22 +26,22 @@ const userLimits = new Map<string, RateLimitEntry>();
 
 /**
  * Default rate limit configurations
- * NOTE: Very high limits for development/testing
+ * PRODUCTION VALUES - Properly enforce request limits
  */
 const RATE_CONFIGS: Record<string, RateLimitConfig> = {
     default: {
-        maxTokens: 1000,
-        refillRate: 1000,
-        windowMs: 60000, // 1 minute
+        maxTokens: 100,      // 100 requests per minute
+        refillRate: 100,
+        windowMs: 60000,     // 1 minute
     },
     write: {
-        maxTokens: 1000,
-        refillRate: 1000,
+        maxTokens: 30,       // 30 writes per minute (posts, comments, etc.)
+        refillRate: 30,
         windowMs: 60000,
     },
     auth: {
-        maxTokens: 100,
-        refillRate: 100,
+        maxTokens: 5,        // 5 auth attempts per minute (prevent brute force)
+        refillRate: 5,
         windowMs: 60000,
     },
 };

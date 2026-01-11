@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../config/supabase';
 import { Errors } from '../middleware/errorHandler';
+import { sanitizeInput, containsXSS } from '../middleware/sanitize';
 import crypto from 'crypto';
 
 /**
@@ -100,15 +101,21 @@ export async function joinRoomById(
 ): Promise<{ roomName: string }> {
     const supabase = getSupabaseAdmin();
 
-    // Get room info
+    // Get room info - SECURITY: Include is_private check
     const { data: room, error: findError } = await supabase
         .from('chat_rooms')
-        .select('id, name, member_count')
+        .select('id, name, member_count, is_private')
         .eq('id', roomId)
         .single();
 
     if (findError || !room) {
         throw Errors.notFound('Room');
+    }
+
+    // SECURITY FIX: Block direct joins to private rooms
+    // Private rooms MUST use join code (joinRoomByCode function)
+    if (room.is_private) {
+        throw Errors.forbidden('This is a private room. Use the join code to access.');
     }
 
     // Check if already a member
@@ -189,13 +196,21 @@ export async function postMessage(
 ): Promise<{ id: string }> {
     const supabase = getSupabaseAdmin();
 
+    // SECURITY: Sanitize message content to prevent XSS
+    const sanitizedContent = sanitizeInput(content);
+
+    // Log potential XSS attempts for monitoring
+    if (containsXSS(content)) {
+        console.warn(`[ChatService] Potential XSS attempt from ${authorEmail} in room ${roomId}`);
+    }
+
     const { data, error } = await supabase
         .from('room_messages')
         .insert({
             room_id: roomId,
-            author_name: authorName,
+            author_name: sanitizeInput(authorName),
             author_email: authorEmail,
-            content,
+            content: sanitizedContent,
             image_url: imageUrl || null,
             upvotes: 0,
             downvotes: 0,
