@@ -73,6 +73,7 @@ const Chatroom = () => {
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"recent" | "top">("recent");
   const [activeUsers, setActiveUsers] = useState<number>(0);
   const [isMember, setIsMember] = useState<boolean>(true);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -92,6 +93,9 @@ const Chatroom = () => {
       return new Set();
     }
   });
+
+  // Debounce ref for vote double-click prevention
+  const lastVoteTimeRef = useRef<Record<string, number>>({});
 
   const togglePinRoom = (roomId: string) => {
     setPinnedRooms(prev => {
@@ -208,12 +212,20 @@ const Chatroom = () => {
     try {
       const offset = loadMore ? messages.length : 0;
 
-      const { data, error } = await supabase
+      // Support both recent and top sorting
+      let query = supabase
         .from('room_messages')
         .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + MESSAGES_PER_PAGE - 1);
+        .eq('room_id', roomId);
+
+      if (sortBy === 'top') {
+        query = query.order('upvotes', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query.range(offset, offset + MESSAGES_PER_PAGE - 1);
 
       if (error) throw error;
 
@@ -331,6 +343,14 @@ const Chatroom = () => {
   };
 
   const handleVote = async (messageId: string, direction: "up" | "down") => {
+    // Debounce: prevent votes faster than 1 second per message
+    const now = Date.now();
+    if (lastVoteTimeRef.current[messageId] && (now - lastVoteTimeRef.current[messageId] < 1000)) {
+      console.log('[ChatVote] Debounced - too fast');
+      return;
+    }
+    lastVoteTimeRef.current[messageId] = now;
+
     const key = messageId;
     const currentVote = votedPosts[key];
 

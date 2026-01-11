@@ -87,6 +87,7 @@ const ResourceCard = ({
   // Refs to prevent double-clicks (synchronous check)
   const isVotingRef = useRef(false);
   const isBookmarkingRef = useRef(false);
+  const lastVoteTimeRef = useRef(0);
 
   const Icon = typeIcons[type];
 
@@ -101,9 +102,14 @@ const ResourceCard = ({
       return;
     }
 
-    // Prevent double-clicks (synchronous check)
-    if (isVotingRef.current || loading) return;
+    // Prevent double-clicks with both ref AND timestamp check
+    const now = Date.now();
+    if (isVotingRef.current || loading || (now - lastVoteTimeRef.current < 1000)) {
+      console.log('[Vote] Debounced - too fast');
+      return;
+    }
     isVotingRef.current = true;
+    lastVoteTimeRef.current = now;
 
     setLoading(true);
     try {
