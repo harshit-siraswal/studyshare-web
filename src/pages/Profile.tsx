@@ -561,9 +561,28 @@ const Profile = () => {
     ? profileUser.bio
     : (userProfile?.bio || editForm.bio);
 
+  // Handle college which might be stored as JSON object or plain string
+  const getCollegeName = (college: any): string => {
+    if (!college) return "College";
+    if (typeof college === 'object' && college.name) {
+      return college.name;
+    }
+    if (typeof college === 'string') {
+      // Try to parse if it's a JSON string
+      try {
+        const parsed = JSON.parse(college);
+        if (parsed && parsed.name) return parsed.name;
+      } catch {
+        // Not JSON, use as-is
+        return college;
+      }
+    }
+    return "College";
+  };
+
   const displayCollege = isViewingOther
-    ? profileUser.college
-    : (userProfile?.college || "College");
+    ? getCollegeName(profileUser.college)
+    : getCollegeName(userProfile?.college);
 
   /* 👥 SOCIAL DATA */
   const displayContributions = contributions;

@@ -2,13 +2,14 @@
 // Slide-in drawer menu for mobile
 
 import { useState, useEffect } from 'react';
-import { X, Bookmark, Moon, Sun, LogOut, FileText, BookOpenCheck, Users } from 'lucide-react';
+import { X, Moon, Sun, LogOut, FileText, BookOpenCheck, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MobileSidebarProps {
     isOpen: boolean;
@@ -20,7 +21,7 @@ const menuItems = [
     { icon: FileText, label: 'Resources', path: '/study' },
     { icon: BookOpenCheck, label: 'Syllabus', path: '/study?tab=syllabus' },
     { icon: Users, label: 'Following', path: '/study?tab=following' },
-    { icon: Users, label: 'Explore Students', path: '/explore' },
+    { icon: Search, label: 'Explore Students', path: '/explore' },
 ];
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
@@ -28,8 +29,30 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     const location = useLocation();
     const { user, logout } = useAuth();
     const { theme, setTheme } = useTheme();
+    const [userProfile, setUserProfile] = useState<any>(null);
 
-    // Note: Route-based closing is handled by parent Sheet component
+    // Fetch user profile from Supabase
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (!user?.uid) return;
+
+            try {
+                const { data } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.uid)
+                    .single();
+
+                if (data) {
+                    setUserProfile(data);
+                }
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+            }
+        };
+
+        fetchUserProfile();
+    }, [user?.uid]);
 
     // Prevent body scroll when sidebar is open
     useEffect(() => {
@@ -58,8 +81,14 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         setTheme(theme === 'dark' ? 'light' : 'dark');
     };
 
-    const getInitials = (email: string) => {
-        return email.substring(0, 2).toUpperCase();
+    const getInitials = (name: string) => {
+        if (!name) return 'U';
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
     };
 
     return (
@@ -91,6 +120,9 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 {/* User Profile - Clickable to go to profile */}
                 {user && (() => {
                     const selectedCollege = JSON.parse(localStorage.getItem("selectedCollege") || "{}");
+                    const displayName = userProfile?.display_name || user.displayName || user.email?.split('@')[0] || 'User';
+                    const photoUrl = userProfile?.profile_photo_url || user.photoURL;
+
                     return (
                         <div
                             className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
@@ -98,14 +130,16 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         >
                             <div className="flex items-center gap-3">
                                 <Avatar className="w-12 h-12">
-                                    <AvatarImage src={user.photoURL || undefined} />
+                                    {photoUrl ? (
+                                        <AvatarImage src={photoUrl} alt={displayName} />
+                                    ) : null}
                                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                        {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+                                        {getInitials(displayName)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium truncate">
-                                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                                        {displayName}
                                     </p>
                                     <p className="text-sm text-muted-foreground truncate">
                                         {selectedCollege?.name || 'Your College'}
