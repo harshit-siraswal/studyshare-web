@@ -8,6 +8,15 @@ Explanify is a web-app built to bring together everything a college student need
 
 I built this project to solve a common pain point: students navigating multiple platforms (WhatsApp groups, email, Google Drive, notice-boards, etc.) to find class resources, notices, or coordinate with classmates. Explanify tries to bring all those functionalities under one roof — making collaboration, notice-sharing, resource-access, and study scheduling easier and more organized.
 
+## 🏗️ Architecture
+
+This repository contains the **Frontend** (Vite + React + Shadcn UI).
+
+| Component | Repository |
+|-----------|------------|
+| **Frontend** | This repo ([new](https://github.com/harshit-siraswal/new)) |
+| **Backend** | [studyspace-backend](https://github.com/harshit-siraswal/studyspace-backend) |
+
 🔧 Features
 
 Syllabus Management — view and manage syllabus items (with sorting / filtering).
@@ -28,4 +37,4 @@ PDF Viewer for Notes — open shared notes as PDF directly in browser for readin
 
 📄 Demo / Live Site
 
-You can check out the live version live here: https://studyspace-kiet.vercel.app/
+You can check out the live version here: https://mystudyspace.me/
