@@ -2,27 +2,44 @@
 // Slide-in drawer menu for mobile
 
 import { useState, useEffect } from 'react';
-import { X, Moon, Sun, LogOut, FileText, BookOpenCheck, Users, Search } from 'lucide-react';
+import { X, Moon, Sun, LogOut, FileText, BookOpenCheck, Users, Search, Download } from 'lucide-react';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../../supabase';
 
 interface MobileSidebarProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-// Per user request: Resources, Syllabus, Following, Explore Students
 const menuItems = [
     { icon: FileText, label: 'Resources', path: '/study' },
     { icon: BookOpenCheck, label: 'Syllabus', path: '/study?tab=syllabus' },
     { icon: Users, label: 'Following', path: '/study?tab=following' },
     { icon: Search, label: 'Explore Students', path: '/explore' },
 ];
+
+// PWA Install Button Component
+function InstallButton() {
+    const { canInstall, isInstalled, promptInstall } = usePWAInstall();
+
+    if (isInstalled || !canInstall) return null;
+
+    return (
+        <button
+            onClick={promptInstall}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
+        >
+            <Download className="w-5 h-5" />
+            <span className="font-medium">Add to Home Screen</span>
+        </button>
+    );
+}
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     const navigate = useNavigate();
@@ -180,6 +197,9 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
                 {/* Footer Actions */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border space-y-2">
+                    {/* PWA Install Button */}
+                    <InstallButton />
+
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}

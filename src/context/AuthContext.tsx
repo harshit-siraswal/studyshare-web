@@ -23,7 +23,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
-      // Check ban status after login
+      // Set loading to false immediately so navigation can proceed
+      // This fixes the redirect issue where the app was stuck showing "Welcome back"
+      setLoading(false);
+
+      // Check ban status asynchronously (non-blocking)
       if (firebaseUser) {
         try {
           const userInfo = await verifyAndGetUser();
@@ -43,8 +47,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsBanned(false);
         setBanReason(null);
       }
-
-      setLoading(false);
     });
 
     return () => unsub();
