@@ -1,75 +1,35 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Play, Pause, RotateCcw, Coffee, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useTimer } from "@/context/TimerContext";
 
-type TimerMode = "focus" | "break";
-
+/**
+ * Study Timer Component
+ * 
+ * Uses global TimerContext so timer state persists when
+ * the component unmounts (e.g., when mobile Sheet closes).
+ */
 const StudyTimer = () => {
-  const [focusMinutes, setFocusMinutes] = useState(25);
-  const [breakMinutes, setBreakMinutes] = useState(5);
-  const [mode, setMode] = useState<TimerMode>("focus");
-  const [timeLeft, setTimeLeft] = useState(focusMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [sessions, setSessions] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const {
+    focusMinutes,
+    breakMinutes,
+    mode,
+    timeLeft,
+    isRunning,
+    sessions,
+    setFocusMinutes,
+    setBreakMinutes,
+    toggleTimer,
+    resetTimer,
+    switchMode,
+  } = useTimer();
 
   const FOCUS_TIME = focusMinutes * 60;
   const BREAK_TIME = breakMinutes * 60;
-
-  useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      if (mode === "focus") {
-        setSessions((prev) => prev + 1);
-        setMode("break");
-        setTimeLeft(BREAK_TIME);
-      } else {
-        setMode("focus");
-        setTimeLeft(FOCUS_TIME);
-      }
-      setIsRunning(false);
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRunning, timeLeft, mode, FOCUS_TIME, BREAK_TIME]);
-
-  const toggleTimer = () => {
-    setIsRunning(!isRunning);
-  };
-
-  const resetTimer = () => {
-    setIsRunning(false);
-    setTimeLeft(mode === "focus" ? FOCUS_TIME : BREAK_TIME);
-  };
-
-  const switchMode = (newMode: TimerMode) => {
-    setMode(newMode);
-    setTimeLeft(newMode === "focus" ? FOCUS_TIME : BREAK_TIME);
-    setIsRunning(false);
-  };
-
-  const handleFocusChange = (value: number) => {
-    setFocusMinutes(value);
-    if (mode === "focus" && !isRunning) {
-      setTimeLeft(value * 60);
-    }
-  };
-
-  const handleBreakChange = (value: number) => {
-    setBreakMinutes(value);
-    if (mode === "break" && !isRunning) {
-      setTimeLeft(value * 60);
-    }
-  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -77,8 +37,8 @@ const StudyTimer = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const progress = mode === "focus" 
-    ? ((FOCUS_TIME - timeLeft) / FOCUS_TIME) * 100 
+  const progress = mode === "focus"
+    ? ((FOCUS_TIME - timeLeft) / FOCUS_TIME) * 100
     : ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100;
 
   return (
@@ -102,7 +62,7 @@ const StudyTimer = () => {
                   min={1}
                   max={120}
                   value={focusMinutes}
-                  onChange={(e) => handleFocusChange(Number(e.target.value))}
+                  onChange={(e) => setFocusMinutes(Number(e.target.value))}
                   className="mt-1"
                 />
               </div>
@@ -114,7 +74,7 @@ const StudyTimer = () => {
                   min={1}
                   max={60}
                   value={breakMinutes}
-                  onChange={(e) => handleBreakChange(Number(e.target.value))}
+                  onChange={(e) => setBreakMinutes(Number(e.target.value))}
                   className="mt-1"
                 />
               </div>

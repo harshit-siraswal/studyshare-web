@@ -417,7 +417,7 @@ export async function createChatRoom(
     description: string | null,
     isPrivate: boolean,
     collegeId?: string
-): Promise<{ message: string; id: string; joinCode?: string }> {
+): Promise<{ message: string; id: string; joinCode?: string; expiresAt?: string }> {
     return apiRequest('/api/chat/rooms', {
         method: 'POST',
         body: JSON.stringify({ name, description, isPrivate, collegeId }),
@@ -499,6 +499,7 @@ export interface ChatRoomInfo {
         created_by: string;
         created_at: string;
         room_code?: string;
+        expires_at?: string;
     };
     isMember: boolean;
     isAdmin: boolean;

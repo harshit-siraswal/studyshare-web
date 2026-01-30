@@ -43,6 +43,7 @@ interface ChatRoom {
   member_count: number;
   created_by: string;
   created_at: string;
+  expires_at?: string;
 }
 
 const Chatroom = () => {
@@ -189,6 +190,7 @@ const Chatroom = () => {
         member_count: room.member_count,
         created_by: room.created_by,
         created_at: room.created_at,
+        expires_at: room.expires_at,
       });
       setIsMember(memberStatus);
       setIsAdmin(adminStatus);
@@ -613,8 +615,18 @@ const Chatroom = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-foreground">Chat Rooms</h1>
-                <p className="text-sm text-muted-foreground">Join a community</p>
+                <h1 className="text-xl font-bold text-foreground">{currentRoom?.name || "Chat Room"}</h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{currentRoom?.member_count || 0} members</span>
+                  {currentRoom?.expires_at && (
+                    <>
+                      <span>•</span>
+                      <span className="text-amber-500 flex items-center gap-1">
+                        Expires {new Date(currentRoom.expires_at).toLocaleDateString()}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <CreateChatRoomDialog trigger={

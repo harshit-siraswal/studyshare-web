@@ -75,6 +75,10 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
         toast.info(`Share this code to invite others: ${result.joinCode}`, { duration: 15000 });
       }
 
+      if (result.expiresAt) {
+        toast.info(`Room expires on ${new Date(result.expiresAt).toLocaleDateString()}`);
+      }
+
       setOpen(false);
       handleReset();
 

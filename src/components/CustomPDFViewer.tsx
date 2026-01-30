@@ -1,30 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 // Set up PDF.js worker
-// Using the version that react-pdf expects (5.4.296) for compatibility
+// Using the version matches the installed pdfjs-dist
 if (typeof window !== 'undefined') {
-  // Try using the exact version from react-pdf's dependency first
-  const reactPdfVersion = '5.4.296'; // Version that react-pdf@10.2.0 uses
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${reactPdfVersion}/build/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.449/build/pdf.worker.min.js`;
 }
 
 interface CustomPDFViewerProps {
   pdfUrl: string;
-  title: string;
-  onDownload: () => void;
+  title?: string;
 }
 
-const CustomPDFViewer = ({ pdfUrl, title, onDownload }: CustomPDFViewerProps) => {
+const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFlipping, setIsFlipping] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load PDF document
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -39,31 +40,28 @@ const CustomPDFViewer = ({ pdfUrl, title, onDownload }: CustomPDFViewerProps) =>
     setLoading(false);
   };
 
-  // Navigate to next page with flip animation
+  // Navigate to next page
   const goToNextPage = useCallback(() => {
-    if (pageNumber < numPages && !isFlipping) {
-      setIsFlipping(true);
-      setTimeout(() => {
-        setPageNumber((prev) => prev + 1);
-        setTimeout(() => setIsFlipping(false), 100);
-      }, 400);
+    if (pageNumber < numPages) {
+      setPageNumber((prev) => prev + 1);
     }
-  }, [pageNumber, numPages, isFlipping]);
+  }, [pageNumber, numPages]);
 
-  // Navigate to previous page with flip animation
+  // Navigate to previous page
   const goToPrevPage = useCallback(() => {
-    if (pageNumber > 1 && !isFlipping) {
-      setIsFlipping(true);
-      setTimeout(() => {
-        setPageNumber((prev) => prev - 1);
-        setTimeout(() => setIsFlipping(false), 100);
-      }, 400);
+    if (pageNumber > 1) {
+      setPageNumber((prev) => prev - 1);
     }
-  }, [pageNumber, isFlipping]);
+  }, [pageNumber]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Create a more precise check to avoid capturing inputs if user is typing
+      if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       if (e.key === "ArrowLeft") {
         goToPrevPage();
       } else if (e.key === "ArrowRight") {
@@ -75,13 +73,46 @@ const CustomPDFViewer = ({ pdfUrl, title, onDownload }: CustomPDFViewerProps) =>
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [goToPrevPage, goToNextPage]);
 
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!containerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const handleZoomIn = () => {
-    setScale((prev) => Math.min(prev + 0.2, 3));
+    setScale((prev) => Math.min(prev + 0.2, 3.0));
   };
 
   const handleZoomOut = () => {
     setScale((prev) => Math.max(prev - 0.2, 0.5));
   };
+
+  // Custom text renderer to highlight search terms
+  // Note: standard browser Ctrl+F works better with the TextLayer enabled, which is default.
+  // We can also add a helper hint.
 
   if (error) {
     return (
@@ -95,140 +126,122 @@ const CustomPDFViewer = ({ pdfUrl, title, onDownload }: CustomPDFViewerProps) =>
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div ref={containerRef} className="flex flex-col h-full bg-background relative">
       {/* Controls Bar */}
-      <div className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-2 md:p-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 gap-2 overflow-x-auto">
+        <div className="flex items-center gap-1 md:gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={goToPrevPage}
-            disabled={pageNumber <= 1 || isFlipping}
-            className="h-9 w-9"
+            disabled={pageNumber <= 1}
+            className="h-8 w-8"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <span className="text-sm font-medium min-w-[100px] text-center">
-            Page {pageNumber} of {numPages || "..."}
+          <span className="text-sm font-medium whitespace-nowrap min-w-[80px] text-center">
+            {pageNumber} / {numPages || "--"}
           </span>
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={goToNextPage}
-            disabled={pageNumber >= numPages || isFlipping}
-            className="h-9 w-9"
+            disabled={pageNumber >= numPages}
+            className="h-8 w-8"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1 border rounded-md">
+          <div className="flex items-center gap-1 border rounded-md px-1 bg-muted/20">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={handleZoomOut}
               disabled={scale <= 0.5}
+              title="Zoom Out"
             >
-              <ZoomOut className="w-4 h-4" />
+              <ZoomOut className="w-3.5 h-3.5" />
             </Button>
-            <span className="px-2 text-sm min-w-[3rem] text-center">
+            <span className="text-xs min-w-[3rem] text-center font-mono">
               {Math.round(scale * 100)}%
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={handleZoomIn}
               disabled={scale >= 3}
+              title="Zoom In"
             >
-              <ZoomIn className="w-4 h-4" />
+              <ZoomIn className="w-3.5 h-3.5" />
             </Button>
           </div>
 
-          {/* Download Button */}
-          <Button variant="default" size="sm" onClick={onDownload}>
-            <Download className="w-4 h-4 mr-2" />
-            Download
+          {/* Fullscreen Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="h-8 w-8"
+            title="Toggle Fullscreen"
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
           </Button>
+
+          {/* Search Hint */}
+          <div className="hidden md:flex items-center text-xs text-muted-foreground ml-2 bg-muted/30 px-2 py-1 rounded">
+            <Search className="h-3 w-3 mr-1" />
+            <span>Ctrl+F to find</span>
+          </div>
         </div>
       </div>
 
       {/* PDF Viewer Area */}
-      <div className="flex-1 overflow-auto bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950 dark:via-orange-950 dark:to-amber-900 p-8">
-        <div className="flex justify-center items-start min-h-full">
-          {loading && (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-              <p className="text-sm text-muted-foreground">Loading PDF...</p>
-            </div>
-          )}
-
-          <div
-            className="relative"
-            style={{
-              perspective: "1200px",
-              perspectiveOrigin: "center center",
-            }}
-          >
-            <Document
-              file={pdfUrl}
-              onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={onDocumentLoadError}
-              loading={
-                <div className="flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Loading PDF...</p>
-                </div>
-              }
-            >
-              {/* Book-like page container with flip animation */}
-              <div
-                className={cn(
-                  "relative transition-all duration-500 ease-in-out",
-                  isFlipping && "page-flip-animation"
-                )}
-                style={{
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                <div
-                  className="bg-white shadow-2xl overflow-hidden"
-                  style={{
-                    boxShadow: "0 25px 70px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.9)",
-                    borderRadius: "2px",
-                    transform: isFlipping ? "rotateY(-15deg) scale(0.98)" : "rotateY(0deg) scale(1)",
-                    transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-                  }}
-                >
-                  <Page
-                    pageNumber={pageNumber}
-                    scale={scale}
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                    className="border-0"
-                    loading={
-                      <div className="flex items-center justify-center h-full min-h-[600px]">
-                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                      </div>
-                    }
-                  />
-                </div>
+      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900/50 p-4 md:p-8 flex justify-center">
+        <div className="relative shadow-xl">
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={
+              <div className="flex flex-col items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                <p className="text-sm text-muted-foreground">Loading PDF...</p>
               </div>
-            </Document>
-          </div>
+            }
+            className="flex flex-col items-center"
+          >
+            <div className="bg-white dark:bg-white text-black transition-transform duration-200 ease-out origin-top border border-border/10">
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className="shadow-sm"
+                loading={
+                  <div className="flex items-center justify-center w-[600px] h-[800px] bg-white">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                }
+                error={
+                  <div className="flex items-center justify-center w-full h-[400px] bg-white text-red-500 p-4 text-center">
+                    Failed to render page.
+                  </div>
+                }
+              />
+            </div>
+          </Document>
         </div>
-      </div>
-
-      {/* Page Navigation Hints */}
-      <div className="p-2 border-t bg-background/95 backdrop-blur text-center">
-        <p className="text-xs text-muted-foreground">
-          Use arrow keys or buttons to navigate • Click outside to close
-        </p>
       </div>
     </div>
   );

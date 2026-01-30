@@ -8,6 +8,7 @@ import App from "./App";
 import "./index.css";
 import { AuthProvider } from "./context/AuthContext";
 import { CollegeProvider } from "./context/CollegeContext";
+import { TimerProvider } from "./context/TimerContext";
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
@@ -42,7 +43,9 @@ createRoot(document.getElementById("root")!).render(
           >
             <AuthProvider>
               <CollegeProvider>
-                <App />
+                <TimerProvider>
+                  <App />
+                </TimerProvider>
               </CollegeProvider>
             </AuthProvider>
           </GoogleReCaptchaProvider>
