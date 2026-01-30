@@ -21,6 +21,7 @@ import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
 // import { AIChatButton, AIChatModal } from '@/components/ai';
+import PremiumButton from "@/components/PremiumButton";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -228,6 +229,11 @@ const Study = () => {
 
               {/* Notification Button */}
               <NotificationButton />
+
+              {/* Premium Button */}
+              <div className="hidden md:block">
+                <PremiumButton />
+              </div>
 
               {/* Policy: Hide Upload buttons for readonly users */}
               {isFullAccess && (

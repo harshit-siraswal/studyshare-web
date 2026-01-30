@@ -9,6 +9,7 @@ interface AuthContextType {
   isBanned: boolean;
   banReason: string | null;
   logout: () => Promise<void>;
+  isPremium: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,19 +19,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false); // [NEW]
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
       // Set loading to false immediately so navigation can proceed
-      // This fixes the redirect issue where the app was stuck showing "Welcome back"
       setLoading(false);
 
-      // Check ban status asynchronously (non-blocking)
       if (firebaseUser) {
         try {
-          const userInfo = await verifyAndGetUser();
+          // Parallel fetch for user info and premium status
+          const [userInfo, { data: premiumData }] = await Promise.all([
+            verifyAndGetUser(),
+            import("../supabase").then(({ supabase }) =>
+              supabase.from('premium_users').select('premium_until').eq('id', firebaseUser.uid).maybeSingle()
+            )
+          ]);
+
           if (userInfo.isBanned) {
             setIsBanned(true);
             setBanReason(userInfo.banReason || 'You have been banned by an administrator');
@@ -38,14 +45,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setIsBanned(false);
             setBanReason(null);
           }
+
+          // Check premium validity
+          if (premiumData) {
+            const expiryDate = new Date(premiumData.premium_until);
+            setIsPremium(expiryDate > new Date());
+          } else {
+            setIsPremium(false);
+          }
         } catch (error) {
-          console.error('Error checking ban status:', error);
+          console.error('Error fetching user status:', error);
           setIsBanned(false);
           setBanReason(null);
+          setIsPremium(false);
         }
       } else {
         setIsBanned(false);
         setBanReason(null);
+        setIsPremium(false);
       }
     });
 
@@ -56,10 +73,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await signOut(auth);
     setIsBanned(false);
     setBanReason(null);
+    setIsPremium(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isBanned, banReason, logout }}>
+    <AuthContext.Provider value={{ user, loading, isBanned, banReason, logout, isPremium }}>
       {children}
     </AuthContext.Provider>
   );

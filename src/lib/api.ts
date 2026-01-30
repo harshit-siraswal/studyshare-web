@@ -416,11 +416,12 @@ export async function createChatRoom(
     name: string,
     description: string | null,
     isPrivate: boolean,
-    collegeId?: string
+    collegeId?: string,
+    expiresAt?: string // [NEW] - Optional expiry override
 ): Promise<{ message: string; id: string; joinCode?: string; expiresAt?: string }> {
     return apiRequest('/api/chat/rooms', {
         method: 'POST',
-        body: JSON.stringify({ name, description, isPrivate, collegeId }),
+        body: JSON.stringify({ name, description, isPrivate, collegeId, expiresAt }),
     });
 }
 
