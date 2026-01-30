@@ -20,7 +20,7 @@ import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
-import { AIChatButton, AIChatModal } from '@/components/ai';
+// import { AIChatButton, AIChatModal } from '@/components/ai';
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -466,9 +466,10 @@ const Study = () => {
         </div>
       </div>
 
-      {/* AI Assistant */}
+      {/* AI Assistant - Removed
       <AIChatButton onClick={() => setAIChatOpen(true)} />
       <AIChatModal isOpen={aiChatOpen} onClose={() => setAIChatOpen(false)} />
+      */}
     </div>
   );
 };
