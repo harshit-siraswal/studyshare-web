@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search, Moon, Sun, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -16,20 +17,38 @@ interface CustomPDFViewerProps {
   title?: string;
 }
 
+// Helper for text matches
+interface SearchMatch {
+  pageIndex: number; // 0-based
+  itemIndex: number; // Index in the text items array
+  matchIndex: number; // Index of the search term in the string
+}
+
 const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(-1);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // PDF Document Proxy
+  const [pdfDocument, setPdfDocument] = useState<pdfjs.PDFDocumentProxy | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Load PDF document
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
+  const onDocumentLoadSuccess = (pdf: pdfjs.PDFDocumentProxy) => {
+    setNumPages(pdf.numPages);
+    setPdfDocument(pdf);
     setLoading(false);
     setError(null);
   };
@@ -40,38 +59,89 @@ const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
     setLoading(false);
   };
 
-  // Navigate to next page
-  const goToNextPage = useCallback(() => {
-    if (pageNumber < numPages) {
-      setPageNumber((prev) => prev + 1);
+  // Search Functionality
+  const performSearch = useCallback(async () => {
+    if (!pdfDocument || !searchQuery.trim()) {
+      setSearchResults([]);
+      setCurrentMatchIndex(-1);
+      return;
     }
-  }, [pageNumber, numPages]);
 
-  // Navigate to previous page
-  const goToPrevPage = useCallback(() => {
-    if (pageNumber > 1) {
-      setPageNumber((prev) => prev - 1);
+    setIsSearching(true);
+    const results: SearchMatch[] = [];
+    const normalizedQuery = searchQuery.toLowerCase();
+
+    try {
+      for (let i = 1; i <= pdfDocument.numPages; i++) {
+        const page = await pdfDocument.getPage(i);
+        const textContent = await page.getTextContent();
+
+        // This is a simplified search that finds matches in text items.
+        // Complex multi-line search across items is harder.
+        textContent.items.forEach((item: any, itemIdx) => {
+          if ('str' in item) {
+            const text = item.str.toLowerCase();
+            let index = text.indexOf(normalizedQuery);
+            while (index !== -1) {
+              results.push({
+                pageIndex: i - 1,
+                itemIndex: itemIdx,
+                matchIndex: index
+              });
+              index = text.indexOf(normalizedQuery, index + 1);
+            }
+          }
+        });
+      }
+
+      setSearchResults(results);
+      if (results.length > 0) {
+        setCurrentMatchIndex(0);
+        scrollToPage(results[0].pageIndex);
+      } else {
+        setCurrentMatchIndex(-1);
+      }
+    } catch (err) {
+      console.error("Search failed:", err);
+    } finally {
+      setIsSearching(false);
     }
-  }, [pageNumber]);
+  }, [pdfDocument, searchQuery]);
 
-  // Keyboard navigation
+  // Debounce search execution
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Create a more precise check to avoid capturing inputs if user is typing
-      if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) {
-        return;
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        performSearch();
+      } else {
+        setSearchResults([]);
+        setCurrentMatchIndex(-1);
       }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, performSearch]);
 
-      if (e.key === "ArrowLeft") {
-        goToPrevPage();
-      } else if (e.key === "ArrowRight") {
-        goToNextPage();
-      }
-    };
+  const scrollToPage = (pageIndex: number) => {
+    virtuosoRef.current?.scrollToIndex({
+      index: pageIndex,
+      align: 'start',
+      behavior: 'smooth'
+    });
+  };
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [goToPrevPage, goToNextPage]);
+  const nextMatch = () => {
+    if (searchResults.length === 0) return;
+    const nextIndex = (currentMatchIndex + 1) % searchResults.length;
+    setCurrentMatchIndex(nextIndex);
+    scrollToPage(searchResults[nextIndex].pageIndex);
+  };
+
+  const prevMatch = () => {
+    if (searchResults.length === 0) return;
+    const prevIndex = (currentMatchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentMatchIndex(prevIndex);
+    scrollToPage(searchResults[prevIndex].pageIndex);
+  };
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(async () => {
@@ -110,9 +180,41 @@ const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
     setScale((prev) => Math.max(prev - 0.2, 0.5));
   };
 
-  // Custom text renderer to highlight search terms
-  // Note: standard browser Ctrl+F works better with the TextLayer enabled, which is default.
-  // We can also add a helper hint.
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  // Custom text renderer for highlighting
+  const makeTextRenderer = useCallback(
+    (searchText: string) => (textItem: any) => {
+      if (!searchText) return textItem.str;
+
+      const str = textItem.str;
+      const lowerStr = str.toLowerCase();
+      const lowerSearch = searchText.toLowerCase();
+      const index = lowerStr.indexOf(lowerSearch);
+
+      if (index === -1) return str;
+
+      // Simple highlight for the first occurrence in the string
+      // A more robust implementation would handle multiple occurrences in one string
+      const before = str.slice(0, index);
+      const match = str.slice(index, index + lowerSearch.length);
+      const after = str.slice(index + lowerSearch.length);
+
+      return (
+        <>
+          {before}
+          <span className="bg-yellow-300 text-black">{match}</span>
+          {after}
+        </>
+      );
+    },
+    []
+  );
+
+  const textRenderer = useMemo(() => makeTextRenderer(searchQuery), [makeTextRenderer, searchQuery]);
+
 
   if (error) {
     return (
@@ -130,32 +232,60 @@ const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
       {/* Controls Bar */}
       <div className="flex items-center justify-between p-2 md:p-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 gap-2 overflow-x-auto">
         <div className="flex items-center gap-1 md:gap-2">
+          {/* Search Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={goToPrevPage}
-            disabled={pageNumber <= 1}
-            className="h-8 w-8"
+            onClick={() => setIsSearchVisible(!isSearchVisible)}
+            className={cn("h-8 w-8", isSearchVisible && "bg-muted")}
+            title="Search"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <Search className="h-4 w-4" />
           </Button>
 
-          <span className="text-sm font-medium whitespace-nowrap min-w-[80px] text-center">
-            {pageNumber} / {numPages || "--"}
-          </span>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToNextPage}
-            disabled={pageNumber >= numPages}
-            className="h-8 w-8"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          {isSearchVisible && (
+            <div className="flex items-center gap-1 animate-in fade-in slide-in-from-left-5">
+              <div className="relative">
+                <Input
+                  placeholder="Find..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 w-32 md:w-48 pr-12"
+                  onKeyDown={(e) => e.key === 'Enter' && nextMatch()}
+                />
+                {isSearching && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMatch} disabled={searchResults.length === 0}>
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMatch} disabled={searchResults.length === 0}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              {searchResults.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-1 hidden sm:inline-block">
+                  {currentMatchIndex + 1}/{searchResults.length}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDarkMode}
+            className="h-8 w-8"
+            title={isDarkMode ? "Light Mode" : "Dark Mode"}
+          >
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
           {/* Zoom Controls */}
           <div className="flex items-center gap-1 border rounded-md px-1 bg-muted/20">
             <Button
@@ -197,51 +327,58 @@ const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
               <Maximize2 className="h-4 w-4" />
             )}
           </Button>
-
-          {/* Search Hint */}
-          <div className="hidden md:flex items-center text-xs text-muted-foreground ml-2 bg-muted/30 px-2 py-1 rounded">
-            <Search className="h-3 w-3 mr-1" />
-            <span>Ctrl+F to find</span>
-          </div>
         </div>
       </div>
 
       {/* PDF Viewer Area */}
-      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900/50 p-4 md:p-8 flex justify-center">
-        <div className="relative shadow-xl">
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            loading={
-              <div className="flex flex-col items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                <p className="text-sm text-muted-foreground">Loading PDF...</p>
-              </div>
-            }
-            className="flex flex-col items-center"
-          >
-            <div className="bg-white dark:bg-white text-black transition-transform duration-200 ease-out origin-top border border-border/10">
-              <Page
-                pageNumber={pageNumber}
-                scale={scale}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                className="shadow-sm"
-                loading={
-                  <div className="flex items-center justify-center w-[600px] h-[800px] bg-white">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                  </div>
-                }
-                error={
-                  <div className="flex items-center justify-center w-full h-[400px] bg-white text-red-500 p-4 text-center">
-                    Failed to render page.
-                  </div>
-                }
-              />
+      <div className={cn(
+        "flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900/50 relative",
+        isDarkMode ? "bg-gray-900" : ""
+      )}>
+        <Document
+          file={pdfUrl}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={onDocumentLoadError}
+          loading={
+            <div className="flex flex-col items-center justify-center p-12 h-full">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+              <p className="text-sm text-muted-foreground">Loading PDF...</p>
             </div>
-          </Document>
-        </div>
+          }
+          className="h-full"
+        >
+          {numPages > 0 && (
+            <Virtuoso
+              ref={virtuosoRef}
+              totalCount={numPages}
+              className="h-full w-full custom-scrollbar"
+              itemContent={(index) => (
+                <div key={index} className="flex justify-center py-4">
+                  <div
+                    className={cn(
+                      "relative shadow-md transition-all duration-200",
+                      isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                    )}
+                  >
+                    <Page
+                      pageNumber={index + 1}
+                      scale={scale}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      customTextRenderer={textRenderer}
+                      className="bg-white"
+                      loading={
+                        <div className="flex items-center justify-center w-[600px] h-[800px] bg-white">
+                          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                        </div>
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            />
+          )}
+        </Document>
       </div>
     </div>
   );
