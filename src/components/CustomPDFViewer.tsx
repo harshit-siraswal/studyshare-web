@@ -351,21 +351,22 @@ const CustomPDFViewer = ({ pdfUrl, title }: CustomPDFViewerProps) => {
             <Virtuoso
               ref={virtuosoRef}
               totalCount={numPages}
+              context={{ textRenderer, isDarkMode, scale }}
               className="h-full w-full custom-scrollbar"
-              itemContent={(index) => (
+              itemContent={(index, _, context) => (
                 <div key={index} className="flex justify-center py-4">
                   <div
                     className={cn(
                       "relative shadow-md transition-all duration-200",
-                      isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                      context.isDarkMode ? "invert-[1] hue-rotate-180" : ""
                     )}
                   >
                     <Page
                       pageNumber={index + 1}
-                      scale={scale}
+                      scale={context.scale}
                       renderTextLayer={true}
                       renderAnnotationLayer={true}
-                      customTextRenderer={textRenderer}
+                      customTextRenderer={context.textRenderer}
                       className="bg-white"
                       loading={
                         <div className="flex items-center justify-center w-[600px] h-[800px] bg-white">
