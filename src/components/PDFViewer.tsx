@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import CustomPDFViewer from "./CustomPDFViewer";
+import DocumentViewer from "./DocumentViewer";
 
 interface PDFViewerProps {
   isOpen: boolean;
@@ -52,10 +52,10 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl }: PDFViewerProps) => {
           </div>
         </DialogHeader>
 
-        {/* Custom PDF Viewer with Zoom, Nav, Search, Fullscreen */}
+        {/* Document Viewer (PDF & DOCX) */}
         <div className="flex-1 overflow-hidden">
-          <CustomPDFViewer
-            pdfUrl={displayUrl}
+          <DocumentViewer
+            url={displayUrl}
             title={title}
           />
         </div>
