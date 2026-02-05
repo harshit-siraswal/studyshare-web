@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Bell, BellOff, RefreshCw, Trash2, UserX, UserCheck, Copy, Loader2, Shield, Users } from "lucide-react";
+import { Settings, Bell, BellOff, RefreshCw, Trash2, UserX, UserCheck, Copy, Loader2, Shield, Users, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import {
     banRoomMember,
     unbanRoomMember,
     deleteRoom,
+    leaveChatRoom,
     getRoomMembers,
     RoomMember,
 } from "@/lib/api";
@@ -66,6 +67,7 @@ const RoomSettingsModal = ({
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [leaving, setLeaving] = useState(false);
     const [banningUser, setBanningUser] = useState<string | null>(null);
 
     useEffect(() => {
@@ -122,6 +124,21 @@ const RoomSettingsModal = ({
             toast.error(error.message || "Failed to delete room");
         } finally {
             setDeleting(false);
+        }
+    };
+
+    const handleLeaveRoom = async () => {
+        setLeaving(true);
+        try {
+            await leaveChatRoom(roomId);
+            toast.success("Left room successfully");
+            setOpen(false);
+            onRoomDeleted?.(); // Trigger refresh/navigate
+            navigate("/chatroom");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to leave room");
+        } finally {
+            setLeaving(false);
         }
     };
 
@@ -194,6 +211,46 @@ const RoomSettingsModal = ({
                             </div>
                             <Switch checked={muted} onCheckedChange={handleMuteToggle} />
                         </div>
+                    </div>
+
+                    {/* Leave Room Option */}
+                    <div className="pt-4">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" className="w-full" disabled={isAdmin}>
+                                    <LogOut className="w-4 h-4 mr-2" />
+                                    Leave Room
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Leave Room?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Are you sure you want to leave "{roomName}"? You won't receive messages from this room anymore.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleLeaveRoom}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        disabled={leaving}
+                                    >
+                                        {leaving ? (
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                            <LogOut className="w-4 h-4 mr-2" />
+                                        )}
+                                        Leave
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        {isAdmin && (
+                            <p className="text-xs text-muted-foreground text-center mt-2">
+                                Admins cannot leave rooms they created. Delete the room instead.
+                            </p>
+                        )}
                     </div>
 
                     {/* Admin Settings */}
@@ -338,10 +395,11 @@ const RoomSettingsModal = ({
                                 </div>
                             </div>
                         </>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
+                    )
+                    }
+                </div >
+            </DialogContent >
+        </Dialog >
     );
 };
 

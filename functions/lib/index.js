@@ -102,9 +102,9 @@ exports.followUser = (0, https_1.onCall)(async (request) => {
     const { error } = await supabase
         .from('follows')
         .insert({
-        follower_email: userEmail,
-        following_email: targetEmail
-    });
+            follower_email: userEmail,
+            following_email: targetEmail
+        });
     if (error) {
         if (error.code === '23505') {
             throw new https_1.HttpsError('already-exists', 'Already following');

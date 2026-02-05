@@ -1,5 +1,7 @@
 -- Migration: Implement Content Visibility Logic
 -- Description: Restricts visibility of unapproved resources to creators and followers only.
+-- Note: Indexes are created non-concurrently for compatibility. For large tables in production,
+--       consider running CREATE INDEX CONCURRENTLY outside a transaction during low-traffic windows.
 
 -- ============================================================
 -- 1. DROP OLD PERMISSIVE POLICY
@@ -43,8 +45,27 @@ USING (
 -- ============================================================
 -- 3. ENSURE INDEXES FOR PERFORMANCE
 -- ============================================================
--- The RLS policy relies on these columns, so indexes are critical
+-- The RLS policy relies on these columns, so indexes are critical.
+-- 
+-- Note: The RLS predicate evaluates (is_approved = true OR owner OR follower), so there's
+-- no explicit "is_approved = false" filter the planner can use for partial indexes.
+-- Instead, we rely on the full index on uploaded_by_email for ownership checks.
+
+-- Index for creator/owner lookups
 CREATE INDEX IF NOT EXISTS idx_resources_uploaded_by_email ON resources(uploaded_by_email);
-CREATE INDEX IF NOT EXISTS idx_resources_is_approved ON resources(is_approved);
+
+-- Clean up unused boolean index (low selectivity, not used by RLS predicate)
+DROP INDEX IF EXISTS idx_resources_is_approved;
+-- Note: Removed idx_resources_unapproved partial index as the RLS policy does not include 
+-- an explicit is_approved = false filter, so the planner cannot utilize it effectively.
+
 -- Index for the join/subquery on follows
 CREATE INDEX IF NOT EXISTS idx_follows_pair ON follows(follower_email, following_email);
+
+-- ============================================================
+-- FOR PRODUCTION WITH LARGE TABLES (Optional)
+-- ============================================================
+-- If you have large tables and need minimal downtime, run these OUTSIDE a transaction:
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_resources_uploaded_by_email ON resources(uploaded_by_email);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_follows_pair ON follows(follower_email, following_email);

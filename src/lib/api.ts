@@ -631,6 +631,17 @@ export async function unbanRoomMember(
 }
 
 /**
+ * Leave a chat room
+ */
+export async function leaveChatRoom(
+    roomId: string
+): Promise<{ message: string }> {
+    return apiRequest(`/api/chat/rooms/${roomId}/leave`, {
+        method: 'POST',
+    });
+}
+
+/**
  * Delete a room (admin only)
  */
 export async function deleteRoom(
