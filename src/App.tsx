@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { MobileBottomNav } from "@/components/mobile";
+import { Analytics } from "@vercel/analytics/react";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -74,6 +75,7 @@ const App = () => (
 
         {/* Mobile bottom navigation - visible only on mobile (md:hidden in component) */}
         <MobileBottomNav />
+        <Analytics />
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
