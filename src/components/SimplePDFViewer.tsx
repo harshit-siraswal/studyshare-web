@@ -23,7 +23,7 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
   const [currentPage, setCurrentPage] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
@@ -72,7 +72,7 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         script.async = true;
         script.onload = () => {
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
           initializePDF();
         };
@@ -107,7 +107,7 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
       pdfDocRef.current = pdf;
       setNumPages(pdf.numPages);
       setLoading(false);
-      
+
       // Render first page immediately
       renderPage(1);
     } catch (err: any) {
@@ -124,9 +124,9 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
       const pdf = pdfDocRef.current;
       const page = await pdf.getPage(pageNum);
       const canvas = canvasRefs.current.get(pageNum);
-      
+
       if (!canvas) return;
-      
+
       const context = canvas.getContext('2d');
       if (!context) return;
 
@@ -190,13 +190,13 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
 
       const scrollPosition = container.scrollTop + container.clientHeight / 2;
       const pageContainers = container.querySelectorAll('[data-page]');
-      
+
       let newCurrentPage = 1;
       pageContainers.forEach((el) => {
         const pageNum = parseInt(el.getAttribute('data-page') || '0');
         const rect = el.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
-        
+
         if (rect.top <= containerRect.top + containerRect.height / 2) {
           newCurrentPage = pageNum;
         }
@@ -207,7 +207,7 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
 
     const container = scrollContainerRef.current;
     container.addEventListener('scroll', handleScroll);
-    
+
     return () => container.removeEventListener('scroll', handleScroll);
   }, [numPages]);
 
@@ -239,12 +239,70 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, numPages]);
 
-  if (error) {
+  // Check component type based on URL
+  const isOfficeDoc = (url: string) => {
+    const lower = url.toLowerCase();
+    return lower.includes('.doc') ||
+      lower.includes('.docx') ||
+      lower.includes('.ppt') ||
+      lower.includes('.pptx') ||
+      lower.includes('.xls') ||
+      lower.includes('.xlsx');
+  };
+
+  const isPDF = !isOfficeDoc(pdfUrl);
+
+  if (error && isPDF) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-destructive mb-4">{error}</p>
           <Button onClick={initializePDF}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Google Docs Viewer for Office files
+  if (isOfficeDoc(pdfUrl)) {
+    const encodedUrl = encodeURIComponent(pdfUrl);
+    const googleDocsUrl = `https://docs.google.com/gview?embedded=true&url=${encodedUrl}`;
+
+    return (
+      <div className="flex flex-col h-full bg-gray-100 dark:bg-gray-900">
+        {/* Controls Bar */}
+        <div className="flex items-center justify-between p-3 border-b bg-background shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Document Preview
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onOpenInNewTab && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenInNewTab}
+                className="hidden sm:flex"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open
+              </Button>
+            )}
+            <Button variant="default" size="sm" onClick={onDownload}>
+              <Download className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 w-full h-full relative">
+          <iframe
+            src={googleDocsUrl}
+            className="w-full h-full border-none"
+            title="Document Viewer"
+          />
         </div>
       </div>
     );
@@ -323,7 +381,7 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
       </div>
 
       {/* PDF Viewer Area - Scrollable */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 p-4"
       >
