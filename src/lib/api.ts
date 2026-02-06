@@ -694,9 +694,9 @@ export async function updateProfile(updates: Partial<UserProfile>): Promise<{ me
     });
 }
 
-// ============================================
-// HEALTH CHECK
-// ============================================
+  // ============================================
+  // HEALTH CHECK
+  // ============================================
 
 export interface HealthStatus {
     status: string;
@@ -708,10 +708,41 @@ export interface HealthStatus {
 /**
  * Check backend health
  */
-export async function checkHealth(): Promise<HealthStatus> {
-    const response = await fetch(`${API_BASE}/health`);
-    return response.json();
-}
+  export async function checkHealth(): Promise<HealthStatus> {
+      const response = await fetch(`${API_BASE}/health`);
+      return response.json();
+  }
+
+  // ============================================
+  // AI PHASE-1 ENDPOINTS
+  // ============================================
+
+  interface AiResponse<T> {
+      status: 'ok';
+      cached?: boolean;
+      data: T;
+  }
+
+  export async function getAiSummary(fileId: string): Promise<AiResponse<string>> {
+      return apiRequest('/api/ai/summary', {
+          method: 'POST',
+          body: JSON.stringify({ file_id: fileId }),
+      });
+  }
+
+  export async function getAiQuiz(fileId: string): Promise<AiResponse<any[]>> {
+      return apiRequest('/api/ai/quiz', {
+          method: 'POST',
+          body: JSON.stringify({ file_id: fileId }),
+      });
+  }
+
+  export async function getAiFlashcards(fileId: string): Promise<AiResponse<any[]>> {
+      return apiRequest('/api/ai/flashcards', {
+          method: 'POST',
+          body: JSON.stringify({ file_id: fileId }),
+      });
+  }
 
 // ============================================
 // SYLLABUS ENDPOINTS

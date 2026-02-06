@@ -1,14 +1,16 @@
 import { X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import AIStudyTools from "./ai/AIStudyTools";
 
 interface VideoPlayerProps {
   isOpen: boolean;
   onClose: () => void;
   videoUrl: string;
   title?: string;
+  resourceId?: string;
 }
 
-const VideoPlayer = ({ isOpen, onClose, videoUrl, title }: VideoPlayerProps) => {
+const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlayerProps) => {
   // Extract YouTube video ID if it's a YouTube URL
   const getYouTubeEmbedUrl = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -51,6 +53,12 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title }: VideoPlayerProps) => 
               </video>
             )}
           </div>
+
+          {resourceId && (
+            <div className="border-t border-border p-3">
+              <AIStudyTools resourceId={resourceId} />
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

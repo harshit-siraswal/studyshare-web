@@ -74,6 +74,12 @@ ALTER TABLE admin_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rag_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rag_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rag_query_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rag_query_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rag_ingest_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_outputs ENABLE ROW LEVEL SECURITY;
 
 -- Enable RLS on tables if they exist
 DO $$ BEGIN
@@ -206,6 +212,14 @@ DO $$ BEGIN
         CREATE POLICY "users_backup_deny" ON users_backup FOR ALL USING (false);
     END IF;
 END $$;
+
+-- RAG TABLES: Block all access
+CREATE POLICY "rag_files_deny" ON rag_files FOR ALL USING (false);
+CREATE POLICY "rag_chunks_deny" ON rag_chunks FOR ALL USING (false);
+CREATE POLICY "rag_cache_deny" ON rag_query_cache FOR ALL USING (false);
+CREATE POLICY "rag_logs_deny" ON rag_query_logs FOR ALL USING (false);
+CREATE POLICY "rag_ingest_jobs_deny" ON rag_ingest_jobs FOR ALL USING (false);
+CREATE POLICY "ai_outputs_deny" ON ai_outputs FOR ALL USING (false);
 
 -- BANNED_USERS: Block all access (if exists)
 DO $$ BEGIN

@@ -2,15 +2,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import DocumentViewer from "./DocumentViewer";
+import AIStudyTools from "./ai/AIStudyTools";
 
 interface PDFViewerProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   pdfUrl: string;
+  resourceId?: string;
 }
 
-const PDFViewer = ({ isOpen, onClose, title, pdfUrl }: PDFViewerProps) => {
+const PDFViewer = ({ isOpen, onClose, title, pdfUrl, resourceId }: PDFViewerProps) => {
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -52,12 +54,19 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl }: PDFViewerProps) => {
           </div>
         </DialogHeader>
 
-        {/* Document Viewer (PDF & DOCX) */}
-        <div className="flex-1 overflow-hidden">
-          <DocumentViewer
-            url={displayUrl}
-            title={title}
-          />
+        {/* Document Viewer (PDF & DOCX) + AI Panel */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          {resourceId && (
+            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border/50 p-3 overflow-y-auto">
+              <AIStudyTools resourceId={resourceId} />
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden">
+            <DocumentViewer
+              url={displayUrl}
+              title={title}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

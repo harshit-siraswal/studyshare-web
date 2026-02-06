@@ -20,7 +20,6 @@ import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
-// import { AIChatButton, AIChatModal } from '@/components/ai';
 import PremiumButton from "@/components/PremiumButton";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
@@ -77,7 +76,6 @@ const Study = () => {
     useState<"resources" | "syllabus" | "following" | "bookmarks">("resources");
   const [sortBy, setSortBy] = useState<SortOption>("votes");
   const [showMobileTools, setShowMobileTools] = useState(false);
-  const [aiChatOpen, setAIChatOpen] = useState(false);
 
   // React Query: Fetch resources with caching
   const { resources, isLoading: loadingResources, refresh: handleRefresh } = useResources({
@@ -472,10 +470,6 @@ const Study = () => {
         </div>
       </div>
 
-      {/* AI Assistant - Removed
-      <AIChatButton onClick={() => setAIChatOpen(true)} />
-      <AIChatModal isOpen={aiChatOpen} onClose={() => setAIChatOpen(false)} />
-      */}
     </div>
   );
 };

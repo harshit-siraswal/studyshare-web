@@ -286,6 +286,7 @@ const ResourceCard = ({
             onClose={() => setShowPdfViewer(false)}
             title={title}
             pdfUrl={pdfUrl}
+            resourceId={id.toString()}
           />
         </Suspense>
       )}
@@ -297,6 +298,7 @@ const ResourceCard = ({
           onClose={() => setShowVideoPlayer(false)}
           videoUrl={videoUrl}
           title={title}
+          resourceId={id.toString()}
         />
       )}
     </>
