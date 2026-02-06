@@ -1208,7 +1208,6 @@ const Profile = () => {
                                         title: 'Resource Approved',
                                         message: `Your resource "${contribution.title}" has been approved and is now visible to everyone.`,
                                         resource_id: contribution.id,
-                                        resource_title: contribution.title,
                                         read: false,
                                         college_id: selectedCollege?.domain || 'kiet.edu', // Policy
                                       }]);
@@ -1242,7 +1241,6 @@ const Profile = () => {
                                         title: 'Resource Rejected',
                                         message: `Your resource "${contribution.title}" was not approved. Please review the guidelines and try again.`,
                                         resource_id: contribution.id,
-                                        resource_title: contribution.title,
                                         read: false,
                                         college_id: selectedCollege?.domain || 'kiet.edu', // Policy
                                       }]);
