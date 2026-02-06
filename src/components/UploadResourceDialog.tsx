@@ -92,9 +92,24 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      const validTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-      if (!validTypes.includes(file.type)) {
-        toast.error("Please upload a PDF or DOC/DOCX file");
+      const validTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.presentation",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ];
+      const validExtensions = [".pdf", ".doc", ".docx", ".odt", ".odp", ".ppt", ".pptx"];
+      const lowerName = file.name.toLowerCase();
+      const isValidType = validTypes.includes(file.type) || validExtensions.some(ext => lowerName.endsWith(ext));
+      if (!isValidType) {
+        toast.error("Please upload a PDF, DOC/DOCX, ODT/ODP, or PPTX file");
+        return;
+      }
+      if (lowerName.endsWith(".ppt")) {
+        toast.error("Legacy .ppt is not supported. Please convert to .pptx.");
         return;
       }
 
@@ -463,7 +478,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
                       Click to upload or drag and drop
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      PDF, DOC, DOCX up to 10MB
+                      PDF, DOC/DOCX, ODT/ODP, PPTX up to 10MB
                     </p>
                   </>
                 )}
@@ -471,7 +486,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.doc,.docx,.odt,.odp,.pptx"
                 onChange={handleFileSelect}
                 className="hidden"
                 disabled={uploading}

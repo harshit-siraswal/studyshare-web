@@ -54,7 +54,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, resourceId }: PDFViewerProp
           </div>
         </DialogHeader>
 
-        {/* Document Viewer (PDF & DOCX) + AI Panel */}
+        {/* Document Viewer (PDF / DOCX / ODF / PPTX) + AI Panel */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
           {resourceId && (
             <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-border/50 p-3 overflow-y-auto">

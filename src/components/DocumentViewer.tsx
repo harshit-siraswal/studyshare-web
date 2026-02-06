@@ -18,10 +18,47 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url
 ).toString();
 
+const WEBODF_SCRIPT_URL = "/vendor/webodf.js";
+let webOdfScriptPromise: Promise<void> | null = null;
+
+const ensureWebOdf = () => {
+    if (typeof window === 'undefined') {
+        return Promise.reject(new Error("WebODF can only run in the browser"));
+    }
+    if ((window as any).odf) {
+        return Promise.resolve();
+    }
+    if (webOdfScriptPromise) {
+        return webOdfScriptPromise;
+    }
+
+    webOdfScriptPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-webodf="true"]') as HTMLScriptElement | null;
+        if (existing) {
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error("Failed to load WebODF script")));
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = WEBODF_SCRIPT_URL;
+        script.async = true;
+        script.setAttribute('data-webodf', 'true');
+        script.onload = () => resolve();
+        script.onerror = () => {
+            webOdfScriptPromise = null;
+            reject(new Error("Failed to load WebODF script"));
+        };
+        document.head.appendChild(script);
+    });
+
+    return webOdfScriptPromise;
+};
+
 interface DocumentViewerProps {
     url: string;
     title?: string;
-    type?: 'pdf' | 'docx'; // Explicit type or auto-detect
+    type?: 'pdf' | 'docx' | 'pptx' | 'odf'; // Explicit type or auto-detect
 }
 
 interface SearchMatch {
@@ -31,15 +68,44 @@ interface SearchMatch {
 }
 
 const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
+    const normalizedUrl = useMemo(() => {
+        if (!url) return url;
+        const trimmed = url.trim();
+        if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed;
+        try {
+            const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+            const parsed = new URL(trimmed, base);
+            if (typeof window !== 'undefined' && window.location.protocol === 'https:' && parsed.protocol === 'http:') {
+                parsed.protocol = 'https:';
+            }
+            return parsed.toString();
+        } catch {
+            return trimmed;
+        }
+    }, [url]);
+
+    const urlPathForType = useMemo(() => {
+        if (!normalizedUrl) return '';
+        try {
+            const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+            return new URL(normalizedUrl, base).pathname.toLowerCase();
+        } catch {
+            return normalizedUrl.toLowerCase();
+        }
+    }, [normalizedUrl]);
+
     // Determine file type
     const fileType = useMemo(() => {
         if (type) return type;
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.endsWith('.pdf')) return 'pdf';
-        if (lowerUrl.endsWith('.docx')) return 'docx';
-        if (lowerUrl.endsWith('.doc')) return 'unsupported-doc';
+        const lowerPath = urlPathForType;
+        if (lowerPath.endsWith('.pdf')) return 'pdf';
+        if (lowerPath.endsWith('.docx')) return 'docx';
+        if (lowerPath.endsWith('.pptx')) return 'pptx';
+        if (lowerPath.endsWith('.odt') || lowerPath.endsWith('.odp') || lowerPath.endsWith('.ods') || lowerPath.endsWith('.odf')) return 'odf';
+        if (lowerPath.endsWith('.ppt')) return 'unsupported-ppt';
+        if (lowerPath.endsWith('.doc')) return 'unsupported-doc';
         return 'pdf'; // Default to PDF
-    }, [url, type]);
+    }, [urlPathForType, type]);
 
     // Common State
     const [error, setError] = useState<string | null>(null);
@@ -58,6 +124,8 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
     const [pdfDocument, setPdfDocument] = useState<pdfjs.PDFDocumentProxy | null>(null);
     const [pageDimensions, setPageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());
     const [pdfRetryKey, setPdfRetryKey] = useState(0);
+    const [pdfLoadMode, setPdfLoadMode] = useState<'default' | 'no-range' | 'data'>('default');
+    const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
 
     const virtuosoRef = useRef<VirtuosoHandle>(null);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -66,6 +134,12 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
     // --- DOCX State ---
     const [docxHtml, setDocxHtml] = useState<string | null>(null);
     const [loadingDocx, setLoadingDocx] = useState(false);
+    const [pptxSlides, setPptxSlides] = useState<string[] | null>(null);
+    const [loadingPptx, setLoadingPptx] = useState(false);
+    const [loadingOdf, setLoadingOdf] = useState(false);
+
+    const odfContainerRef = useRef<HTMLDivElement>(null);
+    const odfCanvasRef = useRef<any>(null);
 
     // --- DOCX Loading Logic ---
     const loadDocx = useCallback(async (signal?: AbortSignal) => {
@@ -74,7 +148,7 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
         setLoadingDocx(true);
         setError(null);
         try {
-            const response = await fetch(url, { signal });
+            const response = await fetch(normalizedUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch document: ${response.statusText}`);
             const arrayBuffer = await response.arrayBuffer();
 
@@ -101,7 +175,7 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
                 setLoadingDocx(false);
             }
         }
-    }, [url, fileType]);
+    }, [normalizedUrl, fileType]);
 
     useEffect(() => {
         if (fileType === 'docx') {
@@ -110,6 +184,112 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
             return () => controller.abort();
         }
     }, [loadDocx, fileType]);
+
+    // --- PPTX Loading Logic ---
+    const loadPptx = useCallback(async (signal?: AbortSignal) => {
+        if (fileType !== 'pptx') return;
+
+        setLoadingPptx(true);
+        setError(null);
+        try {
+            const response = await fetch(normalizedUrl, { signal });
+            if (!response.ok) throw new Error(`Failed to fetch presentation: ${response.statusText}`);
+            const arrayBuffer = await response.arrayBuffer();
+
+            if (signal?.aborted) return;
+
+            const { pptxToHtml } = await import("@jvmr/pptx-to-html");
+            const slides = await pptxToHtml(arrayBuffer, {
+                width: 960,
+                height: 540,
+                scaleToFit: true,
+                letterbox: true,
+            });
+
+            if (!signal?.aborted) {
+                setPptxSlides(slides);
+            }
+        } catch (err: unknown) {
+            if (signal?.aborted || (err as Error).name === 'AbortError') return;
+            console.error("PPTX load error:", err);
+            setError(err instanceof Error ? err.message : "Failed to load PPTX file");
+        } finally {
+            if (!signal?.aborted) {
+                setLoadingPptx(false);
+            }
+        }
+    }, [normalizedUrl, fileType]);
+
+    useEffect(() => {
+        if (fileType === 'pptx') {
+            const controller = new AbortController();
+            loadPptx(controller.signal);
+            return () => controller.abort();
+        }
+    }, [loadPptx, fileType]);
+
+    // --- ODF Loading Logic ---
+    const loadOdf = useCallback(async () => {
+        if (fileType !== 'odf') return;
+
+        setLoadingOdf(true);
+        setError(null);
+        try {
+            await ensureWebOdf();
+            if (!odfContainerRef.current) return;
+
+            if (odfCanvasRef.current?.destroy) {
+                try {
+                    odfCanvasRef.current.destroy(() => null);
+                } catch {
+                    // ignore
+                }
+            }
+
+            odfContainerRef.current.innerHTML = '';
+            const odfCanvas = new (window as any).odf.OdfCanvas(odfContainerRef.current);
+            odfCanvasRef.current = odfCanvas;
+            odfCanvas.load(normalizedUrl);
+        } catch (err: unknown) {
+            console.error("ODF load error:", err);
+            const message = err instanceof Error ? err.message : "Failed to load ODF file";
+            if (message.toLowerCase().includes("webodf")) {
+                setError("Failed to load ODF renderer. Ensure /vendor/webodf.js is available.");
+            } else {
+                setError(message);
+            }
+        } finally {
+            setLoadingOdf(false);
+        }
+    }, [normalizedUrl, fileType]);
+
+    useEffect(() => {
+        if (fileType === 'odf') {
+            loadOdf();
+        }
+    }, [loadOdf, fileType]);
+
+    useEffect(() => {
+        return () => {
+            if (odfCanvasRef.current?.destroy) {
+                try {
+                    odfCanvasRef.current.destroy(() => null);
+                } catch {
+                    // ignore
+                }
+            }
+            odfCanvasRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        setPdfLoadMode('default');
+        setPdfData(null);
+        setPdfRetryKey(0);
+        setError(null);
+        setDocxHtml(null);
+        setPptxSlides(null);
+    }, [normalizedUrl, fileType]);
 
 
     // --- PDF Logic ---
@@ -120,19 +300,64 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
         setPageDimensions(new Map());
     };
 
-    const onDocumentLoadError = (error: Error) => {
-        console.error("PDF load error:", error);
-        setError("Failed to load PDF. Please try again.");
+    const handlePdfLoadError = (err: Error) => {
+        console.error("PDF load error:", err);
+        if (fileType === 'pdf') {
+            if (pdfLoadMode === 'default') {
+                setPdfLoadMode('no-range');
+                setPdfRetryKey(prev => prev + 1);
+                return;
+            }
+            if (pdfLoadMode === 'no-range') {
+                setPdfLoadMode('data');
+                setPdfRetryKey(prev => prev + 1);
+                return;
+            }
+        }
+        setError(err?.message || "Failed to load PDF. Please try again.");
     };
 
     const handleRetry = () => {
         setError(null);
         if (fileType === 'docx') {
             loadDocx();
+        } else if (fileType === 'pptx') {
+            loadPptx();
+        } else if (fileType === 'odf') {
+            loadOdf();
         } else {
+            setPdfLoadMode('default');
+            setPdfData(null);
             setPdfRetryKey(prev => prev + 1);
         }
     };
+
+    useEffect(() => {
+        if (fileType !== 'pdf' || pdfLoadMode !== 'data') return;
+
+        const controller = new AbortController();
+        setPdfData(null);
+        setError(null);
+
+        const loadPdfData = async () => {
+            try {
+                const response = await fetch(normalizedUrl, { signal: controller.signal });
+                if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+                const buffer = await response.arrayBuffer();
+                if (!controller.signal.aborted) {
+                    setPdfData(buffer);
+                }
+            } catch (err: unknown) {
+                if ((err as Error).name === 'AbortError') return;
+                console.error("PDF data load error:", err);
+                setError(err instanceof Error ? err.message : "Failed to load PDF. Please try again.");
+            }
+        };
+
+        loadPdfData();
+
+        return () => controller.abort();
+    }, [fileType, pdfLoadMode, normalizedUrl]);
 
     const scrollToPage = useCallback((pageIndex: number) => {
         virtuosoRef.current?.scrollToIndex({
@@ -369,7 +594,7 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
         );
     }
 
-    // Unsupported File Type
+    // Unsupported File Types
     if (fileType === 'unsupported-doc') {
         return (
             <div className="flex items-center justify-center h-full bg-background">
@@ -380,6 +605,21 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
                     <h3 className="text-lg font-semibold mb-2">Unsupported File Format</h3>
                     <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                         The obsolete <code>.doc</code> format is not supported. Please convert this file to <code>.docx</code> or <code>.pdf</code> to view it here.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+    if (fileType === 'unsupported-ppt') {
+        return (
+            <div className="flex items-center justify-center h-full bg-background">
+                <div className="text-center p-6">
+                    <div className="bg-yellow-500/10 p-4 rounded-full inline-block mb-4">
+                        <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Unsupported File Format</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        The legacy <code>.ppt</code> format is not supported. Please convert this file to <code>.pptx</code> or <code>.pdf</code> to view it here.
                     </p>
                 </div>
             </div>
@@ -398,11 +638,23 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
                         </span>
                     )}
 
-                    {/* DOCX Indicator */}
+                    {/* DOCX / ODF / PPTX Indicators */}
                     {fileType === 'docx' && (
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md text-sm font-medium">
                             <FileText className="w-4 h-4" />
                             DOCX View
+                        </div>
+                    )}
+                    {fileType === 'odf' && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-md text-sm font-medium">
+                            <FileText className="w-4 h-4" />
+                            ODF View
+                        </div>
+                    )}
+                    {fileType === 'pptx' && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-md text-sm font-medium">
+                            <FileText className="w-4 h-4" />
+                            PPTX View
                         </div>
                     )}
 
@@ -498,65 +750,117 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
                 isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-100 text-gray-900"
             )}>
                 {fileType === 'pdf' ? (
-                    <Document
-                        key={`${url}-${pdfRetryKey}`}
-                        file={url}
-                        onLoadSuccess={onDocumentLoadSuccess}
-                        onLoadError={onDocumentLoadError}
-                        loading={
-                            <div className="flex flex-col items-center justify-center p-12 h-full">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                                <p className="text-sm text-muted-foreground">Loading PDF...</p>
-                            </div>
-                        }
-                        className="h-full"
-                    >
-                        {numPages > 0 && (
-                            <Virtuoso
-                                ref={virtuosoRef}
-                                totalCount={numPages}
-                                context={{ textRenderer, isDarkMode, scale, pageDimensions }}
-                                className="h-full w-full custom-scrollbar"
-                                itemContent={(index, _, context) => {
-                                    const cached = context.pageDimensions.get(index + 1);
-                                    const placeholderWidth = cached ? cached.width * context.scale : undefined;
-                                    const placeholderHeight = cached ? cached.height * context.scale : undefined;
+                    pdfLoadMode === 'data' && !pdfData ? (
+                        <div className="flex flex-col items-center justify-center p-12 h-full">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                            <p className="text-sm text-muted-foreground">Loading PDF...</p>
+                        </div>
+                    ) : (
+                        <Document
+                            key={`${normalizedUrl}-${pdfRetryKey}-${pdfLoadMode}`}
+                            file={pdfLoadMode === 'data' ? { data: pdfData as ArrayBuffer } : normalizedUrl}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            onLoadError={handlePdfLoadError}
+                            onSourceError={handlePdfLoadError}
+                            options={pdfLoadMode === 'no-range' ? { disableRange: true, disableStream: true } : undefined}
+                            loading={
+                                <div className="flex flex-col items-center justify-center p-12 h-full">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                                    <p className="text-sm text-muted-foreground">Loading PDF...</p>
+                                </div>
+                            }
+                            className="h-full"
+                        >
+                            {numPages > 0 && (
+                                <Virtuoso
+                                    ref={virtuosoRef}
+                                    totalCount={numPages}
+                                    context={{ textRenderer, isDarkMode, scale, pageDimensions }}
+                                    className="h-full w-full custom-scrollbar"
+                                    itemContent={(index, _, context) => {
+                                        const cached = context.pageDimensions.get(index + 1);
+                                        const placeholderWidth = cached ? cached.width * context.scale : undefined;
+                                        const placeholderHeight = cached ? cached.height * context.scale : undefined;
 
-                                    return (
-                                        <div key={index} className="flex justify-center py-4">
-                                            <div className={cn(
-                                                "relative shadow-md transition-all duration-200",
-                                                context.isDarkMode ? "invert-[1] hue-rotate-180" : ""
-                                            )}>
-                                                <Page
-                                                    pageNumber={index + 1}
-                                                    scale={context.scale}
-                                                    renderTextLayer={true}
-                                                    renderAnnotationLayer={true}
-                                                    customTextRenderer={context.textRenderer}
-                                                    onRenderSuccess={handlePageRenderSuccess}
-                                                    className="bg-white"
-                                                    loading={
-                                                        <div
-                                                            className="flex items-center justify-center bg-white"
-                                                            style={{
-                                                                width: placeholderWidth ? `${placeholderWidth}px` : '100%',
-                                                                height: placeholderHeight ? `${placeholderHeight}px` : 'auto',
-                                                                aspectRatio: placeholderHeight ? undefined : '3 / 4',
-                                                                minHeight: placeholderHeight ? undefined : '400px'
-                                                            }}
-                                                        >
-                                                            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                                                        </div>
-                                                    }
-                                                />
+                                        return (
+                                            <div key={index} className="flex justify-center py-4">
+                                                <div className={cn(
+                                                    "relative shadow-md transition-all duration-200",
+                                                    context.isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                                                )}>
+                                                    <Page
+                                                        pageNumber={index + 1}
+                                                        scale={context.scale}
+                                                        renderTextLayer={true}
+                                                        renderAnnotationLayer={true}
+                                                        customTextRenderer={context.textRenderer}
+                                                        onRenderSuccess={handlePageRenderSuccess}
+                                                        className="bg-white"
+                                                        loading={
+                                                            <div
+                                                                className="flex items-center justify-center bg-white"
+                                                                style={{
+                                                                    width: placeholderWidth ? `${placeholderWidth}px` : '100%',
+                                                                    height: placeholderHeight ? `${placeholderHeight}px` : 'auto',
+                                                                    aspectRatio: placeholderHeight ? undefined : '3 / 4',
+                                                                    minHeight: placeholderHeight ? undefined : '400px'
+                                                                }}
+                                                            >
+                                                                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                                                            </div>
+                                                        }
+                                                    />
+                                                </div>
                                             </div>
+                                        );
+                                    }}
+                                />
+                            )}
+                        </Document>
+                    )
+                ) : fileType === 'pptx' ? (
+                    // PPTX Viewer
+                    <div className="h-full overflow-y-auto p-6 custom-scrollbar">
+                        {loadingPptx ? (
+                            <div className="flex flex-col items-center justify-center h-full">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                                <p className="text-sm text-muted-foreground">Rendering PPTX...</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {pptxSlides && pptxSlides.length > 0 ? (
+                                    pptxSlides.map((slide, index) => (
+                                        <div key={index} className="mx-auto w-[960px] max-w-full bg-white shadow-md overflow-hidden">
+                                            <div dangerouslySetInnerHTML={{ __html: slide }} />
                                         </div>
-                                    );
-                                }}
-                            />
+                                    ))
+                                ) : (
+                                    <div className="text-center text-muted-foreground">
+                                        No slides to display
+                                    </div>
+                                )}
+                            </div>
                         )}
-                    </Document>
+                    </div>
+                ) : fileType === 'odf' ? (
+                    // ODF Viewer
+                    <div className="h-full overflow-y-auto p-6 custom-scrollbar">
+                        <div className="relative min-h-full">
+                            {loadingOdf && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 z-10">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                                    <p className="text-sm text-muted-foreground">Loading ODF...</p>
+                                </div>
+                            )}
+                            <div
+                                ref={odfContainerRef}
+                                className={cn(
+                                    "bg-white shadow-sm p-4 min-h-full",
+                                    isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                                )}
+                            />
+                        </div>
+                    </div>
                 ) : (
                     // DOCX Viewer
                     <div className="h-full overflow-y-auto p-8 custom-scrollbar">
