@@ -46,7 +46,9 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
 
   useEffect(() => {
     if (!isOpen && document.fullscreenElement === dialogRef.current) {
-      void document.exitFullscreen();
+      document.exitFullscreen().catch(() => {
+        // Ignore if document is not active
+      });
     }
   }, [isOpen]);
 

@@ -24,7 +24,9 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
 
   useEffect(() => {
     if (!isOpen && document.fullscreenElement === dialogRef.current) {
-      void document.exitFullscreen();
+      document.exitFullscreen().catch(() => {
+        // Ignore if document is not active
+      });
     }
   }, [isOpen]);
 
