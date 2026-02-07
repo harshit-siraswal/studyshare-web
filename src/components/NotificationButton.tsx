@@ -20,7 +20,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   getPendingFollowRequests,
-  deleteAllNotifications
+  deleteAllNotifications,
+  type FollowRequest
 } from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -34,13 +35,6 @@ interface Notification {
   resource_id?: string;
   resource_title?: string;
   read: boolean;
-  created_at: string;
-}
-
-interface FollowRequest {
-  id: string;
-  requester_email: string;
-  status: string;
   created_at: string;
 }
 
@@ -239,8 +233,18 @@ const NotificationButton = () => {
     }
   };
 
-  const formatTime = (timestamp: string) => {
+  const getRequesterLabel = (request: FollowRequest) => {
+    const name = request.requesterName?.trim();
+    if (name) return name;
+    const email = request.requesterEmail;
+    if (email) return email.split('@')[0];
+    return 'Someone';
+  };
+
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return 'Recently';
     const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return 'Recently';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -293,10 +297,10 @@ const NotificationButton = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">Follow Request</p>
                     <p className="text-xs text-muted-foreground">
-                      {request.requester_email?.split('@')[0] || 'Someone'} wants to follow you
+                      {getRequesterLabel(request)} wants to follow you
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatTime(request.created_at)}
+                      {formatTime(request.createdAt)}
                     </p>
 
                     {/* Accept/Reject Buttons */}

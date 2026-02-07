@@ -21,19 +21,12 @@ import {
   markAllNotificationsRead,
   deleteNotification,
   deleteAllNotifications,
-  getPendingFollowRequests
+  getPendingFollowRequests,
+  type FollowRequest
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
-
-interface FollowRequest {
-  id: string;
-  requester_email: string;
-  requester_name?: string;
-  status: string;
-  created_at: string;
-}
 
 interface Notification {
   id: string;
@@ -118,7 +111,7 @@ const NotificationCenter = () => {
       await approveFollowRequest(request.id);
 
       // Get requester name for success message
-      const requesterName = request.requester_email?.split('@')[0] || 'User';
+      const requesterName = getRequesterLabel(request);
 
       // Remove from local state
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
@@ -139,7 +132,7 @@ const NotificationCenter = () => {
       await rejectFollowRequest(request.id);
 
       // Get requester name for success message
-      const requesterName = request.requester_email?.split('@')[0] || 'User';
+      const requesterName = getRequesterLabel(request);
 
       setFollowRequests(prev => prev.filter(r => r.id !== request.id));
       toast.success(`Declined follow request from ${requesterName}`);
@@ -206,8 +199,18 @@ const NotificationCenter = () => {
   const unreadCount = notifications.filter(n => !n.read).length + followRequests.length;
   const totalItems = notifications.length + followRequests.length;
 
-  const formatTime = (dateString: string) => {
+  const getRequesterLabel = (request: FollowRequest) => {
+    const name = request.requesterName?.trim();
+    if (name) return name;
+    const email = request.requesterEmail;
+    if (email) return email.split('@')[0];
+    return 'Someone';
+  };
+
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return 'Recently';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Recently';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -265,10 +268,10 @@ const NotificationCenter = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">Follow Request</p>
                       <p className="text-xs text-muted-foreground">
-                        Someone wants to follow you
+                        {getRequesterLabel(request)} wants to follow you
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatTime(request.created_at)}
+                        {formatTime(request.createdAt)}
                       </p>
 
                       {/* Accept/Reject Buttons */}

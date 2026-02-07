@@ -96,9 +96,29 @@ export async function getMe(): Promise<UserInfo> {
 export interface FollowRequest {
     id: string;
     requesterEmail: string;
+    requesterName?: string;
     targetEmail: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: string;
+}
+
+type RawFollowRequest = Partial<FollowRequest> & {
+    request_id?: string;
+    requester_email?: string;
+    requester_name?: string;
+    target_email?: string;
+    created_at?: string;
+};
+
+function normalizeFollowRequest(raw: RawFollowRequest): FollowRequest {
+    return {
+        id: raw.id || raw.request_id || '',
+        requesterEmail: raw.requesterEmail || raw.requester_email || '',
+        requesterName: raw.requesterName || raw.requester_name,
+        targetEmail: raw.targetEmail || raw.target_email || '',
+        status: (raw.status || 'pending') as FollowRequest['status'],
+        createdAt: raw.createdAt || raw.created_at || '',
+    };
 }
 
 /**
@@ -108,10 +128,16 @@ export async function sendFollowRequest(
     targetEmail: string,
     recaptchaToken?: string
 ): Promise<{ message: string; request: FollowRequest }> {
-    return apiRequest('/api/follow/request', {
+    const data = await apiRequest<any>('/api/follow/request', {
         method: 'POST',
         body: JSON.stringify({ targetEmail, recaptchaToken }),
     });
+
+    const rawRequest = (data?.request || data?.followRequest || data?.follow_request || data) as RawFollowRequest;
+    return {
+        message: data?.message || 'Follow request sent',
+        request: normalizeFollowRequest(rawRequest),
+    };
 }
 
 /**
@@ -146,7 +172,12 @@ export async function unfollowUser(targetEmail: string): Promise<{ message: stri
  * Get pending follow requests
  */
 export async function getPendingFollowRequests(): Promise<{ requests: FollowRequest[] }> {
-    return apiRequest('/api/follow/pending');
+    const data = await apiRequest<any>('/api/follow/pending');
+    const rawRequests = Array.isArray(data) ? data : (data?.requests || []);
+    const requests = rawRequests
+        .map((request: RawFollowRequest) => normalizeFollowRequest(request))
+        .filter((request: FollowRequest) => Boolean(request.id));
+    return { requests };
 }
 
 /**
@@ -156,7 +187,11 @@ export async function checkFollowStatus(targetEmail: string): Promise<{
     status: 'following' | 'pending' | 'not-following';
     requestId?: string;
 }> {
-    return apiRequest(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
+    const data = await apiRequest<any>(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
+    return {
+        status: data?.status,
+        requestId: data?.requestId || data?.request_id,
+    };
 }
 
 /**

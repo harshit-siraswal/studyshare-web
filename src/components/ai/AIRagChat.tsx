@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
 
   const handleAsk = async () => {
     if (!user) return;
+    if (loading) return;
     const q = question.trim();
     if (!q) return;
 
@@ -63,12 +65,14 @@ const AIRagChat = ({ className }: { className?: string }) => {
           noLocal: response.no_local,
         },
       ]);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to get AI response.";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: error?.message || "Failed to get AI response.",
+          content: message,
         },
       ]);
     } finally {
@@ -76,7 +80,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!loading) void handleAsk();
@@ -167,7 +171,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
           {loading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Thinking…
+              Thinking...
             </div>
           )}
         </div>
@@ -181,7 +185,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
           placeholder="Ask about any topic in your PDFs..."
           className="min-h-[70px] resize-none"
         />
-        <Button onClick={handleAsk} disabled={loading || !question.trim()}>
+        <Button onClick={() => void handleAsk()} disabled={loading || !question.trim()}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
