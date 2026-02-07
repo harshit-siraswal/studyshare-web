@@ -756,11 +756,16 @@ export interface HealthStatus {
       status: 'ok';
       cached?: boolean;
       data: T;
+      source?: {
+          type?: 'primary' | 'ocr' | 'transcript';
+          text?: string;
+          ocrProvider?: 'google' | 'sarvam' | null;
+      };
   }
 
 export async function getAiSummary(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
 ): Promise<AiResponse<string>> {
     return apiRequest('/api/ai/summary', {
         method: 'POST',
@@ -771,13 +776,14 @@ export async function getAiSummary(
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,
             force: options?.force,
+            include_source: options?.includeSource,
         }),
     });
 }
 
 export async function getAiQuiz(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/quiz', {
         method: 'POST',
@@ -788,13 +794,14 @@ export async function getAiQuiz(
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,
             force: options?.force,
+            include_source: options?.includeSource,
         }),
     });
 }
 
 export async function getAiFlashcards(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/flashcards', {
         method: 'POST',
@@ -805,6 +812,7 @@ export async function getAiFlashcards(
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,
             force: options?.force,
+            include_source: options?.includeSource,
         }),
     });
 }

@@ -31,6 +31,13 @@ import { getAiFlashcards, getAiQuiz, getAiSummary } from "@/lib/api";
 type OutputType = "summary" | "quiz" | "flashcards";
 
 type OcrProvider = "google" | "sarvam";
+type AiOptions = {
+  useOcr?: boolean;
+  forceOcr?: boolean;
+  ocrProvider?: OcrProvider;
+  force?: boolean;
+  includeSource?: boolean;
+};
 
 interface QuizQuestion {
   question: string;
@@ -127,10 +134,14 @@ const AIStudyTools = ({
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState(false);
+  const [sourceText, setSourceText] = useState<string | null>(null);
+  const [sourceType, setSourceType] = useState<"primary" | "ocr" | "transcript" | null>(null);
+  const [sourceProvider, setSourceProvider] = useState<OcrProvider | null>(null);
+  const [showSource, setShowSource] = useState(false);
 
   const summaryParsed = useMemo(() => (summary ? parseSummary(summary) : null), [summary]);
 
-  const handleGenerate = async (type: OutputType) => {
+  const handleGenerate = async (type: OutputType, override?: AiOptions) => {
     if (!user) {
       toast.error("Please login to use AI tools");
       return;
@@ -139,29 +150,52 @@ const AIStudyTools = ({
     setActive(type);
     setLoading(true);
     setError(null);
+    setSourceText(null);
+    setSourceType(null);
+    setSourceProvider(null);
+    setShowSource(false);
 
     try {
       const collegeId = selectedCollege?.domain;
       const options = {
         collegeId,
-        useOcr: useOcr || forceOcr,
-        forceOcr,
-        ocrProvider,
-        force: freshRun,
+        useOcr: override?.useOcr ?? (useOcr || forceOcr),
+        forceOcr: override?.forceOcr ?? forceOcr,
+        ocrProvider: override?.ocrProvider ?? ocrProvider,
+        force: override?.force ?? freshRun,
+        includeSource: override?.includeSource ?? false,
       };
 
       if (type === "summary") {
         const result = await getAiSummary(resourceId, options);
         setSummary(typeof result.data === "string" ? result.data : JSON.stringify(result.data));
+        if (result.source?.text) {
+          setSourceText(result.source.text);
+          setSourceType(result.source.type ?? "ocr");
+          setSourceProvider(result.source.ocrProvider ?? null);
+          setShowSource(true);
+        }
         setCachedMap((prev) => ({ ...prev, summary: !!result.cached }));
       } else if (type === "quiz") {
         const result = await getAiQuiz(resourceId, options);
         setQuiz(Array.isArray(result.data) ? result.data : []);
+        if (result.source?.text) {
+          setSourceText(result.source.text);
+          setSourceType(result.source.type ?? "ocr");
+          setSourceProvider(result.source.ocrProvider ?? null);
+          setShowSource(true);
+        }
         setSelectedAnswers({});
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
       } else {
         const result = await getAiFlashcards(resourceId, options);
         setFlashcards(Array.isArray(result.data) ? result.data : []);
+        if (result.source?.text) {
+          setSourceText(result.source.text);
+          setSourceType(result.source.type ?? "ocr");
+          setSourceProvider(result.source.ocrProvider ?? null);
+          setShowSource(true);
+        }
         setFlippedCards({});
         setCachedMap((prev) => ({ ...prev, flashcards: !!result.cached }));
       }
@@ -185,6 +219,21 @@ const AIStudyTools = ({
 
   const toggleFlip = (idx: number) => {
     setFlippedCards((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const handleSarvamOcrRetry = () => {
+    const overrides: AiOptions = {
+      useOcr: true,
+      forceOcr: true,
+      ocrProvider: "sarvam",
+      force: true,
+      includeSource: true,
+    };
+    setUseOcr(true);
+    setForceOcr(true);
+    setOcrProvider("sarvam");
+    setFreshRun(true);
+    handleGenerate(active, overrides);
   };
 
   const meta = OUTPUT_META[active];
@@ -303,7 +352,20 @@ const AIStudyTools = ({
           {error && (
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
               <Wand2 className="h-4 w-4" />
-              {error}
+              <div className="flex flex-1 items-center justify-between gap-3">
+                <span>{error}</span>
+                {resourceType !== "video" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSarvamOcrRetry}
+                    className="h-7 rounded-full border border-white/10 bg-white/10 text-[11px]"
+                    disabled={loading}
+                  >
+                    Run OCR (Sarvam)
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -491,6 +553,29 @@ const AIStudyTools = ({
               )}
             </div>
           </TabsContent>
+
+          {sourceText && sourceType === "ocr" && (
+            <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  OCR Output {sourceProvider ? `(${sourceProvider})` : ""}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowSource((prev) => !prev)}
+                  className="h-7 rounded-full border border-white/10 bg-white/10 text-[11px]"
+                >
+                  {showSource ? "Hide" : "Show"}
+                </Button>
+              </div>
+              {showSource && (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-black/40 p-3 text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                  {sourceText}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[11px] text-muted-foreground">
             Tip: If the output feels off, enable <span className="text-primary">Use OCR</span> or run a <span className="text-primary">Fresh run</span>.
