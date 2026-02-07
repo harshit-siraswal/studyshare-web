@@ -16,7 +16,7 @@ import JoinChatRoomDialog from "./JoinChatRoomDialog";
 import NotificationCenter from "./NotificationCenter";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import AIRagChat from "./ai/AIRagChat";
 
 const chatRooms = [
@@ -417,16 +417,11 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
       </AlertDialog>
 
       <Sheet open={aiChatOpen} onOpenChange={setAiChatOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>AI Study Chat</SheetTitle>
-            <SheetDescription>
-              Ask questions and get answers from your college PDFs.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 h-[calc(100vh-180px)]">
-            <AIRagChat className="h-full" />
-          </div>
+        <SheetContent
+          side="right"
+          className="w-full bg-transparent p-0 sm:max-w-xl md:max-w-2xl border-l border-border/60"
+        >
+          <AIRagChat className="h-full" />
         </SheetContent>
       </Sheet>
     </div>
