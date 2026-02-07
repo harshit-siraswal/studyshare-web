@@ -123,7 +123,8 @@ const AIStudyTools = ({
   const [forceOcr, setForceOcr] = useState(false);
   const [ocrProvider, setOcrProvider] = useState<OcrProvider>("google");
   const [freshRun, setFreshRun] = useState(true);
-  const [showAnswers, setShowAnswers] = useState(true);
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState(false);
 
@@ -156,10 +157,12 @@ const AIStudyTools = ({
       } else if (type === "quiz") {
         const result = await getAiQuiz(resourceId, options);
         setQuiz(Array.isArray(result.data) ? result.data : []);
+        setSelectedAnswers({});
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
       } else {
         const result = await getAiFlashcards(resourceId, options);
         setFlashcards(Array.isArray(result.data) ? result.data : []);
+        setFlippedCards({});
         setCachedMap((prev) => ({ ...prev, flashcards: !!result.cached }));
       }
     } catch (err: any) {
@@ -379,6 +382,8 @@ const AIStudyTools = ({
                   <div className="grid gap-4">
                     {quiz.map((q, idx) => {
                       const correctIndex = getCorrectIndex(q);
+                      const selected = selectedAnswers[idx];
+                      const hasSelection = selected !== undefined;
                       return (
                         <div key={`${idx}-${q.question}`} className="rounded-xl border border-white/10 bg-black/20 p-4">
                           <div className="flex items-start justify-between gap-3">
@@ -393,25 +398,37 @@ const AIStudyTools = ({
                           </div>
                           <div className="mt-3 grid gap-2">
                             {q.options?.map((opt, oidx) => {
-                              const isCorrect = showAnswers && oidx === correctIndex;
+                              const isSelected = selected === oidx;
+                              const isCorrect = oidx === correctIndex;
+                              const revealCorrect = showAnswers || hasSelection;
+                              const isRightSelected = hasSelection && isSelected && isCorrect;
+                              const isWrongSelected = hasSelection && isSelected && !isCorrect;
+                              const showCorrect = revealCorrect && isCorrect;
                               return (
-                                <div
+                                <button
                                   key={`${idx}-opt-${oidx}`}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedAnswers((prev) => ({ ...prev, [idx]: oidx }))
+                                  }
                                   className={cn(
-                                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs",
+                                    "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
                                     "border-white/10 bg-white/5",
-                                    isCorrect && "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
+                                    showCorrect && "border-emerald-400/40 bg-emerald-400/10 text-emerald-100",
+                                    isWrongSelected && "border-rose-400/50 bg-rose-500/10 text-rose-100",
+                                    isRightSelected && "border-emerald-400/60 bg-emerald-400/15 text-emerald-50"
                                   )}
+                                  aria-pressed={isSelected}
                                 >
                                   <span className="text-[11px] font-semibold text-muted-foreground">
                                     {String.fromCharCode(65 + oidx)}
                                   </span>
                                   <span>{opt}</span>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
-                          {showAnswers && correctIndex >= 0 && (
+                          {(showAnswers || hasSelection) && correctIndex >= 0 && (
                             <div className="mt-2 text-[11px] text-emerald-200">
                               Correct: {String.fromCharCode(65 + correctIndex)}
                             </div>

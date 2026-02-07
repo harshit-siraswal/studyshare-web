@@ -1,7 +1,8 @@
-import { Maximize2, MessageCircle, Minimize2, X } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AIStudyTools from "./ai/AIStudyTools";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 interface VideoPlayerProps {
   isOpen: boolean;
@@ -12,15 +13,8 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlayerProps) => {
-  const [aiOpen, setAiOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setAiOpen(false);
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen && document.fullscreenElement === dialogRef.current) {
@@ -73,87 +67,70 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
     };
   }, []);
 
+  const videoContent = (
+    <div className="flex h-full flex-col">
+      <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+        <h3 className="font-medium text-foreground truncate">
+          {title || "Video Player"}
+        </h3>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
+      </div>
+      
+      <div className="flex-1 bg-black">
+        {youtubeEmbedUrl ? (
+          <iframe
+            src={youtubeEmbedUrl}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            title={title || "Video"}
+          />
+        ) : (
+          <video
+            src={videoUrl}
+            controls
+            autoPlay
+            className="w-full h-full"
+          >
+            Your browser does not support video playback.
+          </video>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         ref={dialogRef}
         className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-4xl h-[80vh] w-[90vw] sm:rounded-2xl'} p-0 bg-background overflow-hidden transition-all`}
       >
-        <div className="flex flex-col relative">
-          <div className="p-4 border-b border-border flex items-center justify-between gap-3">
-            <h3 className="font-medium text-foreground truncate">
-              {title || "Video Player"}
-            </h3>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
-          </div>
-          
-          <div className="aspect-video bg-black">
-            {youtubeEmbedUrl ? (
-              <iframe
-                src={youtubeEmbedUrl}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-                title={title || "Video"}
-              />
-            ) : (
-              <video
-                src={videoUrl}
-                controls
-                autoPlay
-                className="w-full h-full"
-              >
-                Your browser does not support video playback.
-              </video>
-            )}
-          </div>
-
-          {resourceId && (
-            <>
-              <button
-                type="button"
-                onClick={() => setAiOpen((prev) => !prev)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-primary text-primary-foreground rounded-l-full px-2 py-3 shadow-md flex items-center gap-1 hover:opacity-90 transition"
-                aria-label={aiOpen ? "Close AI studio" : "Open AI studio"}
-                aria-pressed={aiOpen}
-                title={aiOpen ? "Close AI studio" : "Open AI studio"}
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">
-                  AI Studio
-                </span>
-              </button>
-
-              <div
-                className={`absolute top-0 right-0 h-full w-full sm:w-[360px] bg-background border-l border-border/60 shadow-xl z-30 transition-transform duration-200 ${aiOpen ? "translate-x-0" : "translate-x-full"}`}
-              >
-                <div className="h-full overflow-y-auto p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Studio</div>
-                    <button
-                      type="button"
-                      onClick={() => setAiOpen(false)}
-                      className="rounded-sm opacity-70 hover:opacity-100 transition"
-                      aria-label="Close AI studio"
-                      title="Close AI studio"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <AIStudyTools resourceId={resourceId} resourceTitle={title} resourceType="video" />
+        {resourceId ? (
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanel defaultSize={68} minSize={40} className="min-w-[320px]">
+              {videoContent}
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={32} minSize={25} className="min-w-[320px] bg-background">
+              <div className="h-full overflow-y-auto p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Studio</div>
                 </div>
+                <AIStudyTools resourceId={resourceId} resourceTitle={title} resourceType="video" />
               </div>
-            </>
-          )}
-        </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          videoContent
+        )}
       </DialogContent>
     </Dialog>
   );

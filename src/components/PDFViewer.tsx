@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import DocumentViewer from "./DocumentViewer";
 import AIStudyTools from "./ai/AIStudyTools";
@@ -17,19 +17,12 @@ interface PDFViewerProps {
 const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDFViewerProps) => {
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Update display URL when pdfUrl changes
   useEffect(() => {
     setDisplayUrl(pdfUrl);
   }, [pdfUrl]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setAiOpen(false);
-    }
-  }, [isOpen]);
 
   // Listen for fullscreen changes on this dialog
   useEffect(() => {
@@ -66,6 +59,55 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     return getYouTubeEmbedUrl(videoUrl);
   }, [videoUrl]);
 
+  const mainContent = videoUrl ? (
+    <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanel defaultSize={65} minSize={35} className="min-w-[320px]">
+        <DocumentViewer
+          url={displayUrl}
+          title={title}
+          fullscreenTargetRef={dialogRef}
+        />
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize={35} minSize={25} className="min-w-[260px]">
+        <div className="flex h-full flex-col bg-black">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Video</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={title}>
+              {title}
+            </span>
+          </div>
+          <div className="flex-1 bg-black">
+            {youtubeEmbedUrl ? (
+              <iframe
+                src={youtubeEmbedUrl}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                title={title || "Video"}
+              />
+            ) : (
+              <video
+                src={videoUrl}
+                controls
+                autoPlay
+                className="w-full h-full"
+              >
+                Your browser does not support video playback.
+              </video>
+            )}
+          </div>
+        </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  ) : (
+    <DocumentViewer
+      url={displayUrl}
+      title={title}
+      fullscreenTargetRef={dialogRef}
+    />
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
@@ -88,93 +130,27 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
 
         {/* Document Viewer (PDF / DOCX / ODF / PPTX) + AI Panel */}
         <div className="flex-1 overflow-hidden relative">
-          <div className="h-full">
-            {videoUrl ? (
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={65} minSize={35} className="min-w-[320px]">
-                  <DocumentViewer
-                    url={displayUrl}
-                    title={title}
-                    fullscreenTargetRef={dialogRef}
-                  />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={35} minSize={25} className="min-w-[260px]">
-                  <div className="flex h-full flex-col bg-black">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Video</span>
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={title}>
-                        {title}
-                      </span>
-                    </div>
-                    <div className="flex-1 bg-black">
-                      {youtubeEmbedUrl ? (
-                        <iframe
-                          src={youtubeEmbedUrl}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                          allowFullScreen
-                          title={title || "Video"}
-                        />
-                      ) : (
-                        <video
-                          src={videoUrl}
-                          controls
-                          autoPlay
-                          className="w-full h-full"
-                        >
-                          Your browser does not support video playback.
-                        </video>
-                      )}
-                    </div>
-                  </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            ) : (
-              <DocumentViewer
-                url={displayUrl}
-                title={title}
-                fullscreenTargetRef={dialogRef}
-              />
-            )}
-          </div>
-
-          {resourceId && (
-            <>
-              <button
-                type="button"
-                onClick={() => setAiOpen((prev) => !prev)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-primary text-primary-foreground rounded-l-full px-2 py-3 shadow-md flex items-center gap-1 hover:opacity-90 transition"
-                aria-label={aiOpen ? "Close AI studio" : "Open AI studio"}
-                aria-pressed={aiOpen}
-                title={aiOpen ? "Close AI studio" : "Open AI studio"}
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">
-                  AI Studio
-                </span>
-              </button>
-
-              <div
-                className={`absolute top-0 right-0 h-full w-full sm:w-[360px] bg-background border-l border-border/60 shadow-xl z-30 transition-transform duration-200 ${aiOpen ? "translate-x-0" : "translate-x-full"}`}
-              >
+          {resourceId ? (
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={68} minSize={40} className="min-w-[320px]">
+                {mainContent}
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={32} minSize={25} className="min-w-[320px] bg-background">
                 <div className="h-full overflow-y-auto p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Studio</div>
-                    <button
-                      type="button"
-                      onClick={() => setAiOpen(false)}
-                      className="rounded-sm opacity-70 hover:opacity-100 transition"
-                      aria-label="Close AI studio"
-                      title="Close AI studio"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
                   </div>
-                  <AIStudyTools resourceId={resourceId} resourceTitle={title} resourceType={videoUrl ? "video" : "notes"} />
+                  <AIStudyTools
+                    resourceId={resourceId}
+                    resourceTitle={title}
+                    resourceType={videoUrl ? "video" : "notes"}
+                  />
                 </div>
-              </div>
-            </>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="h-full">{mainContent}</div>
           )}
         </div>
       </DialogContent>
