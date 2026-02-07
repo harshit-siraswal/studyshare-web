@@ -143,6 +143,12 @@ const AIRagChat = ({ className }: { className?: string }) => {
                 </div>
               )}
 
+              {msg.role === "assistant" && msg.noLocal && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Tip: Ask about a specific topic from your PDFs. If this is your first time, ingest your PDFs so the chat can find them.
+                </div>
+              )}
+
               {msg.role === "assistant" && msg.cached && (
                 <div className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                   Cached result
