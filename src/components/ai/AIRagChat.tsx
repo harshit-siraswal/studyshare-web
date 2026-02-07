@@ -50,6 +50,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
     try {
       const response = await queryRag(q, {
         collegeId: selectedCollege?.domain,
+        allowWeb: true,
       });
 
       setMessages((prev) => [
@@ -116,6 +117,12 @@ const AIRagChat = ({ className }: { className?: string }) => {
               )}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
+
+              {msg.role === "assistant" && msg.noLocal && (
+                <div className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  General answer (not from PDFs)
+                </div>
+              )}
 
               {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                 <div className="mt-3 space-y-2">
