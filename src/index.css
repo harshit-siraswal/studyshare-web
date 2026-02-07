@@ -210,6 +210,14 @@
     background-image: var(--gradient-hero);
   }
 
+  .font-editorial {
+    font-family: 'Fraunces', 'Georgia', serif;
+  }
+
+  .font-ai {
+    font-family: 'Spline Sans', 'Inter', sans-serif;
+  }
+
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }

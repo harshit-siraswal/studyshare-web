@@ -70,7 +70,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         ref={dialogRef}
-        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-7xl h-[95vh]'} p-0 flex flex-col [&>button]:hidden transition-all`}
+        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-6xl h-[88vh] w-[92vw] sm:rounded-2xl'} p-0 flex flex-col [&>button]:hidden transition-all`}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">
           <div className="flex items-center justify-between">
@@ -145,13 +145,13 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
                 type="button"
                 onClick={() => setAiOpen((prev) => !prev)}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-primary text-primary-foreground rounded-l-full px-2 py-3 shadow-md flex items-center gap-1 hover:opacity-90 transition"
-                aria-label={aiOpen ? "Close AI chat" : "Open AI chat"}
+                aria-label={aiOpen ? "Close AI studio" : "Open AI studio"}
                 aria-pressed={aiOpen}
-                title={aiOpen ? "Close AI chat" : "Open AI chat"}
+                title={aiOpen ? "Close AI studio" : "Open AI studio"}
               >
                 <MessageCircle className="h-4 w-4" />
                 <span className="hidden sm:inline text-xs font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">
-                  AI Chat
+                  AI Studio
                 </span>
               </button>
 
@@ -160,18 +160,18 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
               >
                 <div className="h-full overflow-y-auto p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Chat</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Studio</div>
                     <button
                       type="button"
                       onClick={() => setAiOpen(false)}
                       className="rounded-sm opacity-70 hover:opacity-100 transition"
-                      aria-label="Close AI chat"
-                      title="Close AI chat"
+                      aria-label="Close AI studio"
+                      title="Close AI studio"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                  <AIStudyTools resourceId={resourceId} />
+                  <AIStudyTools resourceId={resourceId} resourceTitle={title} resourceType={videoUrl ? "video" : "notes"} />
                 </div>
               </div>
             </>
