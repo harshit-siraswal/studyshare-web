@@ -1,7 +1,7 @@
-import { MessageCircle, X } from "lucide-react";
+import { Maximize2, MessageCircle, Minimize2, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AIStudyTools from "./ai/AIStudyTools";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VideoPlayerProps {
   isOpen: boolean;
@@ -13,10 +13,18 @@ interface VideoPlayerProps {
 
 const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlayerProps) => {
   const [aiOpen, setAiOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
       setAiOpen(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen && document.fullscreenElement === dialogRef.current) {
+      void document.exitFullscreen();
     }
   }, [isOpen]);
 
@@ -32,14 +40,57 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
 
   const youtubeEmbedUrl = getYouTubeEmbedUrl(videoUrl);
 
+  const toggleFullscreen = useCallback(async () => {
+    const target = dialogRef.current;
+    if (!target) return;
+    try {
+      if (document.fullscreenElement === target) {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+        return;
+      }
+      if (document.fullscreenElement && document.fullscreenElement !== target) {
+        await document.exitFullscreen();
+      }
+      await target.requestFullscreen();
+      setIsFullscreen(true);
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === dialogRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    handleFullscreenChange();
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 bg-background overflow-hidden">
+      <DialogContent
+        ref={dialogRef}
+        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-4xl'} p-0 bg-background overflow-hidden transition-all`}
+      >
         <div className="flex flex-col relative">
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border flex items-center justify-between gap-3">
             <h3 className="font-medium text-foreground truncate">
               {title || "Video Player"}
             </h3>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
           </div>
           
           <div className="aspect-video bg-black">
@@ -47,7 +98,7 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
               <iframe
                 src={youtubeEmbedUrl}
                 className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 title={title || "Video"}
               />

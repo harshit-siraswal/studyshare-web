@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Share, Search,
@@ -73,21 +73,7 @@ const Notices = () => {
   // Selected notice for modal view
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  // Fetch followed departments on mount
-  useEffect(() => {
-    if (user?.email) {
-      fetchFollowedDepartments();
-    }
-  }, [user]);
-
-  // Auto-fetch comments when notice modal opens
-  useEffect(() => {
-    if (selectedNotice && !comments[selectedNotice.id]) {
-      toggleComments(selectedNotice.id);
-    }
-  }, [selectedNotice]);
-
-  const fetchFollowedDepartments = async () => {
+  const fetchFollowedDepartments = useCallback(async () => {
     if (!user?.email) return;
     try {
       const response = await api.getFollowedDepartments(collegeId);
@@ -95,7 +81,21 @@ const Notices = () => {
     } catch (error) {
       console.error('Error fetching followed departments:', error);
     }
-  };
+  }, [user, collegeId]);
+
+  // Fetch followed departments on mount
+  useEffect(() => {
+    if (user?.email) {
+      fetchFollowedDepartments();
+    }
+  }, [user, fetchFollowedDepartments]);
+
+  // Auto-fetch comments when notice modal opens
+  useEffect(() => {
+    if (selectedNotice && !comments[selectedNotice.id]) {
+      toggleComments(selectedNotice.id);
+    }
+  }, [selectedNotice, comments, toggleComments]);
 
   const handleFollowDept = async (deptId: string) => {
     if (!user?.email) {

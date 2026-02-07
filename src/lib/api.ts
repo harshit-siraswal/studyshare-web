@@ -725,12 +725,13 @@ export interface HealthStatus {
 
 export async function getAiSummary(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string }
 ): Promise<AiResponse<string>> {
     return apiRequest('/api/ai/summary', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
+            college_id: options?.collegeId,
             use_ocr: options?.useOcr,
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,
@@ -740,12 +741,13 @@ export async function getAiSummary(
 
 export async function getAiQuiz(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/quiz', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
+            college_id: options?.collegeId,
             use_ocr: options?.useOcr,
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,
@@ -755,12 +757,13 @@ export async function getAiQuiz(
 
 export async function getAiFlashcards(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/flashcards', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
+            college_id: options?.collegeId,
             use_ocr: options?.useOcr,
             ocr_provider: options?.ocrProvider,
             force_ocr: options?.forceOcr,

@@ -1,18 +1,20 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MessageCircle, X } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import DocumentViewer from "./DocumentViewer";
 import AIStudyTools from "./ai/AIStudyTools";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 interface PDFViewerProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   pdfUrl: string;
+  videoUrl?: string;
   resourceId?: string;
 }
 
-const PDFViewer = ({ isOpen, onClose, title, pdfUrl, resourceId }: PDFViewerProps) => {
+const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDFViewerProps) => {
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -29,23 +31,44 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, resourceId }: PDFViewerProp
     }
   }, [isOpen]);
 
-  // Listen for fullscreen changes from CustomPDFViewer
+  // Listen for fullscreen changes on this dialog
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(document.fullscreenElement === dialogRef.current);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    handleFullscreenChange();
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
 
+  useEffect(() => {
+    if (!isOpen && document.fullscreenElement === dialogRef.current) {
+      void document.exitFullscreen();
+    }
+  }, [isOpen]);
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}?autoplay=1`;
+    }
+    return null;
+  };
+
+  const youtubeEmbedUrl = useMemo(() => {
+    if (!videoUrl) return null;
+    return getYouTubeEmbedUrl(videoUrl);
+  }, [videoUrl]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         ref={dialogRef}
-        className={`${isFullscreen ? 'max-w-full h-screen' : 'max-w-7xl h-[95vh]'} p-0 flex flex-col [&>button]:hidden transition-all`}
+        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-7xl h-[95vh]'} p-0 flex flex-col [&>button]:hidden transition-all`}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">
           <div className="flex items-center justify-between">
@@ -64,10 +87,54 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, resourceId }: PDFViewerProp
         {/* Document Viewer (PDF / DOCX / ODF / PPTX) + AI Panel */}
         <div className="flex-1 overflow-hidden relative">
           <div className="h-full">
-            <DocumentViewer
-              url={displayUrl}
-              title={title}
-            />
+            {videoUrl ? (
+              <ResizablePanelGroup direction="horizontal" className="h-full">
+                <ResizablePanel defaultSize={65} minSize={35} className="min-w-[320px]">
+                  <DocumentViewer
+                    url={displayUrl}
+                    title={title}
+                    fullscreenTargetRef={dialogRef}
+                  />
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={35} minSize={25} className="min-w-[260px]">
+                  <div className="flex h-full flex-col bg-black">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Video</span>
+                      <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={title}>
+                        {title}
+                      </span>
+                    </div>
+                    <div className="flex-1 bg-black">
+                      {youtubeEmbedUrl ? (
+                        <iframe
+                          src={youtubeEmbedUrl}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                          allowFullScreen
+                          title={title || "Video"}
+                        />
+                      ) : (
+                        <video
+                          src={videoUrl}
+                          controls
+                          autoPlay
+                          className="w-full h-full"
+                        >
+                          Your browser does not support video playback.
+                        </video>
+                      )}
+                    </div>
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <DocumentViewer
+                url={displayUrl}
+                title={title}
+                fullscreenTargetRef={dialogRef}
+              />
+            )}
           </div>
 
           {resourceId && (

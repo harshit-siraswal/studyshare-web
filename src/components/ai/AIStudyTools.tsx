@@ -3,6 +3,7 @@ import { Loader2, Sparkles, HelpCircle, Layers } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getAiFlashcards, getAiQuiz, getAiSummary } from "@/lib/api";
@@ -27,6 +28,7 @@ interface AIStudyToolsProps {
 
 const AIStudyTools = ({ resourceId, className }: AIStudyToolsProps) => {
   const { user } = useAuth();
+  const { selectedCollege } = useCollege();
   const [active, setActive] = useState<OutputType>("summary");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,16 +48,17 @@ const AIStudyTools = ({ resourceId, className }: AIStudyToolsProps) => {
     setError(null);
 
     try {
+      const collegeId = selectedCollege?.domain;
       if (type === "summary") {
-        const result = await getAiSummary(resourceId);
+        const result = await getAiSummary(resourceId, { collegeId });
         setSummary(typeof result.data === "string" ? result.data : JSON.stringify(result.data));
         setCachedMap((prev) => ({ ...prev, summary: !!result.cached }));
       } else if (type === "quiz") {
-        const result = await getAiQuiz(resourceId);
+        const result = await getAiQuiz(resourceId, { collegeId });
         setQuiz(Array.isArray(result.data) ? result.data : []);
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
       } else {
-        const result = await getAiFlashcards(resourceId);
+        const result = await getAiFlashcards(resourceId, { collegeId });
         setFlashcards(Array.isArray(result.data) ? result.data : []);
         setCachedMap((prev) => ({ ...prev, flashcards: !!result.cached }));
       }

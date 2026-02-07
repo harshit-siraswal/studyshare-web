@@ -59,6 +59,7 @@ interface DocumentViewerProps {
     url: string;
     title?: string;
     type?: 'pdf' | 'docx' | 'pptx' | 'odf'; // Explicit type or auto-detect
+    fullscreenTargetRef?: React.RefObject<HTMLElement>;
 }
 
 interface SearchMatch {
@@ -67,7 +68,7 @@ interface SearchMatch {
     matchIndex: number;
 }
 
-const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
+const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewerProps) => {
     const normalizedUrl = useMemo(() => {
         if (!url) return url;
         const trimmed = url.trim();
@@ -520,25 +521,33 @@ const DocumentViewer = ({ url, title, type }: DocumentViewerProps) => {
 
 
     const toggleFullscreen = useCallback(async () => {
-        if (!containerRef.current) return;
+        const target = fullscreenTargetRef?.current ?? containerRef.current;
+        if (!target) return;
         try {
-            if (!document.fullscreenElement) {
-                await containerRef.current.requestFullscreen();
-                setIsFullscreen(true);
-            } else {
+            if (document.fullscreenElement === target) {
                 await document.exitFullscreen();
                 setIsFullscreen(false);
+                return;
             }
+            if (document.fullscreenElement && document.fullscreenElement !== target) {
+                await document.exitFullscreen();
+            }
+            await target.requestFullscreen();
+            setIsFullscreen(true);
         } catch (error) {
             console.error('Fullscreen error:', error);
         }
-    }, []);
+    }, [fullscreenTargetRef]);
 
     useEffect(() => {
-        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        const handleFullscreenChange = () => {
+            const target = fullscreenTargetRef?.current ?? containerRef.current;
+            setIsFullscreen(!!target && document.fullscreenElement === target);
+        };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+        handleFullscreenChange();
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+    }, [fullscreenTargetRef]);
 
     const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3.0));
     const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
