@@ -772,6 +772,45 @@ export async function getAiFlashcards(
 }
 
 // ============================================
+// RAG CHAT ENDPOINTS
+// ============================================
+
+export interface RagSource {
+    file_id: string;
+    title: string;
+    pages?: { start: number; end: number };
+    score?: number;
+    file_url?: string | null;
+}
+
+export interface RagResponse {
+    answer: string;
+    sources: RagSource[];
+    cached: boolean;
+    no_local: boolean;
+    top_score: number;
+    retrieval_count: number;
+    query_hash: string;
+    model: string;
+}
+
+export async function queryRag(
+    question: string,
+    options?: { collegeId?: string; topK?: number; minScore?: number; allowWeb?: boolean }
+): Promise<RagResponse> {
+    return apiRequest('/api/rag/query', {
+        method: 'POST',
+        body: JSON.stringify({
+            question,
+            college_id: options?.collegeId,
+            top_k: options?.topK,
+            min_score: options?.minScore,
+            allow_web: options?.allowWeb,
+        }),
+    });
+}
+
+// ============================================
 // SYLLABUS ENDPOINTS
 // ============================================
 

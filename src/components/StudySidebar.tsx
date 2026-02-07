@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Bookmark, MessageSquare, Bell, ChevronDown, ChevronRight, Hash, Users, LogOut,
-  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search
+  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +16,8 @@ import JoinChatRoomDialog from "./JoinChatRoomDialog";
 import NotificationCenter from "./NotificationCenter";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import AIRagChat from "./ai/AIRagChat";
 
 const chatRooms = [
   { id: "placement", name: "placement", members: 312, isPrivate: false },
@@ -37,6 +39,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   });
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
   const { logout, user: authUser } = useAuth();
@@ -238,6 +241,20 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                 </TooltipTrigger>
                 <TooltipContent side="right">Chat Rooms</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setAiChatOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">AI Chat</TooltipContent>
+              </Tooltip>
             </div>
 
             <Tooltip>
@@ -368,6 +385,18 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
               <ExternalLink className="w-3 h-3 ml-auto" />
             </Button>
           </div>
+
+          {/* AI Chat */}
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
+              onClick={() => setAiChatOpen(true)}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>AI Chat</span>
+            </Button>
+          </div>
         </div>
       </ScrollArea>
 
@@ -386,6 +415,20 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={aiChatOpen} onOpenChange={setAiChatOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>AI Study Chat</SheetTitle>
+            <SheetDescription>
+              Ask questions and get answers from your college PDFs.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 h-[calc(100vh-180px)]">
+            <AIRagChat className="h-full" />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
