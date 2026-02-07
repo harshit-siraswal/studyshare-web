@@ -723,26 +723,50 @@ export interface HealthStatus {
       data: T;
   }
 
-  export async function getAiSummary(fileId: string): Promise<AiResponse<string>> {
-      return apiRequest('/api/ai/summary', {
-          method: 'POST',
-          body: JSON.stringify({ file_id: fileId }),
-      });
-  }
+export async function getAiSummary(
+    fileId: string,
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+): Promise<AiResponse<string>> {
+    return apiRequest('/api/ai/summary', {
+        method: 'POST',
+        body: JSON.stringify({
+            file_id: fileId,
+            use_ocr: options?.useOcr,
+            ocr_provider: options?.ocrProvider,
+            force_ocr: options?.forceOcr,
+        }),
+    });
+}
 
-  export async function getAiQuiz(fileId: string): Promise<AiResponse<any[]>> {
-      return apiRequest('/api/ai/quiz', {
-          method: 'POST',
-          body: JSON.stringify({ file_id: fileId }),
-      });
-  }
+export async function getAiQuiz(
+    fileId: string,
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+): Promise<AiResponse<any[]>> {
+    return apiRequest('/api/ai/quiz', {
+        method: 'POST',
+        body: JSON.stringify({
+            file_id: fileId,
+            use_ocr: options?.useOcr,
+            ocr_provider: options?.ocrProvider,
+            force_ocr: options?.forceOcr,
+        }),
+    });
+}
 
-  export async function getAiFlashcards(fileId: string): Promise<AiResponse<any[]>> {
-      return apiRequest('/api/ai/flashcards', {
-          method: 'POST',
-          body: JSON.stringify({ file_id: fileId }),
-      });
-  }
+export async function getAiFlashcards(
+    fileId: string,
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean }
+): Promise<AiResponse<any[]>> {
+    return apiRequest('/api/ai/flashcards', {
+        method: 'POST',
+        body: JSON.stringify({
+            file_id: fileId,
+            use_ocr: options?.useOcr,
+            ocr_provider: options?.ocrProvider,
+            force_ocr: options?.forceOcr,
+        }),
+    });
+}
 
 // ============================================
 // SYLLABUS ENDPOINTS

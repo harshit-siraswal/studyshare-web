@@ -27,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local vendor drops (not referenced in app)
+public/vendor/webodf*
