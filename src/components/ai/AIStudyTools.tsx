@@ -283,8 +283,12 @@ const AIStudyTools = ({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-[#0b1220]/90 via-[#0f172a]/95 to-[#0b0f1d]/90 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.45)]",
-        "before:absolute before:inset-0 before:bg-[linear-gradient(115deg,rgba(255,255,255,0.06)_0.5px,transparent_0.5px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] before:bg-[size:32px_32px,32px_32px] before:opacity-40",
+        "relative overflow-hidden rounded-2xl border border-emerald-900/10",
+        "bg-[radial-gradient(120%_120%_at_0%_0%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(90%_90%_at_100%_0%,rgba(251,191,36,0.14),transparent_60%),linear-gradient(140deg,rgba(255,255,255,0.96),rgba(248,250,252,0.98))]",
+        "dark:border-white/10 dark:bg-[radial-gradient(120%_120%_at_0%_0%,rgba(45,212,191,0.18),transparent_55%),radial-gradient(90%_90%_at_100%_0%,rgba(251,191,36,0.12),transparent_60%),linear-gradient(140deg,rgba(8,16,28,0.96),rgba(6,12,22,0.98))]",
+        "p-4 shadow-[0_18px_45px_rgba(15,23,42,0.12)] dark:shadow-[0_28px_60px_rgba(3,7,18,0.55)]",
+        "before:absolute before:inset-0 before:bg-[linear-gradient(115deg,rgba(15,23,42,0.08)_0.5px,transparent_0.5px),linear-gradient(0deg,rgba(15,23,42,0.05)_1px,transparent_1px)]",
+        "before:bg-[size:32px_32px,32px_32px] before:opacity-20 dark:before:bg-[linear-gradient(115deg,rgba(255,255,255,0.06)_0.5px,transparent_0.5px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] dark:before:opacity-30",
         className
       )}
     >
@@ -292,7 +296,7 @@ const AIStudyTools = ({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/15 dark:text-emerald-100">
                 AI Lab
               </span>
               {resourceType === "video" ? (
@@ -305,13 +309,13 @@ const AIStudyTools = ({
                 </Badge>
               )}
             </div>
-            <div className="font-editorial text-lg text-foreground">Study Studio</div>
+            <div className="font-editorial text-lg text-gradient">Study Studio</div>
             <p className="text-xs text-muted-foreground">
               {resourceTitle ? `Working on "${resourceTitle}"` : "Structured outputs grounded in your document."}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/80">
               <span>{cachedMap[active] ? "Cached" : "Fresh"}</span>
               <span className="text-muted-foreground/50">•</span>
               <span>{meta.label}</span>
@@ -321,7 +325,7 @@ const AIStudyTools = ({
               variant="secondary"
               onClick={() => handleGenerate(active)}
               disabled={loading}
-              className="relative overflow-hidden rounded-full border border-white/10 bg-white/10 px-4 text-xs font-semibold"
+              className="relative overflow-hidden rounded-full border border-emerald-500/40 bg-emerald-500/15 px-4 text-xs font-semibold text-emerald-800 shadow-[0_0_16px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 dark:border-emerald-400/30 dark:bg-emerald-400/15 dark:text-emerald-50 dark:shadow-[0_0_18px_rgba(16,185,129,0.25)] dark:hover:bg-emerald-400/20"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
             </Button>
@@ -329,15 +333,15 @@ const AIStudyTools = ({
         </div>
 
         <Tabs value={active} onValueChange={(v) => setActive(v as OutputType)}>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <TabsList className="grid w-full grid-cols-3 rounded-full bg-black/30 p-1">
+          <div className="rounded-2xl border border-emerald-900/10 bg-white/60 p-3 dark:border-white/10 dark:bg-black/30">
+            <TabsList className="grid w-full grid-cols-3 rounded-full bg-emerald-500/10 p-1 dark:bg-black/50">
               {(["summary", "quiz", "flashcards"] as OutputType[]).map((type) => {
                 const Icon = OUTPUT_META[type].icon;
                 return (
                   <TabsTrigger
                     key={type}
                     value={type}
-                    className="gap-2 rounded-full text-xs font-semibold data-[state=active]:bg-white/20 data-[state=active]:text-white"
+                    className="gap-2 rounded-full text-xs font-semibold data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-emerald-400/20 dark:data-[state=active]:text-emerald-50"
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {OUTPUT_META[type].label}
@@ -347,17 +351,17 @@ const AIStudyTools = ({
             </TabsList>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-muted-foreground">
-                <ActiveIcon className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/80">
+                <ActiveIcon className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-300" />
                 <span>{meta.helper}</span>
               </div>
 
               <div className="ml-auto flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  Fresh run
-                  <Switch checked={freshRun} onCheckedChange={setFreshRun} />
-                </label>
-                {supportsOcr ? (
+                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      Fresh run
+                      <Switch checked={freshRun} onCheckedChange={setFreshRun} />
+                    </label>
+                    {supportsOcr ? (
                   <>
                     <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       Use OCR
@@ -380,7 +384,7 @@ const AIStudyTools = ({
                       />
                     </label>
                     <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
-                      <SelectTrigger className="h-7 w-[140px] text-[11px] bg-black/30 border-white/10">
+                      <SelectTrigger className="h-7 w-[140px] text-[11px] bg-white/70 border-emerald-500/20 text-foreground dark:bg-black/40 dark:border-white/15">
                         <SelectValue placeholder="OCR provider" />
                       </SelectTrigger>
                       <SelectContent>
@@ -390,7 +394,7 @@ const AIStudyTools = ({
                     </Select>
                   </>
                 ) : (
-                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-muted-foreground">
+                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/70">
                     {isYouTubeVideo ? "Using YouTube transcript" : "Transcript available for YouTube links"}
                   </div>
                 )}
@@ -408,7 +412,7 @@ const AIStudyTools = ({
                     size="sm"
                     variant="ghost"
                     onClick={handleSarvamOcrRetry}
-                    className="h-7 rounded-full border border-white/10 bg-white/10 text-[11px]"
+                    className="h-7 rounded-full border border-white/15 bg-white/15 text-[11px]"
                     disabled={loading}
                   >
                     Run OCR (Sarvam)
@@ -419,7 +423,7 @@ const AIStudyTools = ({
           )}
 
           <TabsContent value="summary" className="mt-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
               {summary ? (
                 <div className="space-y-4 text-sm leading-relaxed">
                   <div className="flex items-start justify-between gap-3">
@@ -482,7 +486,7 @@ const AIStudyTools = ({
                       size="sm"
                       variant="ghost"
                       onClick={handleCopySummary}
-                      className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                      className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                     >
                       {copied ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -496,7 +500,7 @@ const AIStudyTools = ({
                         size="sm"
                         variant="ghost"
                         onClick={handleSarvamOcrRetry}
-                        className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                         disabled={loading}
                       >
                         <Wand2 className="h-3.5 w-3.5" />
@@ -507,7 +511,7 @@ const AIStudyTools = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleGenerate("summary")}
-                      className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                      className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                     >
                       <RefreshCcw className="h-3.5 w-3.5" />
                       <span className="ml-1">Regenerate</span>
@@ -524,7 +528,7 @@ const AIStudyTools = ({
           </TabsContent>
 
           <TabsContent value="quiz" className="mt-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
               {quiz && quiz.length > 0 ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -535,7 +539,7 @@ const AIStudyTools = ({
                           size="sm"
                           variant="ghost"
                           onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                          className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                           disabled={loading}
                         >
                           <Wand2 className="h-3.5 w-3.5" />
@@ -546,7 +550,7 @@ const AIStudyTools = ({
                         size="sm"
                         variant="ghost"
                         onClick={() => setShowAnswers((prev) => !prev)}
-                        className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                       >
                         {showAnswers ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         <span className="ml-1">{showAnswers ? "Hide" : "Show"} answers</span>
@@ -559,7 +563,7 @@ const AIStudyTools = ({
                       const selected = selectedAnswers[idx];
                       const hasSelection = selected !== undefined;
                       return (
-                        <div key={`${idx}-${q.question}`} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                        <div key={`${idx}-${q.question}`} className="rounded-xl border border-emerald-900/10 bg-white/80 p-4 dark:border-white/10 dark:bg-black/30">
                           <div className="flex items-start justify-between gap-3">
                             <div className="text-sm font-semibold text-foreground">
                               <span className="text-primary/80">Q{idx + 1}.</span> {q.question}
@@ -587,10 +591,10 @@ const AIStudyTools = ({
                                   }
                                   className={cn(
                                     "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
-                                    "border-white/10 bg-white/5",
-                                    showCorrect && "border-emerald-400/40 bg-emerald-400/10 text-emerald-100",
-                                    isWrongSelected && "border-rose-400/50 bg-rose-500/10 text-rose-100",
-                                    isRightSelected && "border-emerald-400/60 bg-emerald-400/15 text-emerald-50"
+                                    "border-emerald-500/20 bg-emerald-500/5 dark:border-white/10 dark:bg-white/10",
+                                    showCorrect && "border-emerald-400/40 bg-emerald-400/10 text-emerald-800 dark:text-emerald-100",
+                                    isWrongSelected && "border-rose-400/50 bg-rose-500/10 text-rose-800 dark:text-rose-100",
+                                    isRightSelected && "border-emerald-400/60 bg-emerald-400/15 text-emerald-900 dark:text-emerald-50"
                                   )}
                                   aria-pressed={isSelected}
                                 >
@@ -622,7 +626,7 @@ const AIStudyTools = ({
           </TabsContent>
 
           <TabsContent value="flashcards" className="mt-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
               {flashcards && flashcards.length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -635,7 +639,7 @@ const AIStudyTools = ({
                           size="sm"
                           variant="ghost"
                           onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                          className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                           disabled={loading}
                         >
                           <Wand2 className="h-3.5 w-3.5" />
@@ -647,7 +651,7 @@ const AIStudyTools = ({
                         variant="ghost"
                         onClick={handlePrevCard}
                         disabled={activeCardIndex === 0}
-                        className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         <span className="ml-1">Prev</span>
@@ -657,7 +661,7 @@ const AIStudyTools = ({
                         variant="ghost"
                         onClick={() => handleNextCard(flashcards.length)}
                         disabled={activeCardIndex >= flashcards.length - 1}
-                        className="h-8 rounded-full border border-white/10 bg-white/5 text-xs"
+                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
                       >
                         <span className="mr-1">Next</span>
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -681,7 +685,7 @@ const AIStudyTools = ({
                       aria-pressed={isCardFlipped}
                     >
                       <div
-                        className="relative h-full w-full rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-4 transition-transform duration-500"
+                        className="relative h-full w-full rounded-2xl border border-emerald-900/10 bg-gradient-to-br from-emerald-500/12 via-white/70 to-transparent p-4 transition-transform duration-500 dark:border-white/10 dark:from-emerald-400/15 dark:via-white/5"
                         style={{
                           transformStyle: "preserve-3d",
                           transform: isCardFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -738,7 +742,7 @@ const AIStudyTools = ({
           </TabsContent>
 
           {sourceText && sourceType && sourceType !== "primary" && (
-            <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
+            <div className="mt-3 rounded-2xl border border-emerald-900/10 bg-white/75 p-3 dark:border-white/10 dark:bg-black/40">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   {sourceType === "transcript" ? "Transcript" : "OCR Output"}
@@ -748,20 +752,20 @@ const AIStudyTools = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowSource((prev) => !prev)}
-                  className="h-7 rounded-full border border-white/10 bg-white/10 text-[11px]"
+                  className="h-7 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-[11px] text-emerald-800 dark:border-white/15 dark:bg-white/15 dark:text-foreground"
                 >
                   {showSource ? "Hide" : "Show"}
                 </Button>
               </div>
               {showSource && (
-                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-black/40 p-3 text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white/80 p-3 text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap dark:border-white/10 dark:bg-black/50">
                   {sourceText}
                 </div>
               )}
             </div>
           )}
 
-          <div className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[11px] text-muted-foreground">
+          <div className="mt-3 rounded-xl border border-emerald-900/10 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-800/80 dark:border-white/10 dark:bg-black/40 dark:text-muted-foreground">
             {supportsOcr ? (
               <>
                 Tip: If the output feels off, enable <span className="text-primary">Use OCR</span> or run a{" "}
