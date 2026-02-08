@@ -24,6 +24,9 @@ import ImageCropper from "@/components/ImageCropper";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "../supabase";
 import { SEO } from "@/components/SEO";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { getRecaptchaToken } from "@/lib/recaptcha";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -174,6 +177,8 @@ const Profile = () => {
   const [showCropper, setShowCropper] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const { canFollow } = usePermissions();
 
   /* ✏️ EDIT FORM */
   const [editForm, setEditForm] = useState({
@@ -360,6 +365,11 @@ const Profile = () => {
       return;
     }
 
+    if (!canFollow) {
+      toast.error('Following requires a verified college email account.');
+      return;
+    }
+
     if (targetEmail === authUser.email) {
       toast.error('You cannot follow yourself');
       return;
@@ -388,7 +398,8 @@ const Profile = () => {
         toast.success(`Unfollowed ${targetName || 'user'}`);
       } else {
         // Follow via backend API
-        await api.sendFollowRequest(targetEmail);
+        const recaptchaToken = await getRecaptchaToken(executeRecaptcha, "follow_request");
+        await api.sendFollowRequest(targetEmail, recaptchaToken);
 
         // Refresh following list to get full user details
         // This will also update the `following` state, which is a dependency for `fetchDiscoverUsers`

@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../firebase';
+import { supabase } from '../supabase';
 
 // Backend URL - change for production
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -128,9 +129,18 @@ export async function sendFollowRequest(
     targetEmail: string,
     recaptchaToken?: string
 ): Promise<{ message: string; request: FollowRequest }> {
+    const payload: Record<string, string> = {
+        targetEmail,
+        target_email: targetEmail,
+    };
+    if (recaptchaToken) {
+        payload.recaptchaToken = recaptchaToken;
+        payload.recaptcha_token = recaptchaToken;
+    }
+
     const data = await apiRequest<any>('/api/follow/request', {
         method: 'POST',
-        body: JSON.stringify({ targetEmail, recaptchaToken }),
+        body: JSON.stringify(payload),
     });
 
     const rawRequest = (data?.request || data?.followRequest || data?.follow_request || data) as RawFollowRequest;
@@ -172,12 +182,35 @@ export async function unfollowUser(targetEmail: string): Promise<{ message: stri
  * Get pending follow requests
  */
 export async function getPendingFollowRequests(): Promise<{ requests: FollowRequest[] }> {
-    const data = await apiRequest<any>('/api/follow/pending');
-    const rawRequests = Array.isArray(data) ? data : (data?.requests || []);
-    const requests = rawRequests
-        .map((request: RawFollowRequest) => normalizeFollowRequest(request))
-        .filter((request: FollowRequest) => Boolean(request.id));
-    return { requests };
+    try {
+        const data = await apiRequest<any>('/api/follow/pending');
+        const rawRequests = Array.isArray(data) ? data : (data?.requests || []);
+        const requests = rawRequests
+            .map((request: RawFollowRequest) => normalizeFollowRequest(request))
+            .filter((request: FollowRequest) => Boolean(request.id));
+        return { requests };
+    } catch (error) {
+        try {
+            const userEmail = auth.currentUser?.email;
+            if (!userEmail) return { requests: [] };
+
+            const { data: rows, error: fetchError } = await supabase
+                .from('follow_requests')
+                .select('*')
+                .eq('target_email', userEmail)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (fetchError) throw fetchError;
+
+            const requests = (rows || [])
+                .map((request: RawFollowRequest) => normalizeFollowRequest(request))
+                .filter((request: FollowRequest) => Boolean(request.id));
+            return { requests };
+        } catch (fallbackError) {
+            throw error;
+        }
+    }
 }
 
 /**
@@ -187,11 +220,44 @@ export async function checkFollowStatus(targetEmail: string): Promise<{
     status: 'following' | 'pending' | 'not-following';
     requestId?: string;
 }> {
-    const data = await apiRequest<any>(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
-    return {
-        status: data?.status,
-        requestId: data?.requestId || data?.request_id,
-    };
+    try {
+        const data = await apiRequest<any>(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
+        return {
+            status: data?.status,
+            requestId: data?.requestId || data?.request_id,
+        };
+    } catch (error) {
+        try {
+            const userEmail = auth.currentUser?.email;
+            if (!userEmail) return { status: 'not-following' };
+
+            const { data: followRow, error: followError } = await supabase
+                .from('follows')
+                .select('id')
+                .eq('follower_email', userEmail)
+                .eq('following_email', targetEmail)
+                .maybeSingle();
+
+            if (followError) throw followError;
+            if (followRow) return { status: 'following' };
+
+            const { data: requestRow, error: requestError } = await supabase
+                .from('follow_requests')
+                .select('id, status')
+                .eq('requester_email', userEmail)
+                .eq('target_email', targetEmail)
+                .in('status', ['pending'])
+                .maybeSingle();
+
+            if (requestError) throw requestError;
+            if (requestRow) {
+                return { status: 'pending', requestId: requestRow.id };
+            }
+            return { status: 'not-following' };
+        } catch (fallbackError) {
+            throw error;
+        }
+    }
 }
 
 /**
@@ -200,14 +266,72 @@ export async function checkFollowStatus(targetEmail: string): Promise<{
 export async function getFollowers(): Promise<{ followers: UserProfile[] }> {
     // Note: UserProfile is defined later, using any[] for now to avoid circular ref issues if moved
     // or we can rely on hoisting if interface is exported similarly
-    return apiRequest('/api/follow/followers');
+    try {
+        return await apiRequest('/api/follow/followers');
+    } catch (error) {
+        try {
+            const userEmail = auth.currentUser?.email;
+            if (!userEmail) return { followers: [] };
+
+            const { data: rows, error: fetchError } = await supabase
+                .from('follows')
+                .select('follower_email')
+                .eq('following_email', userEmail);
+
+            if (fetchError) throw fetchError;
+
+            const followerEmails = (rows || []).map((row: any) => row.follower_email).filter(Boolean);
+            if (followerEmails.length === 0) return { followers: [] };
+
+            const { data: profiles, error: profilesError } = await supabase
+                .from('users')
+                .select('*')
+                .in('email', followerEmails);
+
+            if (profilesError) throw profilesError;
+
+            const followers = (profiles || []).map(normalizeUserProfile);
+            return { followers };
+        } catch (fallbackError) {
+            throw error;
+        }
+    }
 }
 
 /**
  * Get people I follow
  */
 export async function getFollowing(): Promise<{ following: UserProfile[] }> {
-    return apiRequest('/api/follow/following');
+    try {
+        return await apiRequest('/api/follow/following');
+    } catch (error) {
+        try {
+            const userEmail = auth.currentUser?.email;
+            if (!userEmail) return { following: [] };
+
+            const { data: rows, error: fetchError } = await supabase
+                .from('follows')
+                .select('following_email')
+                .eq('follower_email', userEmail);
+
+            if (fetchError) throw fetchError;
+
+            const followingEmails = (rows || []).map((row: any) => row.following_email).filter(Boolean);
+            if (followingEmails.length === 0) return { following: [] };
+
+            const { data: profiles, error: profilesError } = await supabase
+                .from('users')
+                .select('*')
+                .in('email', followingEmails);
+
+            if (profilesError) throw profilesError;
+
+            const following = (profiles || []).map(normalizeUserProfile);
+            return { following };
+        } catch (fallbackError) {
+            throw error;
+        }
+    }
 }
 
 // ============================================
@@ -710,6 +834,20 @@ export interface UserProfile {
     college?: string;
     branch?: string;
     semester?: string;
+}
+
+function normalizeUserProfile(raw: any): UserProfile {
+    return {
+        id: raw?.id || raw?.user_id || raw?.uid || raw?.email || '',
+        email: raw?.email || raw?.user_email || '',
+        display_name: raw?.display_name || raw?.displayName || raw?.name || raw?.email?.split('@')[0] || 'User',
+        username: raw?.username,
+        bio: raw?.bio,
+        profile_photo_url: raw?.profile_photo_url || raw?.avatar_url || raw?.photo_url,
+        college: raw?.college,
+        branch: raw?.branch,
+        semester: raw?.semester,
+    };
 }
 
 /**

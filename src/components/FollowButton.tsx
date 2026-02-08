@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
 import * as api from '@/lib/api';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import { getRecaptchaToken } from '@/lib/recaptcha';
 
 interface FollowButtonProps {
   targetUserEmail: string;
@@ -36,6 +38,7 @@ const FollowButton = ({
 
   const { canFollow, isReadOnly } = usePermissions();
   const { user: authUser } = useAuth();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   useEffect(() => {
     if (authUser?.email) {
@@ -104,7 +107,7 @@ const FollowButton = ({
         // Send follow request via backend API
         // Note: reCAPTCHA token needed - for now we'll skip if not available
         // In production, integrate reCAPTCHA v3 here
-        const recaptchaToken = await getRecaptchaToken();
+        const recaptchaToken = await getRecaptchaToken(executeRecaptcha, 'follow_request');
 
         const response = await api.sendFollowRequest(targetUserEmail, recaptchaToken);
         pendingRequestIds.set(targetUserEmail, response.request.id);
@@ -186,27 +189,5 @@ const FollowButton = ({
     </Button>
   );
 };
-
-/**
- * Get reCAPTCHA v3 token
- * In production, ensure grecaptcha is loaded and use your site key
- */
-async function getRecaptchaToken(): Promise<string> {
-  // Check if grecaptcha is available (reCAPTCHA v3 loaded)
-  if (typeof window !== 'undefined' && (window as any).grecaptcha) {
-    try {
-      const token = await (window as any).grecaptcha.execute(
-        import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6Ld7RUAsAAAAAKlJBKqsXHXnmP6PXRYvYhYjhsJF',
-        { action: 'follow_request' }
-      );
-      return token;
-    } catch (error) {
-      console.warn('reCAPTCHA execution failed:', error);
-    }
-  }
-
-  // Fallback for development - backend should handle missing token gracefully
-  return 'dev-token-not-verified';
-}
 
 export default FollowButton;
