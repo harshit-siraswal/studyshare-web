@@ -197,6 +197,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
                         resourceId={resourceId}
                         resourceTitle={title}
                         resourceType={videoUrl ? "video" : "notes"}
+                        videoUrl={videoUrl}
                       />
                     </div>
                   </ScrollArea>

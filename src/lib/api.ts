@@ -765,7 +765,7 @@ export interface HealthStatus {
 
 export async function getAiSummary(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<string>> {
     return apiRequest('/api/ai/summary', {
         method: 'POST',
@@ -777,13 +777,14 @@ export async function getAiSummary(
             force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
+            video_url: options?.videoUrl,
         }),
     });
 }
 
 export async function getAiQuiz(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/quiz', {
         method: 'POST',
@@ -795,13 +796,14 @@ export async function getAiQuiz(
             force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
+            video_url: options?.videoUrl,
         }),
     });
 }
 
 export async function getAiFlashcards(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/flashcards', {
         method: 'POST',
@@ -813,6 +815,7 @@ export async function getAiFlashcards(
             force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
+            video_url: options?.videoUrl,
         }),
     });
 }

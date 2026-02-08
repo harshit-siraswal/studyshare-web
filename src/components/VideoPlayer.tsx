@@ -164,7 +164,12 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="p-4">
-                    <AIStudyTools resourceId={resourceId} resourceTitle={title} resourceType="video" />
+                    <AIStudyTools
+                      resourceId={resourceId}
+                      resourceTitle={title}
+                      resourceType="video"
+                      videoUrl={videoUrl}
+                    />
                   </div>
                 </ScrollArea>
               </div>
