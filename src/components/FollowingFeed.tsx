@@ -2,9 +2,9 @@
 // Feed showing resources from users you follow
 // Policy: Filter resources by college_id for data isolation
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
-import ResourceCard from './ResourceCard';
+import ResourceCard, { ResourceType } from './ResourceCard';
 import { Card } from '@/components/ui/card';
 import { Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,23 +45,18 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
   const { selectedCollege } = useCollege();
   const { isReadOnly } = usePermissions();
 
-  useEffect(() => {
-    if (authUser?.email) {
-      fetchFollowingResources();
-    }
-  }, [selectedCollege, authUser]);
+  const collegeId = useMemo(() => selectedCollege?.domain || 'kiet.edu', [selectedCollege?.domain]);
 
-  const fetchFollowingResources = async () => {
+  const fetchFollowingResources = useCallback(async () => {
     if (!authUser?.email) {
+      setResources([]);
+      setFollowingCount(0);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.domain || 'kiet.edu';
-
       // Get list of people user is following via Backend API
       const { following } = await api.getFollowing();
 
@@ -100,6 +95,17 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
     } finally {
       setLoading(false);
     }
+  }, [authUser?.email, collegeId]);
+
+  useEffect(() => {
+    fetchFollowingResources();
+  }, [fetchFollowingResources]);
+
+  const normalizeResourceType = (type: string): ResourceType => {
+    if (type === 'video' || type === 'notes' || type === 'pyq') {
+      return type;
+    }
+    return 'notes';
   };
 
   // Policy: Only FULL access users can view following feed
@@ -189,7 +195,7 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
             key={resource.id}
             id={resource.id}
             title={resource.title}
-            type={resource.type as any}
+            type={normalizeResourceType(resource.type)}
             author={resource.uploaded_by_name || 'Anonymous'}
             authorType="student"
             upvotes={resource.upvotes}

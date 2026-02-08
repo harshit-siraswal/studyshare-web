@@ -2,7 +2,7 @@
 // Notification bell button with dropdown
 // FIX: Uses Firebase Auth, includes follow request accept/reject
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Bell, Check, X, UserPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +36,13 @@ interface Notification {
   resource_title?: string;
   read: boolean;
   created_at: string;
+  is_read?: boolean;
 }
+
+const normalizeNotification = (notification: any): Notification => ({
+  ...notification,
+  read: Boolean(notification?.read ?? notification?.is_read),
+});
 
 const NotificationButton = () => {
   const { selectedCollege } = useCollege();
@@ -44,17 +50,34 @@ const NotificationButton = () => {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<{ id: string; action: 'accept' | 'reject' } | null>(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState<"markAll" | "clearAll" | null>(null);
   const [open, setOpen] = useState(false);
 
+  const pendingRequests = useMemo(
+    () => followRequests.filter(r => r.status === 'pending'),
+    [followRequests]
+  );
+  const resolvedRequests = useMemo(
+    () => followRequests.filter(r => r.status !== 'pending'),
+    [followRequests]
+  );
+
+  const unreadCount = useMemo(() => {
+    const unreadNotifs = notifications.filter(n => !n.read).length;
+    return unreadNotifs + pendingRequests.length;
+  }, [notifications, pendingRequests]);
+
   useEffect(() => {
-    if (user?.email) {
-      fetchNotifications();
-      fetchFollowRequests();
-    }
+    refreshData(true);
   }, [user, selectedCollege]);
+
+  useEffect(() => {
+    if (open) {
+      refreshData(false);
+    }
+  }, [open]);
 
   // Real-time subscription
   useEffect(() => {
@@ -104,12 +127,9 @@ const NotificationButton = () => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      updateUnreadCount(data || [], followRequests);
+      setNotifications((data || []).map(normalizeNotification));
     } catch (error) {
       console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -122,29 +142,40 @@ const NotificationButton = () => {
       const requests = result.requests || [];
 
       setFollowRequests(requests);
-      updateUnreadCount(notifications, requests);
     } catch (error) {
       console.error('Error fetching follow requests:', error);
     }
   };
 
-  const updateUnreadCount = (notifs: Notification[], requests: FollowRequest[]) => {
-    const unreadNotifs = notifs.filter(n => !n.read).length;
-    setUnreadCount(unreadNotifs + requests.length);
+  const refreshData = async (showLoading = true) => {
+    if (!user?.email) {
+      setNotifications([]);
+      setFollowRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    if (showLoading) setLoading(true);
+    try {
+      await Promise.all([fetchNotifications(), fetchFollowRequests()]);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   };
 
   const handleAcceptRequest = async (request: FollowRequest, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user?.email) return;
-    setActionLoading(request.id);
+    setActionLoading({ id: request.id, action: 'accept' });
 
     try {
       // Use backend API for secure approval
       await approveFollowRequest(request.id);
 
       // Update local state
-      setFollowRequests(prev => prev.filter(r => r.id !== request.id));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setFollowRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'approved' } : r))
+      );
       toast.success('Follow request accepted!');
     } catch (error: any) {
       console.error('Error accepting request:', error);
@@ -156,14 +187,15 @@ const NotificationButton = () => {
 
   const handleRejectRequest = async (request: FollowRequest, e: React.MouseEvent) => {
     e.stopPropagation();
-    setActionLoading(request.id);
+    setActionLoading({ id: request.id, action: 'reject' });
 
     try {
       // Use backend API for secure rejection
       await rejectFollowRequest(request.id);
 
-      setFollowRequests(prev => prev.filter(r => r.id !== request.id));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setFollowRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'rejected' } : r))
+      );
       toast.success('Follow request declined');
     } catch (error: any) {
       console.error('Error rejecting request:', error);
@@ -174,6 +206,9 @@ const NotificationButton = () => {
   };
 
   const markAsRead = async (notificationId: string) => {
+    const current = notifications.find(n => n.id === notificationId);
+    if (current?.read) return;
+
     try {
       // Use backend API for secure update
       await markNotificationRead(notificationId);
@@ -181,7 +216,6 @@ const NotificationButton = () => {
       setNotifications(prev =>
         prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -189,16 +223,19 @@ const NotificationButton = () => {
 
   const markAllAsRead = async () => {
     if (!user?.email) return;
+    if (notifications.every(n => n.read)) return;
 
     try {
+      setBulkActionLoading("markAll");
       // Use backend API for secure bulk update
       await markAllNotificationsRead();
 
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(followRequests.length);
       toast.success('All notifications marked as read');
     } catch (error) {
       console.error('Error marking all as read:', error);
+    } finally {
+      setBulkActionLoading(null);
     }
   };
 
@@ -206,14 +243,21 @@ const NotificationButton = () => {
     if (!user?.email) return;
 
     try {
+      setBulkActionLoading("clearAll");
       await deleteAllNotifications();
       setNotifications([]);
-      setUnreadCount(followRequests.length);
+      setFollowRequests(prev => prev.filter(r => r.status === 'pending'));
       toast.success('All notifications cleared');
     } catch (error) {
       console.error('Error clearing notifications:', error);
       toast.error('Failed to clear notifications');
+    } finally {
+      setBulkActionLoading(null);
     }
+  };
+
+  const dismissFollowRequest = (requestId: string) => {
+    setFollowRequests(prev => prev.filter(r => r.id !== requestId));
   };
 
   const getNotificationIcon = (type: string) => {
@@ -283,59 +327,97 @@ const NotificationButton = () => {
         {followRequests.length > 0 && (
           <>
             <div className="px-3 py-2 bg-orange-500/10 border-b">
-              <p className="text-xs font-medium text-orange-600">Follow Requests ({followRequests.length})</p>
+              <p className="text-xs font-medium text-orange-600">
+                Follow Requests ({pendingRequests.length} pending{resolvedRequests.length > 0 ? `, ${resolvedRequests.length} handled` : ''})
+              </p>
             </div>
-            {followRequests.map((request) => (
-              <div
-                key={`req-${request.id}`}
-                className="p-3 border-b bg-orange-50 dark:bg-orange-950/20"
-              >
-                <div className="flex gap-3">
-                  <div className="text-2xl flex-shrink-0">
-                    <UserPlus className="w-6 h-6 text-orange-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">Follow Request</p>
-                    <p className="text-xs text-muted-foreground">
-                      {getRequesterLabel(request)} wants to follow you
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatTime(request.createdAt)}
-                    </p>
+            {[...pendingRequests, ...resolvedRequests].map((request) => {
+              const isAccepting = actionLoading?.id === request.id && actionLoading.action === 'accept';
+              const isRejecting = actionLoading?.id === request.id && actionLoading.action === 'reject';
+              const isBusy = actionLoading?.id === request.id;
 
-                    {/* Accept/Reject Buttons */}
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-7 text-xs"
-                        onClick={(e) => handleAcceptRequest(request, e)}
-                        disabled={actionLoading === request.id}
-                      >
-                        {actionLoading === request.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Check className="w-3 h-3 mr-1" />
-                            Accept
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={(e) => handleRejectRequest(request, e)}
-                        disabled={actionLoading === request.id}
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Decline
-                      </Button>
+              return (
+                <div
+                  key={`req-${request.id}`}
+                  className="p-3 border-b bg-orange-50 dark:bg-orange-950/20"
+                >
+                  <div className="flex gap-3">
+                    <div className="text-2xl flex-shrink-0">
+                      <UserPlus className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">Follow Request</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getRequesterLabel(request)} wants to follow you
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatTime(request.createdAt)}
+                      </p>
+
+                      {/* Accept/Reject Buttons */}
+                      {request.status === 'pending' ? (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 text-xs"
+                            onClick={(e) => handleAcceptRequest(request, e)}
+                            disabled={isBusy}
+                          >
+                            {isAccepting ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <Check className="w-3 h-3 mr-1" />
+                                Accept
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={(e) => handleRejectRequest(request, e)}
+                            disabled={isBusy}
+                          >
+                            {isRejecting ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <X className="w-3 h-3 mr-1" />
+                                Decline
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${request.status === 'approved'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                              }`}
+                          >
+                            {request.status === 'approved' ? 'Accepted' : 'Declined'}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dismissFollowRequest(request.id);
+                            }}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <DropdownMenuSeparator />
           </>
         )}
@@ -356,7 +438,7 @@ const NotificationButton = () => {
               key={notification.id}
               className={`p-3 cursor-pointer border-b last:border-b-0 ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
                 }`}
-              onClick={() => markAsRead(notification.id)}
+              onSelect={() => markAsRead(notification.id)}
             >
               <div className="flex gap-3 w-full">
                 <div className="text-2xl flex-shrink-0">
@@ -383,25 +465,33 @@ const NotificationButton = () => {
 
         {/* Footer */}
         {/* Footer Actions */}
-        {(notifications.length > 0) && (
+        {(notifications.length > 0 || resolvedRequests.length > 0) && (
           <div className="p-2 border-t grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               size="sm"
               className="text-xs h-8"
               onClick={markAllAsRead}
-              disabled={loading || notifications.every(n => n.read)}
+              disabled={loading || bulkActionLoading !== null || notifications.every(n => n.read)}
             >
-              Mark all read
+              {bulkActionLoading === "markAll" ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                "Mark all read"
+              )}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               className="text-xs h-8"
               onClick={clearAllNotifications}
-              disabled={loading}
+              disabled={loading || bulkActionLoading !== null}
             >
-              Clear all
+              {bulkActionLoading === "clearAll" ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                "Clear all"
+              )}
             </Button>
           </div>
         )}

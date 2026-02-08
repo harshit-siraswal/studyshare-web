@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Share, Search,
@@ -64,8 +64,8 @@ const Notices = () => {
   const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, api.NoticeComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState('');
-  const [postingComment, setPostingComment] = useState(false);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [postingByNotice, setPostingByNotice] = useState<Record<string, boolean>>({});
 
   // Bookmarks hook
   const { isBookmarked, toggleBookmark } = useBookmarks();
@@ -73,7 +73,23 @@ const Notices = () => {
   // Selected notice for modal view
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  const fetchFollowedDepartments = useCallback(async () => {
+  // Fetch followed departments on mount
+  useEffect(() => {
+    if (!user?.email) {
+      setFollowedDeptIds([]);
+      return;
+    }
+    fetchFollowedDepartments();
+  }, [user?.email, collegeId]);
+
+  // Auto-fetch comments when notice modal opens
+  useEffect(() => {
+    if (selectedNotice && !comments[selectedNotice.id]) {
+      toggleComments(selectedNotice.id);
+    }
+  }, [selectedNotice]);
+
+  const fetchFollowedDepartments = async () => {
     if (!user?.email) return;
     try {
       const response = await api.getFollowedDepartments(collegeId);
@@ -81,21 +97,7 @@ const Notices = () => {
     } catch (error) {
       console.error('Error fetching followed departments:', error);
     }
-  }, [user, collegeId]);
-
-  // Fetch followed departments on mount
-  useEffect(() => {
-    if (user?.email) {
-      fetchFollowedDepartments();
-    }
-  }, [user, fetchFollowedDepartments]);
-
-  // Auto-fetch comments when notice modal opens
-  useEffect(() => {
-    if (selectedNotice && !comments[selectedNotice.id]) {
-      toggleComments(selectedNotice.id);
-    }
-  }, [selectedNotice, comments, toggleComments]);
+  };
 
   const handleFollowDept = async (deptId: string) => {
     if (!user?.email) {
@@ -154,19 +156,21 @@ const Notices = () => {
       return;
     }
 
-    setPostingComment(true);
+    setPostingByNotice(prev => ({ ...prev, [noticeId]: true }));
     try {
       const { comment } = await api.postNoticeComment(noticeId, content.trim(), undefined, parentId);
       setComments(prev => ({
         ...prev,
         [noticeId]: [...(prev[noticeId] || []), comment]
       }));
-      if (!parentId) setNewComment(''); // Clear main input
+      if (!parentId) {
+        setCommentDrafts(prev => ({ ...prev, [noticeId]: '' }));
+      }
       toast.success('Reply posted!');
     } catch (error) {
       toast.error(error.message || 'Failed to post reply');
     } finally {
-      setPostingComment(false);
+      setPostingByNotice(prev => ({ ...prev, [noticeId]: false }));
     }
   };
 
@@ -212,13 +216,18 @@ const Notices = () => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
       const dept = getDeptInfo(n.department);
+      const content = n.content || '';
+      const department = n.department || '';
       return (
         n.title?.toLowerCase().includes(query) ||
-        n.content.toLowerCase().includes(query) ||
+        content.toLowerCase().includes(query) ||
         dept.label.toLowerCase().includes(query) ||
-        n.department.toLowerCase().includes(query)
+        department.toLowerCase().includes(query)
       );
     });
+
+  const modalDraft = selectedNotice ? (commentDrafts[selectedNotice.id] || '') : '';
+  const modalPosting = selectedNotice ? !!postingByNotice[selectedNotice.id] : false;
 
   return (
     <div className="min-h-screen-safe bg-background text-foreground flex justify-center">
@@ -333,6 +342,8 @@ const Notices = () => {
             ) : (
               displayedNotices.map((notice) => {
                 const dept = getDeptInfo(notice.department);
+                const draft = commentDrafts[notice.id] || '';
+                const isPosting = !!postingByNotice[notice.id];
                 return (
                   <Card key={notice.id} className="p-2 sm:p-4 mb-2 sm:mb-3 hover:bg-secondary/10 transition-colors cursor-pointer border-border/50" onClick={() => setSelectedNotice(notice)}>
                     <div className="flex gap-2 sm:gap-3">
@@ -435,18 +446,18 @@ const Notices = () => {
                               <div className="flex-1 flex gap-2">
                                 <Input
                                   placeholder="Add a comment..."
-                                  value={newComment}
-                                  onChange={(e) => setNewComment(e.target.value)}
+                                  value={draft}
+                                  onChange={(e) => setCommentDrafts(prev => ({ ...prev, [notice.id]: e.target.value }))}
                                   className="flex-1 h-9 text-sm"
-                                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(notice.id, newComment)}
+                                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(notice.id, draft)}
                                 />
                                 <Button
                                   size="icon"
                                   className="h-9 w-9 shrink-0"
-                                  onClick={() => handleReply(notice.id, newComment)}
-                                  disabled={!newComment.trim() || postingComment}
+                                  onClick={() => handleReply(notice.id, draft)}
+                                  disabled={!draft.trim() || isPosting}
                                 >
-                                  {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                  {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                 </Button>
                               </div>
                             </div>
@@ -615,16 +626,16 @@ const Notices = () => {
                       <div className="flex-1 flex gap-2">
                         <Input
                           placeholder="Post your reply..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
+                          value={modalDraft}
+                          onChange={(e) => setCommentDrafts(prev => ({ ...prev, [selectedNotice.id]: e.target.value }))}
                           className="flex-1"
-                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(selectedNotice.id, newComment)}
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply(selectedNotice.id, modalDraft)}
                         />
                         <Button
-                          onClick={() => handleReply(selectedNotice.id, newComment)}
-                          disabled={!newComment.trim() || postingComment}
+                          onClick={() => handleReply(selectedNotice.id, modalDraft)}
+                          disabled={!modalDraft.trim() || modalPosting}
                         >
-                          {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reply'}
+                          {modalPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reply'}
                         </Button>
                       </div>
                     </div>

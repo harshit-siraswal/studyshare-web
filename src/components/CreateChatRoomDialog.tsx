@@ -132,9 +132,10 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
 
       // Navigate to the new room
       navigate(`/chatroom/${result.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating room:', error);
-      toast.error(error.message || "Failed to create room");
+      const message = error instanceof Error ? error.message : "Failed to create room";
+      toast.error(message);
     } finally {
       setCreating(false);
     }

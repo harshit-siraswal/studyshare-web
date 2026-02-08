@@ -2,7 +2,7 @@
 // Notification center with follow request accept/reject buttons
 // Fetches real notifications and follow_requests from database
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Bell, Check, X, MessageSquare, FileText, Users, Megaphone, UserPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -35,7 +35,13 @@ interface Notification {
   message: string;
   created_at: string;
   read: boolean;
+  is_read?: boolean;
 }
+
+const normalizeNotification = (notification: any): Notification => ({
+  ...notification,
+  read: Boolean(notification?.read ?? notification?.is_read),
+});
 
 const typeIcons = {
   message: MessageSquare,
@@ -57,18 +63,12 @@ const NotificationCenter = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<{ id: string; action: 'accept' | 'reject' } | null>(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState<"markAll" | "clearAll" | null>(null);
   const [open, setOpen] = useState(false);
 
   const { user } = useAuth();
   const { selectedCollege } = useCollege();
-
-  useEffect(() => {
-    if (user?.email && open) {
-      fetchNotifications();
-      fetchFollowRequests();
-    }
-  }, [user, open, selectedCollege]);
 
   const fetchNotifications = async () => {
     if (!user?.email) return;
@@ -82,7 +82,7 @@ const NotificationCenter = () => {
         .limit(20);
 
       if (error) throw error;
-      setNotifications(data || []);
+      setNotifications((data || []).map(normalizeNotification));
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -97,14 +97,38 @@ const NotificationCenter = () => {
       setFollowRequests(result.requests || []);
     } catch (error) {
       console.error('Error fetching follow requests:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
+  const refreshData = async (showLoading = true) => {
+    if (!user?.email) {
+      setNotifications([]);
+      setFollowRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    if (showLoading) setLoading(true);
+    try {
+      await Promise.all([fetchNotifications(), fetchFollowRequests()]);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData(true);
+  }, [user?.email, selectedCollege]);
+
+  useEffect(() => {
+    if (open) {
+      refreshData(false);
+    }
+  }, [open]);
+
   const handleAcceptRequest = async (request: FollowRequest) => {
     if (!user?.email) return;
-    setActionLoading(request.id);
+    setActionLoading({ id: request.id, action: 'accept' });
 
     try {
       // Use backend API for secure follow request approval
@@ -113,8 +137,10 @@ const NotificationCenter = () => {
       // Get requester name for success message
       const requesterName = getRequesterLabel(request);
 
-      // Remove from local state
-      setFollowRequests(prev => prev.filter(r => r.id !== request.id));
+      // Update local state
+      setFollowRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'approved' } : r))
+      );
       toast.success(`Accepted follow request from ${requesterName}`);
     } catch (error: any) {
       console.error('Error accepting request:', error);
@@ -125,7 +151,7 @@ const NotificationCenter = () => {
   };
 
   const handleRejectRequest = async (request: FollowRequest) => {
-    setActionLoading(request.id);
+    setActionLoading({ id: request.id, action: 'reject' });
 
     try {
       // Use backend API for secure rejection
@@ -134,7 +160,9 @@ const NotificationCenter = () => {
       // Get requester name for success message
       const requesterName = getRequesterLabel(request);
 
-      setFollowRequests(prev => prev.filter(r => r.id !== request.id));
+      setFollowRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'rejected' } : r))
+      );
       toast.success(`Declined follow request from ${requesterName}`);
     } catch (error: any) {
       console.error('Error rejecting request:', error);
@@ -145,6 +173,9 @@ const NotificationCenter = () => {
   };
 
   const markAsRead = async (id: string) => {
+    const current = notifications.find(n => n.id === id);
+    if (current?.read) return;
+
     try {
       // Use backend API for secure update
       await markNotificationRead(id);
@@ -159,14 +190,18 @@ const NotificationCenter = () => {
 
   const markAllAsReadHandler = async () => {
     if (!user?.email) return;
+    if (notifications.every(n => n.read)) return;
 
     try {
+      setBulkActionLoading("markAll");
       // Use backend API for secure bulk update
       await markAllNotificationsRead();
 
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch (error) {
       console.error('Error marking all as read:', error);
+    } finally {
+      setBulkActionLoading(null);
     }
   };
 
@@ -185,18 +220,35 @@ const NotificationCenter = () => {
     if (!user?.email) return;
 
     try {
+      setBulkActionLoading("clearAll");
       // Use backend API for secure bulk deletion
       await deleteAllNotifications();
 
       setNotifications([]);
+      setFollowRequests(prev => prev.filter(r => r.status === 'pending'));
       toast.success('All notifications cleared');
     } catch (error) {
       console.error('Error clearing notifications:', error);
       toast.error('Failed to clear notifications');
+    } finally {
+      setBulkActionLoading(null);
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length + followRequests.length;
+  const dismissFollowRequest = (requestId: string) => {
+    setFollowRequests(prev => prev.filter(r => r.id !== requestId));
+  };
+
+  const pendingRequests = useMemo(
+    () => followRequests.filter(r => r.status === 'pending'),
+    [followRequests]
+  );
+  const resolvedRequests = useMemo(
+    () => followRequests.filter(r => r.status !== 'pending'),
+    [followRequests]
+  );
+
+  const unreadCount = notifications.filter(n => !n.read).length + pendingRequests.length;
   const totalItems = notifications.length + followRequests.length;
 
   const getRequesterLabel = (request: FollowRequest) => {
@@ -256,57 +308,93 @@ const NotificationCenter = () => {
           ) : (
             <div className="divide-y divide-border">
               {/* Follow Requests Section */}
-              {followRequests.map((request) => (
-                <div
-                  key={`request-${request.id}`}
-                  className="p-3 bg-orange-500/5"
-                >
-                  <div className="flex gap-3">
-                    <div className={cn("p-2 rounded-lg shrink-0", typeColors.follow_request)}>
-                      <UserPlus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">Follow Request</p>
-                      <p className="text-xs text-muted-foreground">
-                        {getRequesterLabel(request)} wants to follow you
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatTime(request.createdAt)}
-                      </p>
+              {[...pendingRequests, ...resolvedRequests].map((request) => {
+                const isAccepting = actionLoading?.id === request.id && actionLoading.action === 'accept';
+                const isRejecting = actionLoading?.id === request.id && actionLoading.action === 'reject';
+                const isBusy = actionLoading?.id === request.id;
 
-                      {/* Accept/Reject Buttons */}
-                      <div className="flex gap-2 mt-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 text-xs"
-                          onClick={() => handleAcceptRequest(request)}
-                          disabled={actionLoading === request.id}
-                        >
-                          {actionLoading === request.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <>
-                              <Check className="w-3 h-3 mr-1" />
-                              Accept
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleRejectRequest(request)}
-                          disabled={actionLoading === request.id}
-                        >
-                          <X className="w-3 h-3 mr-1" />
-                          Decline
-                        </Button>
+                return (
+                  <div
+                    key={`request-${request.id}`}
+                    className="p-3 bg-orange-500/5"
+                  >
+                    <div className="flex gap-3">
+                      <div className={cn("p-2 rounded-lg shrink-0", typeColors.follow_request)}>
+                        <UserPlus className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">Follow Request</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getRequesterLabel(request)} wants to follow you
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatTime(request.createdAt)}
+                        </p>
+
+                        {/* Accept/Reject Buttons */}
+                        {request.status === 'pending' ? (
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-7 text-xs"
+                              onClick={() => handleAcceptRequest(request)}
+                              disabled={isBusy}
+                            >
+                              {isAccepting ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Accept
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => handleRejectRequest(request)}
+                              disabled={isBusy}
+                            >
+                              {isRejecting ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <X className="w-3 h-3 mr-1" />
+                                  Decline
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${request.status === 'approved'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                                }`}
+                            >
+                              {request.status === 'approved' ? 'Accepted' : 'Declined'}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissFollowRequest(request.id);
+                              }}
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Regular Notifications */}
               {notifications.map((notification) => {
@@ -352,25 +440,33 @@ const NotificationCenter = () => {
         </ScrollArea>
 
         {/* Footer Actions */}
-        {(notifications.length > 0) && (
+        {(notifications.length > 0 || resolvedRequests.length > 0) && (
           <div className="p-2 border-t border-border grid grid-cols-2 gap-2 bg-background">
             <Button
               variant="outline"
               size="sm"
               className="text-xs h-8"
               onClick={markAllAsReadHandler}
-              disabled={loading || notifications.every(n => n.read)}
+              disabled={loading || bulkActionLoading !== null || notifications.every(n => n.read)}
             >
-              Mark all read
+              {bulkActionLoading === "markAll" ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                "Mark all read"
+              )}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               className="text-xs h-8"
               onClick={clearAllNotificationsHandler}
-              disabled={loading}
+              disabled={loading || bulkActionLoading !== null}
             >
-              Clear all
+              {bulkActionLoading === "clearAll" ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                "Clear all"
+              )}
             </Button>
           </div>
         )}
