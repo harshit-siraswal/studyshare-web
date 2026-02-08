@@ -11,8 +11,7 @@ import { toast } from "sonner";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import { createResource } from "@/lib/api";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { createResource, getResourceUploadUrl } from "@/lib/api";
 
 interface UploadResourceDialogProps {
   trigger?: React.ReactNode;
@@ -123,15 +122,52 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     }
   };
 
-  const uploadFileToCloudinary = async (file: File): Promise<string> => {
-    try {
-      console.log('📤 Uploading to Cloudinary:', file.name);
+  const getFileContentType = (file: File): string => {
+    if (file.type) return file.type;
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf")) return "application/pdf";
+    if (name.endsWith(".doc")) return "application/msword";
+    if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (name.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+    if (name.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    if (name.endsWith(".odt")) return "application/vnd.oasis.opendocument.text";
+    if (name.endsWith(".odp")) return "application/vnd.oasis.opendocument.presentation";
+    return "application/octet-stream";
+  };
 
-      // Upload to Cloudinary with progress tracking
-      const fileUrl = await uploadToCloudinary(file, (progress) => {
-        // Update progress: 30-60% for upload
-        const uploadProgress = 30 + (progress * 0.3); // 30% to 60%
-        setUploadProgress(Math.round(uploadProgress));
+  const uploadFileToR2 = async (file: File): Promise<string> => {
+    try {
+      console.log('📤 Uploading to R2:', file.name);
+
+      const { uploadUrl, publicUrl } = await getResourceUploadUrl(file.name);
+
+      const fileUrl = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const contentType = getFileContentType(file);
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const progress = Math.round((e.loaded / e.total) * 100);
+            const uploadProgress = 30 + (progress * 0.3); // 30% to 60%
+            setUploadProgress(Math.round(uploadProgress));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(publicUrl);
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+        xhr.addEventListener('abort', () => reject(new Error('Upload was aborted')));
+
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.setRequestHeader('Cache-Control', 'max-age=31536000');
+        xhr.send(file);
       });
 
       console.log('✅ Upload successful:', fileUrl);
@@ -139,7 +175,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
     } catch (error: unknown) {
       console.error('❌ Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload file to Cloudinary';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload file to R2';
       toast.error(errorMessage);
       throw error;
     }
@@ -182,10 +218,10 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     try {
       let fileUrl = "";
 
-      // Upload file to Cloudinary if it's a notes/document
+      // Upload file to R2 if it's a notes/document
       if (type === "notes" && selectedFile) {
         setUploadProgress(10);
-        fileUrl = await uploadFileToCloudinary(selectedFile);
+        fileUrl = await uploadFileToR2(selectedFile);
         setUploadProgress(60);
       }
 

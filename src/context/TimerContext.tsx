@@ -83,16 +83,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     };
 
     const handleFocusChange = (value: number) => {
-        setFocusMinutes(value);
+        if (!Number.isFinite(value)) return;
+        const next = Math.min(120, Math.max(1, Math.round(value)));
+        setFocusMinutes(next);
         if (mode === 'focus' && !isRunning) {
-            setTimeLeft(value * 60);
+            setTimeLeft(next * 60);
         }
     };
 
     const handleBreakChange = (value: number) => {
-        setBreakMinutes(value);
+        if (!Number.isFinite(value)) return;
+        const next = Math.min(60, Math.max(1, Math.round(value)));
+        setBreakMinutes(next);
         if (mode === 'break' && !isRunning) {
-            setTimeLeft(value * 60);
+            setTimeLeft(next * 60);
         }
     };
 

@@ -21,6 +21,7 @@ interface PDFViewerProps {
 const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDFViewerProps) => {
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showAiStudio, setShowAiStudio] = useState(true);
   const dialogRef = useRef<HTMLDivElement>(null);
   const isStacked = useMediaQuery("(max-width: 1024px)");
 
@@ -49,6 +50,12 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
       });
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowAiStudio(true);
+    }
+  }, [isOpen, resourceId]);
 
   const youtubeEmbedUrl = useMemo(() => {
     if (!videoUrl) return null;
@@ -140,22 +147,34 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
         className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-7xl h-[90vh] w-[94vw] sm:rounded-2xl'} p-0 flex flex-col [&>button]:hidden transition-all`}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-lg font-semibold truncate">{title}</DialogTitle>
-            <button
-              onClick={onClose}
-              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-              title="Close (Esc)"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {resourceId && (
+                <button
+                  onClick={() => setShowAiStudio((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  title={showAiStudio ? "Hide AI Studio" : "Show AI Studio"}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {showAiStudio ? "Hide AI" : "Show AI"}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+                title="Close (Esc)"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </button>
+            </div>
           </div>
         </DialogHeader>
 
         {/* Document Viewer (PDF / DOCX / ODF / PPTX) + AI Panel */}
         <div className="flex-1 overflow-hidden relative">
-          {resourceId ? (
+          {resourceId && showAiStudio ? (
             <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
               <ResizablePanel
                 defaultSize={isStacked ? 62 : 68}
@@ -190,6 +209,13 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
                         </div>
                       </div>
                     </div>
+                    <button
+                      onClick={() => setShowAiStudio(false)}
+                      className="rounded-full p-1 text-emerald-700/70 transition hover:text-emerald-900 dark:text-emerald-100/70 dark:hover:text-emerald-100"
+                      title="Hide AI Studio"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                   <ScrollArea className="flex-1">
                     <div className="p-4">

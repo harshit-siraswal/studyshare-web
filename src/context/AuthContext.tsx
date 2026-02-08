@@ -10,6 +10,7 @@ interface AuthContextType {
   banReason: string | null;
   logout: () => Promise<void>;
   isPremium: boolean;
+  subscriptionTier: 'free' | 'pro' | 'max';
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false); // [NEW]
+  const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro' | 'max'>('free');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -30,11 +32,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (firebaseUser) {
         try {
-          // Parallel fetch for user info and premium status
-          const [userInfo, { data: premiumData }] = await Promise.all([
+          // Parallel fetch for user info and subscription status
+          const [userInfo, { data: userRow }] = await Promise.all([
             verifyAndGetUser(),
             import("../supabase").then(({ supabase }) =>
-              supabase.from('premium_users').select('premium_until').eq('id', firebaseUser.uid).maybeSingle()
+              supabase
+                .from('users')
+                .select('subscription_tier, subscription_end_date')
+                .eq('id', firebaseUser.uid)
+                .maybeSingle()
             )
           ]);
 
@@ -46,23 +52,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setBanReason(null);
           }
 
-          // Check premium validity
-          if (premiumData) {
-            const expiryDate = new Date(premiumData.premium_until);
-            setIsPremium(expiryDate > new Date());
-          } else {
-            setIsPremium(false);
+          // Check subscription validity
+          let tier: 'free' | 'pro' | 'max' = 'free';
+          if (userRow?.subscription_tier && userRow.subscription_tier !== 'free') {
+            const endDate = userRow.subscription_end_date
+              ? new Date(userRow.subscription_end_date)
+              : null;
+            if (!endDate || endDate > new Date()) {
+              tier = userRow.subscription_tier;
+            }
           }
+          setSubscriptionTier(tier);
+          setIsPremium(tier !== 'free');
         } catch (error) {
           console.error('Error fetching user status:', error);
           setIsBanned(false);
           setBanReason(null);
           setIsPremium(false);
+          setSubscriptionTier('free');
         }
       } else {
         setIsBanned(false);
         setBanReason(null);
         setIsPremium(false);
+        setSubscriptionTier('free');
       }
     });
 
@@ -74,10 +87,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsBanned(false);
     setBanReason(null);
     setIsPremium(false);
+    setSubscriptionTier('free');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isBanned, banReason, logout, isPremium }}>
+    <AuthContext.Provider value={{ user, loading, isBanned, banReason, logout, isPremium, subscriptionTier }}>
       {children}
     </AuthContext.Provider>
   );

@@ -62,7 +62,10 @@ const StudyTimer = () => {
                   min={1}
                   max={120}
                   value={focusMinutes}
-                  onChange={(e) => setFocusMinutes(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!Number.isNaN(val)) setFocusMinutes(val);
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -74,7 +77,10 @@ const StudyTimer = () => {
                   min={1}
                   max={60}
                   value={breakMinutes}
-                  onChange={(e) => setBreakMinutes(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!Number.isNaN(val)) setBreakMinutes(val);
+                  }}
                   className="mt-1"
                 />
               </div>

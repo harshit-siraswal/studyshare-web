@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { queryRag } from "@/lib/api";
+import BrandLoader from "@/components/BrandLoader";
+import BrandMark from "@/components/BrandMark";
 
 interface RagSource {
   file_id: string;
@@ -31,23 +33,6 @@ const SUGGESTIONS = [
   "Explain stack vs queue with a real-world example.",
   "List key formulas from my notes for quick revision.",
 ];
-
-const AI_IMAGES = {
-  selfie: "/ai/ai-selfie.png",
-  study: "/ai/ai-studying.png",
-  board: "/ai/ai-board.png",
-  grade: "/ai/ai-grade.png",
-};
-
-const LOADING_IMAGES = [
-  AI_IMAGES.study,
-  AI_IMAGES.selfie,
-  AI_IMAGES.board,
-  AI_IMAGES.grade,
-];
-
-const FRAME_DURATION_MS = 1200;
-const TOTAL_DURATION_MS = FRAME_DURATION_MS * LOADING_IMAGES.length;
 
 const AIRagChat = ({
   className,
@@ -249,13 +234,9 @@ const AIRagChat = ({
               </div>
             </div>
             <div className="relative h-32 w-full max-w-[190px] self-center sm:h-36 sm:self-auto">
-              <img
-                src={AI_IMAGES.selfie}
-                alt="Studyspace AI buddy"
-                className="h-full w-full object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.25)] motion-reduce:animate-none"
-                loading="lazy"
-                decoding="async"
-              />
+              <div className="flex h-full w-full items-center justify-center rounded-3xl bg-primary/5">
+                <BrandMark size={140} className="drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]" alt="Studyshare AI" />
+              </div>
             </div>
           </div>
         </div>
@@ -283,16 +264,6 @@ const AIRagChat = ({
           )}
         >
           <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "p-4" : "p-4 sm:p-6")}>
-            {!isMinimal && (
-              <img
-                src={AI_IMAGES.board}
-                alt=""
-                className="pointer-events-none absolute right-6 top-6 hidden h-28 w-28 rotate-2 opacity-10 md:block"
-                loading="lazy"
-                decoding="async"
-              />
-            )}
-
             {messages.length === 0 && !loading && (
               <div
                 className={cn(
@@ -328,21 +299,8 @@ const AIRagChat = ({
                     </div>
                   </div>
                   {!isMinimal && (
-                    <div className="relative flex w-full max-w-[220px] items-end justify-center gap-2 md:justify-end">
-                      <img
-                        src={AI_IMAGES.study}
-                        alt="AI buddy studying"
-                        className="h-40 w-40 object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <img
-                        src={AI_IMAGES.grade}
-                        alt="Celebrate progress"
-                        className="hidden h-20 w-20 -translate-y-6 object-contain opacity-80 md:block"
-                        loading="lazy"
-                        decoding="async"
-                      />
+                    <div className="flex w-full max-w-[220px] items-center justify-center md:justify-end">
+                      <BrandMark size={160} className="opacity-90 drop-shadow-[0_18px_35px_rgba(0,0,0,0.2)]" alt="Studyshare" />
                     </div>
                   )}
                 </div>
@@ -442,70 +400,15 @@ const AIRagChat = ({
                     <div className="absolute bottom-0 right-10 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
                   </>
                 )}
-                <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className={cn("relative flex items-center justify-center self-start", isMinimal ? "h-16 w-16" : "h-20 w-20 sm:h-24 sm:w-24")}>
-                    <div className={cn("absolute inset-0 rounded-full", isMinimal ? "bg-primary/10 blur-lg" : "bg-primary/20 blur-xl animate-pulse")} />
-                    <div
-                      className="absolute inset-0 rounded-full border border-dashed border-primary/40"
-                      style={{ animation: "spin 8s linear infinite" }}
-                    />
-                    {LOADING_IMAGES.map((img, idx) => (
-                      <img
-                        key={`loading-frame-${img}`}
-                        src={img}
-                        alt="AI loading frame"
-                        className={cn(
-                          "ai-loading-frame absolute object-contain motion-reduce:animate-none",
-                          isMinimal ? "h-12 w-12" : "h-16 w-16 sm:h-20 sm:w-20",
-                          idx === 0 && "motion-reduce:opacity-100"
-                        )}
-                        style={{
-                          animationDelay: `${idx * FRAME_DURATION_MS}ms`,
-                          animationDuration: `${TOTAL_DURATION_MS}ms`,
-                        }}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ))}
-                  </div>
+                <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <BrandLoader size={isMinimal ? 60 : 80} label={isMinimal ? "Thinking..." : "Crafting your answer"} />
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                       <Sparkles className="h-3 w-3 text-primary" />
-                      Brewing answer
+                      Scanning your notes
                     </div>
                     <div className="h-3 w-28 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
                     <div className="h-3 w-48 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                      <span>Scanning notes</span>
-                      <span className="flex gap-1">
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 motion-reduce:animate-none" />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:120ms] motion-reduce:animate-none" />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/20 [animation-delay:240ms] motion-reduce:animate-none" />
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {LOADING_IMAGES.map((img, idx) => (
-                        <div
-                          key={`loading-thumb-${img}`}
-                          className={cn(
-                            "ai-loading-thumb flex items-center justify-center rounded-xl border border-border/60 bg-background/70 p-1 motion-reduce:animate-none",
-                            isMinimal ? "h-8 w-8" : "h-9 w-9"
-                          )}
-                          style={{
-                            animationDelay: `${idx * FRAME_DURATION_MS}ms`,
-                            animationDuration: `${TOTAL_DURATION_MS}ms`,
-                          }}
-                        >
-                          <img
-                            src={img}
-                            alt=""
-                            className="h-full w-full object-contain opacity-80"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>

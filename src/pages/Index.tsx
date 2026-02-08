@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { GraduationCap, Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
+import { Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
+import BrandMark from "@/components/BrandMark";
 
 // Active colleges with verified email domains
 const activeColleges = [
@@ -101,8 +102,8 @@ const Index = () => {
         {/* Header */}
         <header className="text-center mb-12 md:mb-16 animate-fade-in">
           <div className="inline-flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-2xl bg-gradient-primary shadow-glow">
-              <GraduationCap className="w-8 h-8 text-primary-foreground" />
+            <div className="p-3 rounded-2xl bg-gradient-primary/10 border border-primary/20">
+              <BrandMark size={42} className="drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)]" alt="Studyshare" />
             </div>
             <h1 className="text-3xl md:text-5xl font-bold">
               My<span className="text-gradient">StudySpace</span>

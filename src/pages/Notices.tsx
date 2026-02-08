@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import type { ElementType } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Share, Search,
-  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2, X
+  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2, X,
+  LayoutGrid, Cpu, Zap, Cog, Building2, PlugZap, Bot, Database, Globe, HelpCircle
 } from "lucide-react";
 import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -23,19 +26,24 @@ import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useNotices, Notice } from "@/hooks/useNotices";
 import { useCollege } from "@/context/CollegeContext";
+import BrandLoader from "@/components/BrandLoader";
+import BrandMark from "@/components/BrandMark";
 
 // --- Constants ---
-const DEPARTMENTS = [
-  { value: 'all', label: 'All Departments', icon: '🏛️' },
-  { value: 'cse', label: 'Computer Science', icon: '💻' },
-  { value: 'ece', label: 'Electronics', icon: '⚡' },
-  { value: 'me', label: 'Mechanical', icon: '⚙️' },
-  { value: 'ce', label: 'Civil', icon: '🏗️' },
-  { value: 'eee', label: 'Electrical', icon: '🔌' },
-  { value: 'aiml', label: 'AI & ML', icon: '🤖' },
-  { value: 'ds', label: 'Data Science', icon: '📊' },
-  { value: 'it', label: 'Information Technology', icon: '🌐' },
+type DepartmentMeta = { value: string; label: string; icon: ElementType };
+
+const DEPARTMENTS: DepartmentMeta[] = [
+  { value: 'all', label: 'All Departments', icon: LayoutGrid },
+  { value: 'cse', label: 'Computer Science', icon: Cpu },
+  { value: 'ece', label: 'Electronics', icon: Zap },
+  { value: 'me', label: 'Mechanical', icon: Cog },
+  { value: 'ce', label: 'Civil', icon: Building2 },
+  { value: 'eee', label: 'Electrical', icon: PlugZap },
+  { value: 'aiml', label: 'AI & ML', icon: Bot },
+  { value: 'ds', label: 'Data Science', icon: Database },
+  { value: 'it', label: 'Information Technology', icon: Globe },
 ];
+
 
 const Notices = () => {
   const navigate = useNavigate();
@@ -189,7 +197,7 @@ const Notices = () => {
   };
 
   const getDeptInfo = (deptCode: string) => {
-    return DEPARTMENTS.find(d => d.value === deptCode) || { label: 'Unknown', icon: '❓', value: deptCode };
+    return DEPARTMENTS.find(d => d.value === deptCode) || { label: 'Unknown', icon: HelpCircle, value: deptCode };
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -257,11 +265,14 @@ const Notices = () => {
             <h2 className="font-bold text-xl px-2">Who to follow</h2>
             <div className="space-y-3">
               {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, showAllDepts ? undefined : 5).map(dept => {
+                const DeptIcon = dept.icon;
                 return (
                   <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10 border border-border/50">
-                        <AvatarFallback className="bg-background text-lg">{dept.icon}</AvatarFallback>
+                        <AvatarFallback className="bg-background">
+                          <DeptIcon className="h-4 w-4 text-muted-foreground" />
+                        </AvatarFallback>
                       </Avatar>
                       <div className="leading-tight">
                         <div className="font-bold hover:underline">{dept.label}</div>
@@ -293,7 +304,7 @@ const Notices = () => {
           {/* Header / Tabs with Back Button */}
           <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
             {/* Back button row (always visible) */}
-            <div className="flex items-center gap-3 px-4 py-2 border-b border-border/30">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30">
               <Button
                 variant="ghost"
                 size="icon"
@@ -302,7 +313,24 @@ const Notices = () => {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <h1 className="font-bold text-xl">Notices</h1>
+              <div className="flex items-center gap-3">
+                <BrandMark size={28} className="shrink-0" alt="Studyshare" />
+                <div>
+                  <h1 className="font-bold text-xl leading-tight">Notices</h1>
+                  <p className="text-[11px] text-muted-foreground">Live updates from your departments</p>
+                </div>
+              </div>
+              <div className="ml-auto hidden md:block w-[260px]">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    placeholder="Search notices..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 rounded-full bg-secondary/40 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Tabs */}
@@ -328,39 +356,81 @@ const Notices = () => {
                 {activeTab === 'following' && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-primary rounded-full"></div>}
               </div>
             </div>
+
+            {/* Mobile search */}
+            <div className="px-4 pb-3 pt-2 md:hidden">
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input
+                  placeholder="Search notices..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-full bg-secondary/40 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Feed Content */}
           <div className="pb-20 md:pb-0">
             {loading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading notices...</div>
+              <div className="space-y-4 p-4">
+                <div className="flex justify-center py-4">
+                  <BrandLoader label="Fetching notices..." />
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <NoticeSkeleton key={`notice-skeleton-${i}`} />
+                ))}
+              </div>
             ) : displayedNotices.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                <h3 className="text-lg font-bold mb-2">No notices yet</h3>
-                <p>Check back later or follow more departments!</p>
+                <div className="flex flex-col items-center gap-3">
+                  <BrandMark size={56} className="opacity-70" alt="Studyshare" />
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">No notices yet</h3>
+                    <p>Check back later or follow more departments!</p>
+                  </div>
+                </div>
               </div>
             ) : (
               displayedNotices.map((notice) => {
                 const dept = getDeptInfo(notice.department);
+                const DeptIcon = dept.icon;
                 const draft = commentDrafts[notice.id] || '';
                 const isPosting = !!postingByNotice[notice.id];
+                const commentCount = (comments[notice.id]?.length ?? notice.comments ?? 0);
                 return (
-                  <Card key={notice.id} className="p-2 sm:p-4 mb-2 sm:mb-3 hover:bg-secondary/10 transition-colors cursor-pointer border-border/50" onClick={() => setSelectedNotice(notice)}>
+                  <Card
+                    key={notice.id}
+                    className="group relative mb-3 overflow-hidden border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm transition hover:border-primary/30 hover:bg-card/90 hover:shadow-card cursor-pointer"
+                    onClick={() => setSelectedNotice(notice)}
+                  >
+                    <div className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-emerald-400/70 via-primary/40 to-transparent opacity-0 transition group-hover:opacity-100" />
                     <div className="flex gap-2 sm:gap-3">
                       <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
                         <Avatar className="w-8 h-8 sm:w-10 sm:h-10 border border-border">
-                          <AvatarFallback className="bg-secondary text-sm sm:text-lg">{dept.icon}</AvatarFallback>
+                          <AvatarFallback className="bg-secondary">
+                            <DeptIcon className="h-4 w-4 text-muted-foreground" />
+                          </AvatarFallback>
                         </Avatar>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold hover:underline cursor-pointer" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="font-semibold hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}
+                          >
                             {dept.label}
                           </span>
-                          <span className="text-muted-foreground text-sm">@{dept.value}</span>
-                          <span className="text-muted-foreground text-sm">·</span>
-                          <span className="text-muted-foreground text-sm hover:underline">{formatTimeAgo(notice.created_at)}</span>
-                          {notice.priority === 'urgent' && <Badge variant="destructive" className="ml-auto h-5 text-[10px]">Urgent</Badge>}
+                          <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                            @{dept.value}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
+                          {notice.priority === 'urgent' && (
+                            <Badge variant="destructive" className="ml-auto h-5 text-[10px]">
+                              Urgent
+                            </Badge>
+                          )}
                         </div>
 
                         {notice.title && <h3 className="font-bold mt-1 text-base">{notice.title}</h3>}
@@ -407,29 +477,32 @@ const Notices = () => {
                         <div className="flex items-center justify-between mt-3 max-w-[425px] text-muted-foreground">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             className={cn(
-                              "w-8 h-8 hover:text-blue-400 hover:bg-blue-400/10 rounded-full group",
+                              "gap-2 rounded-full px-2 hover:text-blue-400 hover:bg-blue-400/10",
                               expandedNotice === notice.id && "text-blue-400"
                             )}
                             onClick={(e) => { e.stopPropagation(); toggleComments(notice.id); }}
                           >
-                            <MessageCircle className={cn("w-4 h-4 group-hover:scale-110 transition-transform", expandedNotice === notice.id && "fill-current")} />
+                            <MessageCircle className={cn("w-4 h-4", expandedNotice === notice.id && "fill-current")} />
+                            <span className="text-xs font-medium">{commentCount}</span>
                           </Button>
 
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             className={cn(
-                              "w-8 h-8 hover:text-primary hover:bg-primary/10 rounded-full group",
+                              "gap-2 rounded-full px-2 hover:text-primary hover:bg-primary/10",
                               isBookmarked(notice.id) && "text-primary"
                             )}
                             onClick={(e) => { e.stopPropagation(); toggleBookmark(notice.id, 'notice'); }}
                           >
-                            <Bookmark className={cn("w-4 h-4 group-hover:scale-110 transition-transform", isBookmarked(notice.id) && "fill-current")} />
+                            <Bookmark className={cn("w-4 h-4", isBookmarked(notice.id) && "fill-current")} />
+                            <span className="text-xs font-medium">{isBookmarked(notice.id) ? "Saved" : "Save"}</span>
                           </Button>
-                          <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-green-500 hover:bg-green-500/10 rounded-full group">
-                            <Share className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 hover:text-green-500 hover:bg-green-500/10">
+                            <Share className="w-4 h-4" />
+                            <span className="text-xs font-medium">Share</span>
                           </Button>
                         </div>
 
@@ -517,6 +590,7 @@ const Notices = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
           {selectedNotice && (() => {
             const dept = getDeptInfo(selectedNotice.department);
+            const DeptIcon = dept.icon;
             return (
               <div className="flex flex-col h-full">
                 {/* Modal Header */}
@@ -537,7 +611,9 @@ const Notices = () => {
                     {/* Notice Header */}
                     <div className="flex gap-3 mb-4">
                       <Avatar className="w-12 h-12 border border-border cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${selectedNotice.department}`); }}>
-                        <AvatarFallback className="bg-secondary text-xl">{dept.icon}</AvatarFallback>
+                        <AvatarFallback className="bg-secondary">
+                          <DeptIcon className="h-5 w-5 text-muted-foreground" />
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -694,6 +770,23 @@ const NavItem = ({ icon: Icon, label, active, onClick }: NavItemProps) => (
     <span className="hidden xl:inline">{label}</span>
     <span className="xl:hidden md:inline">{label}</span>
   </div>
+);
+
+const NoticeSkeleton = () => (
+  <Card className="relative overflow-hidden border border-border/60 bg-card/60 p-4">
+    <div className="flex gap-3">
+      <Skeleton className="h-10 w-10 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+    </div>
+  </Card>
 );
 
 export default Notices;

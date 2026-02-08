@@ -69,14 +69,15 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
     try {
       // 1. Get signed upload URL from backend
       const fileName = `${formData.semester}-${formData.branch}-${formData.subject}-${Date.now()}.pdf`;
-      const { signedUrl, path } = await getSyllabusUploadUrl(fileName);
+      const { uploadUrl, publicUrl } = await getSyllabusUploadUrl(fileName);
 
       // 2. Upload PDF directly to storage using signed URL
-      const uploadResponse = await fetch(signedUrl, {
+      const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: pdfFile,
         headers: {
           'Content-Type': 'application/pdf',
+          'Cache-Control': 'max-age=31536000',
         },
       });
 
@@ -85,7 +86,7 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
       }
 
       // 3. Get public URL (construct from known bucket path)
-      const pdfUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/syllabus-pdfs/${path}`;
+      const pdfUrl = publicUrl;
 
       // 4. Create syllabus entry via backend API
       await createSyllabus({

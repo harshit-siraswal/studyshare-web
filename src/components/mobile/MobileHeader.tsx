@@ -4,6 +4,7 @@
 import { Menu, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
+import BrandMark from '@/components/BrandMark';
 
 interface MobileHeaderProps {
     title?: string;
@@ -60,7 +61,10 @@ export function MobileHeader({
                         </Button>
                     ) : null}
 
-                    <h1 className="text-lg font-semibold truncate">{getTitle()}</h1>
+                    <div className="flex items-center gap-2">
+                        <BrandMark size={24} className="shrink-0" alt="Studyshare" />
+                        <h1 className="text-lg font-semibold truncate">{getTitle()}</h1>
+                    </div>
                 </div>
 
                 {/* Right side - Optional action */}

@@ -7,6 +7,7 @@ import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { MobileBottomNav } from "@/components/mobile";
 import { Analytics } from "@vercel/analytics/react";
+import BrandLoader from "@/components/BrandLoader";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -37,10 +38,7 @@ const queryClient = new QueryClient({
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-muted-foreground text-sm">Loading...</p>
-    </div>
+    <BrandLoader label="Loading your space..." />
   </div>
 );
 

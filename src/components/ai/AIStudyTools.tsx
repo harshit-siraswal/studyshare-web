@@ -29,6 +29,7 @@ import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getAiFlashcards, getAiQuiz, getAiSummary } from "@/lib/api";
+import BrandLoader from "@/components/BrandLoader";
 
 type OutputType = "summary" | "quiz" | "flashcards";
 
@@ -133,6 +134,7 @@ const AIStudyTools = ({
   const shouldUseTranscript = usesTranscript && isYouTubeVideo;
   const [active, setActive] = useState<OutputType>("summary");
   const [loading, setLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState<OutputType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cachedMap, setCachedMap] = useState<Partial<Record<OutputType, boolean>>>({});
   const [summary, setSummary] = useState<string | null>(null);
@@ -166,6 +168,7 @@ const AIStudyTools = ({
 
     setActive(type);
     setLoading(true);
+    setLoadingType(type);
     setError(null);
     setSourceText(null);
     setSourceType(null);
@@ -228,6 +231,7 @@ const AIStudyTools = ({
       setError(err.message || "AI request failed");
     } finally {
       setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -279,6 +283,9 @@ const AIStudyTools = ({
   const ActiveIcon = meta.icon;
   const canRetrySarvam = (type: OutputType) =>
     supportsOcr && runMeta[type]?.usedOcr && runMeta[type]?.provider === "google";
+  const isLoadingSummary = loading && loadingType === "summary";
+  const isLoadingQuiz = loading && loadingType === "quiz";
+  const isLoadingFlashcards = loading && loadingType === "flashcards";
 
   return (
     <div
@@ -424,7 +431,11 @@ const AIStudyTools = ({
 
           <TabsContent value="summary" className="mt-3">
             <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
-              {summary ? (
+              {isLoadingSummary ? (
+                <div className="flex min-h-[220px] items-center justify-center">
+                  <BrandLoader label="Summarizing your notes..." />
+                </div>
+              ) : summary ? (
                 <div className="space-y-4 text-sm leading-relaxed">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -529,7 +540,11 @@ const AIStudyTools = ({
 
           <TabsContent value="quiz" className="mt-3">
             <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
-              {quiz && quiz.length > 0 ? (
+              {isLoadingQuiz ? (
+                <div className="flex min-h-[220px] items-center justify-center">
+                  <BrandLoader label="Building your quiz..." />
+                </div>
+              ) : quiz && quiz.length > 0 ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="text-xs text-muted-foreground">{quiz.length} questions</div>
@@ -627,7 +642,11 @@ const AIStudyTools = ({
 
           <TabsContent value="flashcards" className="mt-3">
             <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
-              {flashcards && flashcards.length > 0 ? (
+              {isLoadingFlashcards ? (
+                <div className="flex min-h-[220px] items-center justify-center">
+                  <BrandLoader label="Creating flashcards..." />
+                </div>
+              ) : flashcards && flashcards.length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="text-xs text-muted-foreground">

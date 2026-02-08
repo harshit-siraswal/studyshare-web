@@ -91,6 +91,40 @@ export async function getMe(): Promise<UserInfo> {
 }
 
 // ============================================
+// PAYMENTS
+// ============================================
+
+export async function createPaymentOrder(
+    amount: number,
+    planId: string
+): Promise<{ id: string; amount: number; currency: string }> {
+    return apiRequest('/api/payments/order', {
+        method: 'POST',
+        body: JSON.stringify({ amount, planId }),
+    });
+}
+
+export async function verifyPayment(
+    orderId: string,
+    paymentId: string,
+    signature: string
+): Promise<{
+    message: string;
+    subscription_tier: string;
+    valid_until: string;
+    days_added: number;
+}> {
+    return apiRequest('/api/payments/verify', {
+        method: 'POST',
+        body: JSON.stringify({
+            razorpay_order_id: orderId,
+            razorpay_payment_id: paymentId,
+            razorpay_signature: signature,
+        }),
+    });
+}
+
+// ============================================
 // FOLLOW ENDPOINTS
 // ============================================
 
@@ -451,6 +485,14 @@ export interface CreateResourceInput {
     recaptchaToken: string;
 }
 
+export interface PresignedUpload {
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+    contentType: string;
+    expiresIn: number;
+}
+
 /**
  * Create a new resource
  */
@@ -458,6 +500,16 @@ export async function createResource(input: CreateResourceInput): Promise<{ mess
     return apiRequest('/api/resources', {
         method: 'POST',
         body: JSON.stringify(input),
+    });
+}
+
+/**
+ * Get a presigned URL for uploading a resource file
+ */
+export async function getResourceUploadUrl(filename: string): Promise<PresignedUpload> {
+    return apiRequest('/api/resources/upload-url', {
+        method: 'POST',
+        body: JSON.stringify({ filename }),
     });
 }
 
@@ -576,11 +628,12 @@ export async function createChatRoom(
     description: string | null,
     isPrivate: boolean,
     collegeId?: string,
-    expiresAt?: string // [NEW] - Optional expiry override
+    durationInDays?: number,
+    tags?: string[]
 ): Promise<{ message: string; id: string; joinCode?: string; expiresAt?: string }> {
     return apiRequest('/api/chat/rooms', {
         method: 'POST',
-        body: JSON.stringify({ name, description, isPrivate, collegeId, expiresAt }),
+        body: JSON.stringify({ name, description, isPrivate, collegeId, durationInDays, tags }),
     });
 }
 
@@ -1002,11 +1055,11 @@ export async function queryRag(
 // ============================================
 
 /**
- * Get a signed URL for uploading syllabus PDF
+ * Get a presigned URL for uploading syllabus PDF
  */
 export async function getSyllabusUploadUrl(
     filename: string
-): Promise<{ signedUrl: string; path: string }> {
+): Promise<PresignedUpload> {
     return apiRequest('/api/syllabus/upload-url', {
         method: 'POST',
         body: JSON.stringify({ filename }),

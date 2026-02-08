@@ -1,5 +1,5 @@
-import { supabase } from '../supabase';
 import { toast } from 'sonner';
+import { createPaymentOrder, verifyPayment } from './api';
 
 // Define Razorpay window interface
 declare global {
@@ -50,16 +50,17 @@ export class SubscriptionService {
         try {
             if (!userId) return false;
 
-            const { data, error } = await supabase
-                .from('premium_users')
-                .select('premium_until')
-                .eq('id', userId)
-                .single();
+            const { data } = await import('../supabase').then(({ supabase }) =>
+                supabase
+                    .from('users')
+                    .select('subscription_tier, subscription_end_date')
+                    .eq('id', userId)
+                    .maybeSingle()
+            );
 
-            if (error || !data) return false;
-
-            const expiryDate = new Date(data.premium_until);
-            return expiryDate > new Date();
+            if (!data || !data.subscription_tier || data.subscription_tier === 'free') return false;
+            const expiryDate = data.subscription_end_date ? new Date(data.subscription_end_date) : null;
+            return !expiryDate || expiryDate > new Date();
         } catch (error) {
             console.error('Error checking premium status:', error);
             return false;
@@ -81,6 +82,9 @@ export class SubscriptionService {
             return;
         }
 
+        const backendPlanId = plan.duration === 'yearly' ? 'max' : 'pro';
+        const order = await createPaymentOrder(plan.price * 100, backendPlanId);
+
         const options = {
             key: keyId,
             amount: plan.price * 100, // Amount in paise
@@ -88,10 +92,16 @@ export class SubscriptionService {
             name: 'MyStudySpace',
             description: `Upgrade to ${plan.name}`,
             image: '/icons/icon-192.png', // Ensure this exists or use a remote URL
+            order_id: order.id,
             handler: async function (response: any) {
                 try {
-                    // Verify payment on backend/client (Client-side mainly for MVP)
-                    await SubscriptionService.handlePaymentSuccess(response, plan, userId);
+                    await verifyPayment(
+                        response.razorpay_order_id,
+                        response.razorpay_payment_id,
+                        response.razorpay_signature
+                    );
+                    toast.success('Welcome to Premium! Please refresh to see changes.');
+                    setTimeout(() => window.location.reload(), 1500);
                 } catch (error) {
                     toast.error('Payment verification failed');
                     console.error(error);
@@ -107,47 +117,5 @@ export class SubscriptionService {
 
         const rzp = new window.Razorpay(options);
         rzp.open();
-    }
-
-    /**
-     * Handle successful payment
-     * In a real app, this should verify signature on backend.
-     * For MVP/Demo, we update the table directly via RLS policies or an Edge Function.
-     * Assuming RLS allows "Users can insert own premium status" (as seen in PREMIUM_FEATURES.sql)
-     */
-    private static async handlePaymentSuccess(response: any, plan: PremiumPlan, userId: string) {
-        const loadingToast = toast.loading('Activating premium...');
-
-        try {
-            // Calculate expiry
-            const now = new Date();
-            const expiry = new Date(now);
-            if (plan.duration === 'monthly') {
-                expiry.setMonth(expiry.getMonth() + 1);
-            } else {
-                expiry.setFullYear(expiry.getFullYear() + 1);
-            }
-
-            // Upsert premium status
-            const { error } = await supabase
-                .from('premium_users')
-                .upsert({
-                    id: userId,
-                    plan_type: plan.duration,
-                    premium_until: expiry.toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-
-            if (error) throw error;
-
-            toast.success('Welcome to Premium! Please refresh to see changes.', { id: loadingToast });
-
-            // Optional: Force reload to update context
-            setTimeout(() => window.location.reload(), 1500);
-
-        } catch (error: any) {
-            console.error('Activation error:', error);
-            toast.error('Failed to activate premium. Contact support.', { id: loadingToast });
-        }
     }
 }
