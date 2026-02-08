@@ -572,29 +572,6 @@ const Profile = () => {
     ? profileUser.bio
     : (userProfile?.bio || editForm.bio);
 
-  // Handle college which might be stored as JSON object or plain string
-  const getCollegeName = (college: any): string => {
-    if (!college) return "College";
-    if (typeof college === 'object' && college.name) {
-      return college.name;
-    }
-    if (typeof college === 'string') {
-      // Try to parse if it's a JSON string
-      try {
-        const parsed = JSON.parse(college);
-        if (parsed && parsed.name) return parsed.name;
-      } catch {
-        // Not JSON, use as-is
-        return college;
-      }
-    }
-    return "College";
-  };
-
-  const displayCollege = isViewingOther
-    ? getCollegeName(profileUser.college)
-    : getCollegeName(userProfile?.college);
-
   /* 👥 SOCIAL DATA */
   const displayContributions = contributions;
 
@@ -968,7 +945,6 @@ const Profile = () => {
                 <p className="text-sm text-foreground mb-3">{displayBio}</p>
               )}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
-                <span className="text-muted-foreground">{displayCollege}</span>
                 <div className="flex gap-3 sm:gap-4">
                   <span className="text-foreground font-medium">
                     <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
@@ -1560,7 +1536,7 @@ const Profile = () => {
                         {user.display_name}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        @{user.username} • {user.college?.substring(0, 20)}...
+                        @{user.username}
                       </p>
                     </div>
                     <Button

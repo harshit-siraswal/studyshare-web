@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -239,9 +238,6 @@ const Explore = () => {
                                                 {user.bio}
                                             </p>
                                         )}
-                                        <Badge variant="outline" className="mt-2 text-xs">
-                                            {user.college || selectedCollege?.name}
-                                        </Badge>
                                     </div>
 
                                     {/* FIX: Use FollowButton component for request-based follow */}

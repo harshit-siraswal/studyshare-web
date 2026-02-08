@@ -55,6 +55,7 @@ const Chatroom = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
+  const [newPostTitle, setNewPostTitle] = useState("");
   const [newPost, setNewPost] = useState("");
   const [votedPosts, setVotedPosts] = useState<Record<string, "up" | "down">>({});
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -325,14 +326,21 @@ const Chatroom = () => {
 
     setPosting(true);
     try {
+      const trimmedTitle = newPostTitle.trim();
+      const trimmedContent = newPost.trim();
+      const fullContent = trimmedTitle
+        ? (trimmedContent ? `${trimmedTitle}\n${trimmedContent}` : trimmedTitle)
+        : trimmedContent;
+
       // Use backend API for secure posting
       await postChatMessage(
         roomId,
-        newPost.trim(),
+        fullContent,
         postImage || undefined,
         user.displayName || user.email?.split('@')[0] || 'User'
       );
 
+      setNewPostTitle("");
       setNewPost("");
       setPostImage(null);
       toast.success("Posted!");
@@ -342,6 +350,20 @@ const Chatroom = () => {
     } finally {
       setPosting(false);
     }
+  };
+
+  const splitPostContent = (content: string) => {
+    const raw = content || "";
+    const parts = raw.split('\n');
+    if (parts.length <= 1) {
+      return { title: "", body: raw };
+    }
+    const title = parts[0].trim();
+    const body = parts.slice(1).join('\n').trim();
+    if (!title) {
+      return { title: "", body: raw.trim() };
+    }
+    return { title, body };
   };
 
   const handleVote = async (messageId: string, direction: "up" | "down") => {
@@ -685,7 +707,9 @@ const Chatroom = () => {
                   <p className="text-sm text-muted-foreground">Save posts from any room to see them here</p>
                 </div>
               ) : (
-                savedMessages.map((msg) => (
+                savedMessages.map((msg) => {
+                  const { title, body } = splitPostContent(msg.content);
+                  return (
                   <Card key={msg.id} className="p-4">
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10 shrink-0">
@@ -700,7 +724,16 @@ const Chatroom = () => {
                             {new Date(msg.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-foreground whitespace-pre-wrap">{msg.content}</p>
+                        {title ? (
+                          <>
+                            <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>
+                            {body && (
+                              <p className="text-foreground whitespace-pre-wrap">{body}</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-foreground whitespace-pre-wrap">{msg.content}</p>
+                        )}
                         {msg.image_url && (
                           <img
                             src={msg.image_url}
@@ -727,7 +760,7 @@ const Chatroom = () => {
                       </div>
                     </div>
                   </Card>
-                ))
+                )})
               )
             ) : (
               // ROOMS LIST VIEW
@@ -924,8 +957,14 @@ const Chatroom = () => {
             {/* New post - only for members */}
             {isMember ? (
               <Card className="p-4">
+                <Input
+                  placeholder="Topic (optional)"
+                  value={newPostTitle}
+                  onChange={(e) => setNewPostTitle(e.target.value)}
+                  className="mb-2"
+                />
                 <Textarea
-                  placeholder="Share something with the room..."
+                  placeholder="Write your post..."
                   value={newPost}
                   onChange={(e) => setNewPost(e.target.value)}
                   className="mb-3 min-h-[80px]"
@@ -1005,7 +1044,9 @@ const Chatroom = () => {
               </div>
             ) : (
               <>
-                {filteredMessages.map((message) => (
+                {filteredMessages.map((message) => {
+                  const { title, body } = splitPostContent(message.content);
+                  return (
                   <Card key={message.id} className="overflow-hidden">
                     <div className="flex">
                       {/* Vote sidebar */}
@@ -1055,7 +1096,16 @@ const Chatroom = () => {
                           <span>·</span>
                           <span>{formatTimeAgo(message.created_at)}</span>
                         </div>
-                        <p className="text-foreground mb-3 whitespace-pre-wrap">{message.content}</p>
+                        {title ? (
+                          <>
+                            <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>
+                            {body && (
+                              <p className="text-foreground mb-3 whitespace-pre-wrap">{body}</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-foreground mb-3 whitespace-pre-wrap">{message.content}</p>
+                        )}
 
                         {message.image_url && (
                           <img
@@ -1147,7 +1197,7 @@ const Chatroom = () => {
                       </div>
                     </div>
                   </Card>
-                ))}
+                )})}
 
                 {filteredMessages.length === 0 && !loading && (
                   <div className="text-center py-12">
