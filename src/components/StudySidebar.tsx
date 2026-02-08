@@ -16,8 +16,6 @@ import JoinChatRoomDialog from "./JoinChatRoomDialog";
 import NotificationCenter from "./NotificationCenter";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import AIRagChat from "./ai/AIRagChat";
 
 const chatRooms = [
   { id: "placement", name: "placement", members: 312, isPrivate: false },
@@ -39,7 +37,6 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   });
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
   const { logout, user: authUser } = useAuth();
@@ -247,7 +244,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setAiChatOpen(true)}
+                    onClick={() => navigate("/ai-chat")}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Sparkles className="w-5 h-5" />
@@ -391,7 +388,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             <Button
               variant="ghost"
               className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
-              onClick={() => setAiChatOpen(true)}
+              onClick={() => navigate("/ai-chat")}
             >
               <Sparkles className="w-4 h-4" />
               <span>AI Chat</span>
@@ -415,15 +412,6 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Sheet open={aiChatOpen} onOpenChange={setAiChatOpen}>
-        <SheetContent
-          side="right"
-          className="w-full bg-transparent p-0 sm:max-w-xl md:max-w-2xl border-l border-border/60"
-        >
-          <AIRagChat className="h-full" />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 };

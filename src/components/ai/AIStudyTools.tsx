@@ -119,6 +119,7 @@ const AIStudyTools = ({
 }: AIStudyToolsProps) => {
   const { user } = useAuth();
   const { selectedCollege } = useCollege();
+  const supportsOcr = resourceType !== "video";
   const [active, setActive] = useState<OutputType>("summary");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -316,35 +317,43 @@ const AIStudyTools = ({
                   Fresh run
                   <Switch checked={freshRun} onCheckedChange={setFreshRun} />
                 </label>
-                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  Use OCR
-                  <Switch
-                    checked={useOcr}
-                    onCheckedChange={(val) => {
-                      setUseOcr(val);
-                      if (!val) setForceOcr(false);
-                    }}
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  Force OCR
-                  <Switch
-                    checked={forceOcr}
-                    onCheckedChange={(val) => {
-                      setForceOcr(val);
-                      if (val) setUseOcr(true);
-                    }}
-                  />
-                </label>
-                <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
-                  <SelectTrigger className="h-7 w-[140px] text-[11px] bg-black/30 border-white/10">
-                    <SelectValue placeholder="OCR provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google Vision</SelectItem>
-                    <SelectItem value="sarvam">Sarvam OCR</SelectItem>
-                  </SelectContent>
-                </Select>
+                {supportsOcr ? (
+                  <>
+                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      Use OCR
+                      <Switch
+                        checked={useOcr}
+                        onCheckedChange={(val) => {
+                          setUseOcr(val);
+                          if (!val) setForceOcr(false);
+                        }}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      Force OCR
+                      <Switch
+                        checked={forceOcr}
+                        onCheckedChange={(val) => {
+                          setForceOcr(val);
+                          if (val) setUseOcr(true);
+                        }}
+                      />
+                    </label>
+                    <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
+                      <SelectTrigger className="h-7 w-[140px] text-[11px] bg-black/30 border-white/10">
+                        <SelectValue placeholder="OCR provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google">Google Vision</SelectItem>
+                        <SelectItem value="sarvam">Sarvam OCR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : (
+                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-muted-foreground">
+                    Using YouTube transcript
+                  </div>
+                )}
               </div>
             </div>
           </div>

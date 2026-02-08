@@ -19,6 +19,7 @@ const Messages = lazy(() => import("./pages/Messages"));
 const Explore = lazy(() => import("./pages/Explore"));
 const DepartmentProfile = lazy(() => import("./pages/DepartmentProfile"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks"));
+const AIChat = lazy(() => import("./pages/AIChat"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient configuration for better caching and reduced network requests
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/bookmarks" element={<Bookmarks />} />
+              <Route path="/ai-chat" element={<AIChat />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/messages/:username" element={<Messages />} />
               <Route path="*" element={<NotFound />} />

@@ -49,9 +49,16 @@ const LOADING_IMAGES = [
 const FRAME_DURATION_MS = 1200;
 const TOTAL_DURATION_MS = FRAME_DURATION_MS * LOADING_IMAGES.length;
 
-const AIRagChat = ({ className }: { className?: string }) => {
+const AIRagChat = ({
+  className,
+  variant = "rich",
+}: {
+  className?: string;
+  variant?: "rich" | "minimal";
+}) => {
   const { user } = useAuth();
   const { selectedCollege } = useCollege();
+  const isMinimal = variant === "minimal";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -117,6 +124,39 @@ const AIRagChat = ({ className }: { className?: string }) => {
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const getAssistantDisplayContent = (msg: ChatMessage) => {
+    if (msg.role !== "assistant") return msg.content;
+    if (!msg.noLocal) return msg.content;
+
+    const discardPatterns: RegExp[] = [
+      /can't\s+directly\s+access\s+your\s+local\s+files/i,
+      /cannot\s+directly\s+access\s+your\s+local\s+files/i,
+      /access\s+your\s+local\s+files/i,
+      /specific\s+pdfs?/i,
+      /copy\s+and\s+paste/i,
+      /paste\s+the\s+text/i,
+    ];
+
+    const cleaned = msg.content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .filter((line) => !discardPatterns.some((re) => re.test(line)))
+      .join("\n")
+      .trim();
+
+    if (cleaned.length >= 40) return cleaned;
+
+    return [
+      "I couldn’t find a relevant match in your PDFs for that question.",
+      "",
+      "Try:",
+      "- Mention the unit/chapter name",
+      "- Use a keyword from the PDF title",
+      "- Ask while viewing the PDF (and use OCR in AI Studio if it’s a scan)",
+    ].join("\n");
+  };
+
   const renderMessageContent = (content: string) => {
     const lines = content.split(/\n+/).filter((line) => line.trim().length > 0);
     const hasBullets = lines.some((line) => /^[-*]\s+/.test(line.trim()));
@@ -170,66 +210,102 @@ const AIRagChat = ({ className }: { className?: string }) => {
   }
 
   return (
-    <div className={cn("flex h-full flex-col gap-4 p-4 sm:p-6", className)}>
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-background/80 to-card/70 p-4 shadow-card sm:p-6">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
-        <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex-1 space-y-3 pr-8 sm:pr-16">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-primary" />
-              Studyspace AI Buddy
+    <div
+      className={cn(
+        "flex h-full flex-col",
+        isMinimal ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+        className
+      )}
+    >
+      {!isMinimal ? (
+        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-background/80 to-card/70 p-4 shadow-card sm:p-6">
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+          <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex-1 space-y-3 pr-8 sm:pr-16">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Studyspace AI Buddy
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Ask, revise, and learn faster.</p>
+                <h2 className="mt-1 font-editorial text-2xl text-foreground sm:text-3xl">
+                  Ask anything from your PDFs
+                </h2>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
+                  <BookOpen className="h-3 w-3 text-primary" />
+                  PDF-first answers
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-accent-foreground">
+                  <GraduationCap className="h-3 w-3" />
+                  Exam-ready format
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                  <MessageSquare className="h-3 w-3" />
+                  Smart follow-ups
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Ask, revise, and learn faster.</p>
-              <h2 className="mt-1 font-editorial text-2xl text-foreground sm:text-3xl">
-                Ask anything from your PDFs
-              </h2>
+            <div className="relative h-32 w-full max-w-[190px] self-center sm:h-36 sm:self-auto">
+              <img
+                src={AI_IMAGES.selfie}
+                alt="Studyspace AI buddy"
+                className="h-full w-full object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.25)] motion-reduce:animate-none"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
-                <BookOpen className="h-3 w-3 text-primary" />
-                PDF-first answers
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-accent-foreground">
-                <GraduationCap className="h-3 w-3" />
-                Exam-ready format
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
-                <MessageSquare className="h-3 w-3" />
-                Smart follow-ups
-              </span>
-            </div>
-          </div>
-          <div className="relative h-32 w-full max-w-[190px] self-center sm:h-36 sm:self-auto">
-            <img
-              src={AI_IMAGES.selfie}
-              alt="Studyspace AI buddy"
-              className="h-full w-full object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.25)] motion-reduce:animate-none"
-              loading="lazy"
-              decoding="async"
-            />
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">AI Chat</p>
+            <h2 className="mt-1 text-xl font-semibold text-foreground">Ask about your PDFs</h2>
+            <p className="text-xs text-muted-foreground">Minimal, focused answers grounded in your study files.</p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground">
+            <Sparkles className="h-3 w-3 text-primary" />
+            {selectedCollege?.name || "Your College"}
+          </div>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <ScrollArea className="relative flex-1 rounded-3xl border border-border/60 bg-gradient-to-b from-background/80 via-background/60 to-background/40 shadow-card">
-          <div ref={scrollRef} className="relative space-y-4 p-4 sm:p-6">
-            <img
-              src={AI_IMAGES.board}
-              alt=""
-              className="pointer-events-none absolute right-6 top-6 hidden h-28 w-28 rotate-2 opacity-10 md:block"
-              loading="lazy"
-              decoding="async"
-            />
+        <ScrollArea
+          className={cn(
+            "relative flex-1",
+            isMinimal
+              ? "rounded-2xl border border-border/60 bg-background"
+              : "rounded-3xl border border-border/60 bg-gradient-to-b from-background/80 via-background/60 to-background/40 shadow-card"
+          )}
+        >
+          <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "p-4" : "p-4 sm:p-6")}>
+            {!isMinimal && (
+              <img
+                src={AI_IMAGES.board}
+                alt=""
+                className="pointer-events-none absolute right-6 top-6 hidden h-28 w-28 rotate-2 opacity-10 md:block"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
 
             {messages.length === 0 && !loading && (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-background/40 p-4 sm:p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div
+                className={cn(
+                  "rounded-2xl border border-dashed border-border/70 p-4 sm:p-6",
+                  isMinimal ? "bg-muted/20" : "bg-background/40"
+                )}
+              >
+                <div className={cn("flex flex-col gap-4", isMinimal ? "" : "md:flex-row md:items-center")}>
                   <div className="flex-1 space-y-2">
                     <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Getting started</p>
-                    <h3 className="font-editorial text-xl text-foreground">Drop a question to begin</h3>
+                    <h3 className={cn("text-xl text-foreground", !isMinimal && "font-editorial")}>
+                      Drop a question to begin
+                    </h3>
                     <p className="text-sm text-muted-foreground">
                       I will scan your PDFs first. If nothing is found, I will answer generally.
                     </p>
@@ -239,52 +315,67 @@ const AIRagChat = ({ className }: { className?: string }) => {
                           key={suggestion}
                           type="button"
                           onClick={() => handleSuggestion(suggestion)}
-                          className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs text-foreground transition hover:border-primary/60 hover:text-primary"
+                          className={cn(
+                            "rounded-full border border-border/60 px-3 py-1 text-xs transition",
+                            isMinimal
+                              ? "bg-background/80 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                              : "bg-background/70 text-foreground hover:border-primary/60 hover:text-primary"
+                          )}
                         >
                           {suggestion}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="relative flex w-full max-w-[220px] items-end justify-center gap-2 md:justify-end">
-                    <img
-                      src={AI_IMAGES.study}
-                      alt="AI buddy studying"
-                      className="h-40 w-40 object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <img
-                      src={AI_IMAGES.grade}
-                      alt="Celebrate progress"
-                      className="hidden h-20 w-20 -translate-y-6 object-contain opacity-80 md:block"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
+                  {!isMinimal && (
+                    <div className="relative flex w-full max-w-[220px] items-end justify-center gap-2 md:justify-end">
+                      <img
+                        src={AI_IMAGES.study}
+                        alt="AI buddy studying"
+                        className="h-40 w-40 object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <img
+                        src={AI_IMAGES.grade}
+                        alt="Celebrate progress"
+                        className="hidden h-20 w-20 -translate-y-6 object-contain opacity-80 md:block"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             {messages.map((msg, idx) => {
               const isUser = msg.role === "user";
+              const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
               return (
                 <div key={`${msg.role}-${idx}`} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
                       "w-full max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-[80%]",
                       isUser
-                        ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                        ? isMinimal
+                          ? "border border-primary/20 bg-primary/10 text-foreground"
+                          : "bg-gradient-primary text-primary-foreground shadow-glow"
                         : "border border-border/60 bg-card/70 text-foreground"
                     )}
                   >
                     {!isUser && (
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      <div
+                        className={cn(
+                          "mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground",
+                          isMinimal && "text-[10px] tracking-[0.18em]"
+                        )}
+                      >
                         <Sparkles className="h-3 w-3 text-primary" />
                         Studyspace AI
                         {msg.noLocal && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tracking-normal">
-                            General
+                            No PDF match
                           </span>
                         )}
                         {msg.cached && (
@@ -295,7 +386,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
                       </div>
                     )}
 
-                    {renderMessageContent(msg.content)}
+                    {renderMessageContent(displayContent)}
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div className="mt-4 space-y-2">
@@ -330,7 +421,7 @@ const AIRagChat = ({ className }: { className?: string }) => {
 
                     {msg.role === "assistant" && msg.noLocal && (
                       <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        Tip: Ask about a specific topic from your PDFs. If this is your first time, ingest your PDFs so the chat can find them.
+                        Tip: Add a unit/chapter keyword or mention the PDF title.
                       </div>
                     )}
                   </div>
@@ -339,12 +430,21 @@ const AIRagChat = ({ className }: { className?: string }) => {
             })}
 
             {loading && (
-              <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 px-4 py-4 text-sm shadow-card">
-                <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
-                <div className="absolute bottom-0 right-10 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+              <div
+                className={cn(
+                  "relative overflow-hidden rounded-2xl border px-4 py-4 text-sm",
+                  isMinimal ? "border-border/60 bg-muted/30" : "border-border/60 bg-card/70 shadow-card"
+                )}
+              >
+                {!isMinimal && (
+                  <>
+                    <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+                    <div className="absolute bottom-0 right-10 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+                  </>
+                )}
                 <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="relative flex h-20 w-20 items-center justify-center self-start sm:h-24 sm:w-24">
-                    <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
+                  <div className={cn("relative flex items-center justify-center self-start", isMinimal ? "h-16 w-16" : "h-20 w-20 sm:h-24 sm:w-24")}>
+                    <div className={cn("absolute inset-0 rounded-full", isMinimal ? "bg-primary/10 blur-lg" : "bg-primary/20 blur-xl animate-pulse")} />
                     <div
                       className="absolute inset-0 rounded-full border border-dashed border-primary/40"
                       style={{ animation: "spin 8s linear infinite" }}
@@ -355,7 +455,8 @@ const AIRagChat = ({ className }: { className?: string }) => {
                         src={img}
                         alt="AI loading frame"
                         className={cn(
-                          "ai-loading-frame absolute h-16 w-16 object-contain motion-reduce:animate-none sm:h-20 sm:w-20",
+                          "ai-loading-frame absolute object-contain motion-reduce:animate-none",
+                          isMinimal ? "h-12 w-12" : "h-16 w-16 sm:h-20 sm:w-20",
                           idx === 0 && "motion-reduce:opacity-100"
                         )}
                         style={{
@@ -386,7 +487,10 @@ const AIRagChat = ({ className }: { className?: string }) => {
                       {LOADING_IMAGES.map((img, idx) => (
                         <div
                           key={`loading-thumb-${img}`}
-                          className="ai-loading-thumb flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-background/70 p-1 motion-reduce:animate-none"
+                          className={cn(
+                            "ai-loading-thumb flex items-center justify-center rounded-xl border border-border/60 bg-background/70 p-1 motion-reduce:animate-none",
+                            isMinimal ? "h-8 w-8" : "h-9 w-9"
+                          )}
                           style={{
                             animationDelay: `${idx * FRAME_DURATION_MS}ms`,
                             animationDuration: `${TOTAL_DURATION_MS}ms`,
@@ -409,19 +513,29 @@ const AIRagChat = ({ className }: { className?: string }) => {
           </div>
         </ScrollArea>
 
-        <div className="rounded-2xl border border-border/60 bg-card/70 p-3 shadow-card">
-          <div className="flex flex-wrap gap-2 pb-3">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={`chip-${suggestion}`}
-                type="button"
-                onClick={() => handleSuggestion(suggestion)}
-                className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+        <div
+          className={cn(
+            "rounded-2xl border border-border/60 p-3",
+            isMinimal ? "bg-background/80" : "bg-card/70 shadow-card"
+          )}
+        >
+          {!isMinimal && (
+            <div className="flex flex-wrap gap-2 pb-3">
+              {SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={`chip-${suggestion}`}
+                  type="button"
+                  onClick={() => handleSuggestion(suggestion)}
+                  className={cn(
+                    "rounded-full border border-border/60 px-3 py-1 text-[11px] transition",
+                    "bg-background/80 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                  )}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <Textarea
               ref={inputRef}
@@ -429,13 +543,19 @@ const AIRagChat = ({ className }: { className?: string }) => {
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about any topic in your PDFs..."
-              className="min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40"
+              className={cn(
+                "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
+                isMinimal && "bg-background"
+              )}
             />
             <Button
               onClick={() => void handleAsk()}
               disabled={loading || !question.trim()}
               className={cn(
-                "h-12 w-12 rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow transition hover:shadow-hover",
+                "h-12 w-12 rounded-2xl transition",
+                isMinimal
+                  ? "bg-primary text-primary-foreground hover:shadow-hover"
+                  : "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
                 loading && "animate-pulse"
               )}
             >

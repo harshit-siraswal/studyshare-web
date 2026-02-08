@@ -1,9 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sparkles, X } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import DocumentViewer from "./DocumentViewer";
 import AIStudyTools from "./ai/AIStudyTools";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { cn } from "@/lib/utils";
+import { getYouTubeEmbedUrl } from "@/lib/youtube";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 interface PDFViewerProps {
   isOpen: boolean;
@@ -18,6 +22,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const isStacked = useMediaQuery("(max-width: 1024px)");
 
   // Update display URL when pdfUrl changes
   useEffect(() => {
@@ -45,33 +50,36 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     }
   }, [isOpen]);
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      return `https://www.youtube.com/embed/${match[2]}?autoplay=1`;
-    }
-    return null;
-  };
-
   const youtubeEmbedUrl = useMemo(() => {
     if (!videoUrl) return null;
-    return getYouTubeEmbedUrl(videoUrl);
+    return getYouTubeEmbedUrl(videoUrl, { autoplay: true, muted: true });
+  }, [videoUrl]);
+  const isLikelyYouTube = useMemo(() => {
+    if (!videoUrl) return false;
+    return /(?:youtu\.be|youtube\.com|youtube-nocookie\.com)/i.test(videoUrl);
   }, [videoUrl]);
 
   const mainContent = videoUrl ? (
-    <ResizablePanelGroup direction="horizontal" className="h-full">
-      <ResizablePanel defaultSize={65} minSize={35} className="min-w-[320px]">
+    <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
+      <ResizablePanel
+        defaultSize={isStacked ? 60 : 65}
+        minSize={isStacked ? 35 : 35}
+        className={cn(isStacked ? "min-h-[280px]" : "min-w-[320px]")}
+      >
         <DocumentViewer
           url={displayUrl}
           title={title}
           fullscreenTargetRef={dialogRef}
         />
       </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={35} minSize={25} className="min-w-[260px]">
+      <ResizableHandle withHandle className={cn(isStacked ? "h-2" : "")} />
+      <ResizablePanel
+        defaultSize={isStacked ? 40 : 35}
+        minSize={isStacked ? 25 : 25}
+        className={cn(isStacked ? "min-h-[220px]" : "min-w-[260px]")}
+      >
         <div className="flex h-full flex-col bg-black">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Video</span>
             <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={title}>
               {title}
@@ -82,10 +90,27 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
               <iframe
                 src={youtubeEmbedUrl}
                 className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
                 allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
                 title={title || "Video"}
+                loading="lazy"
               />
+            ) : isLikelyYouTube ? (
+              <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                <div className="max-w-sm space-y-2">
+                  <p className="text-sm font-medium text-white/90">This YouTube link can’t be embedded.</p>
+                  <p className="text-xs text-white/60">Open it in a new tab (or replace the link with a direct video URL).</p>
+                  <a
+                    href={videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white/90 hover:bg-white/15"
+                  >
+                    Open on YouTube
+                  </a>
+                </div>
+              </div>
             ) : (
               <video
                 src={videoUrl}
@@ -112,7 +137,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         ref={dialogRef}
-        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-6xl h-[88vh] w-[92vw] sm:rounded-2xl'} p-0 flex flex-col [&>button]:hidden transition-all`}
+        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-7xl h-[90vh] w-[94vw] sm:rounded-2xl'} p-0 flex flex-col [&>button]:hidden transition-all`}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">
           <div className="flex items-center justify-between">
@@ -131,21 +156,50 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
         {/* Document Viewer (PDF / DOCX / ODF / PPTX) + AI Panel */}
         <div className="flex-1 overflow-hidden relative">
           {resourceId ? (
-            <ResizablePanelGroup direction="horizontal" className="h-full">
-              <ResizablePanel defaultSize={68} minSize={40} className="min-w-[320px]">
+            <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
+              <ResizablePanel
+                defaultSize={isStacked ? 62 : 68}
+                minSize={isStacked ? 35 : 40}
+                className={cn(isStacked ? "min-h-[320px]" : "min-w-[320px]")}
+              >
                 {mainContent}
               </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={32} minSize={25} className="min-w-[320px] bg-background">
-                <div className="h-full overflow-y-auto p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Studio</div>
+              <ResizableHandle withHandle className={cn(isStacked ? "h-2" : "")} />
+              <ResizablePanel
+                defaultSize={isStacked ? 38 : 32}
+                minSize={isStacked ? 25 : 25}
+                className={cn("bg-background", isStacked ? "min-h-[260px]" : "min-w-[320px]")}
+              >
+                <div
+                  className={cn(
+                    "flex h-full flex-col bg-gradient-to-b from-background via-background/95 to-card/20",
+                    isStacked ? "border-t border-border/60" : "border-l border-border/60"
+                  )}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </span>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          AI Studio
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Summaries, quizzes, flashcards.
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <AIStudyTools
-                    resourceId={resourceId}
-                    resourceTitle={title}
-                    resourceType={videoUrl ? "video" : "notes"}
-                  />
+                  <ScrollArea className="flex-1">
+                    <div className="p-4">
+                      <AIStudyTools
+                        resourceId={resourceId}
+                        resourceTitle={title}
+                        resourceType={videoUrl ? "video" : "notes"}
+                      />
+                    </div>
+                  </ScrollArea>
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
