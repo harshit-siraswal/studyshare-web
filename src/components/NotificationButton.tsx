@@ -174,7 +174,7 @@ const NotificationButton = () => {
 
       // Update local state
       setFollowRequests(prev =>
-        prev.map(r => (r.id === request.id ? { ...r, status: 'approved' } : r))
+        prev.map(r => (r.id === request.id ? { ...r, status: 'accepted' } : r))
       );
       toast.success('Follow request accepted!');
     } catch (error: any) {
@@ -393,12 +393,12 @@ const NotificationButton = () => {
                       ) : (
                         <div className="mt-2 flex items-center gap-2">
                           <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${request.status === 'approved'
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${request.status === 'accepted'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                               : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
                               }`}
                           >
-                            {request.status === 'approved' ? 'Accepted' : 'Declined'}
+                            {request.status === 'accepted' ? 'Accepted' : 'Declined'}
                           </span>
                           <Button
                             size="sm"

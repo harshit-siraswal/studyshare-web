@@ -133,7 +133,7 @@ export interface FollowRequest {
     requesterEmail: string;
     requesterName?: string;
     targetEmail: string;
-    status: 'pending' | 'approved' | 'rejected';
+    status: 'pending' | 'accepted' | 'rejected';
     createdAt: string;
 }
 
@@ -146,12 +146,17 @@ type RawFollowRequest = Partial<FollowRequest> & {
 };
 
 function normalizeFollowRequest(raw: RawFollowRequest): FollowRequest {
+    const rawStatus = (raw.status || 'pending').toString().toLowerCase();
+    const normalizedStatus = rawStatus === 'approved'
+        ? 'accepted'
+        : (rawStatus === 'accepted' || rawStatus === 'rejected' ? rawStatus : 'pending');
+
     return {
         id: raw.id || raw.request_id || '',
         requesterEmail: raw.requesterEmail || raw.requester_email || '',
         requesterName: raw.requesterName || raw.requester_name,
         targetEmail: raw.targetEmail || raw.target_email || '',
-        status: (raw.status || 'pending') as FollowRequest['status'],
+        status: normalizedStatus as FollowRequest['status'],
         createdAt: raw.createdAt || raw.created_at || '',
     };
 }
