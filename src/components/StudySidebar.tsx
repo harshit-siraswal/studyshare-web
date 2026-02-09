@@ -292,39 +292,46 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   return (
     <div className="h-screen bg-sidebar border-r border-sidebar-border flex flex-col w-72 transition-all duration-300 overflow-hidden">
       {/* Header with toggle */}
-      <div className="p-4 border-b border-sidebar-border flex flex-col gap-3">
-        <button
-          onClick={() => navigate("/profile")}
-          className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
-        >
-          <Avatar className="w-10 h-10 shrink-0">
-            {userProfile?.profile_photo_url ? (
-              <AvatarImage
-                src={userProfile.profile_photo_url}
-                alt={userProfile.display_name || user.name}
-              />
-            ) : (
-              <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
-                {getInitials(userProfile?.display_name || user.name || user.displayName || user.email || 'User')}
-              </AvatarFallback>
-            )}
-          </Avatar>
-          <div className="flex-1 min-w-0 text-left">
-            <p className="font-medium text-sidebar-foreground truncate">
-              {userProfile?.display_name || user.displayName || user.name || user.email?.split('@')[0] || "User"}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {selectedCollege?.name || userProfile?.college || "Your College"}
-            </p>
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/profile")}
+            className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+          >
+            <Avatar className="w-10 h-10 shrink-0">
+              {userProfile?.profile_photo_url ? (
+                <AvatarImage
+                  src={userProfile.profile_photo_url}
+                  alt={userProfile.display_name || user.name}
+                />
+              ) : (
+                <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
+                  {getInitials(userProfile?.display_name || user.name || user.displayName || user.email || 'User')}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="font-medium text-sidebar-foreground truncate">
+                {userProfile?.display_name || user.displayName || user.name || user.email?.split('@')[0] || "User"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedCollege?.name || userProfile?.college || "Your College"}
+              </p>
+            </div>
+          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowLogoutDialog(true)}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onToggle}>
+              <PanelLeftClose className="w-4 h-4" />
+            </Button>
           </div>
-        </button>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => setShowLogoutDialog(true)} className="text-muted-foreground hover:text-destructive shrink-0">
-            <LogOut className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onToggle} className="shrink-0">
-            <PanelLeftClose className="w-4 h-4" />
-          </Button>
         </div>
       </div>
 
