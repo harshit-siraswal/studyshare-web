@@ -16,7 +16,6 @@ import JoinChatRoomDialog from "./JoinChatRoomDialog";
 import NotificationCenter from "./NotificationCenter";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import BrandMark from "@/components/BrandMark";
 
 const chatRooms = [
   { id: "placement", name: "placement", members: 312, isPrivate: false },
@@ -294,10 +293,6 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     <div className="h-screen bg-sidebar border-r border-sidebar-border flex flex-col w-72 transition-all duration-300 overflow-hidden">
       {/* Header with toggle */}
       <div className="p-4 border-b border-sidebar-border flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          <BrandMark size={28} className="shrink-0" alt="Studyshare" />
-          Studyshare
-        </div>
         <button
           onClick={() => navigate("/profile")}
           className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"

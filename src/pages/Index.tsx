@@ -102,8 +102,8 @@ const Index = () => {
         {/* Header */}
         <header className="text-center mb-12 md:mb-16 animate-fade-in">
           <div className="inline-flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-2xl bg-gradient-primary/10 border border-primary/20">
-              <BrandMark size={42} className="drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)]" alt="Studyshare" />
+            <div className="p-4 md:p-5 rounded-2xl bg-gradient-primary/10 border border-primary/20">
+              <BrandMark size={64} className="drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)]" alt="Studyshare" />
             </div>
             <h1 className="text-3xl md:text-5xl font-bold">
               My<span className="text-gradient">StudySpace</span>

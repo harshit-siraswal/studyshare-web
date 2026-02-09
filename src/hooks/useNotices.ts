@@ -16,6 +16,7 @@ export interface Notice {
     is_active: boolean;
     likes: number;
     comments: number;
+    comments_count?: number;
     college_id?: string;
 }
 
@@ -30,11 +31,15 @@ async function fetchNotices(collegeId: string): Promise<Notice[]> {
     if (error) throw error;
 
     // Ensure likes and comments have fallback values
-    return (data || []).map(n => ({
-        ...n,
-        likes: n.likes || 0,
-        comments: n.comments || 0,
-    }));
+    return (data || []).map(n => {
+        const commentCount = n.comments ?? n.comments_count ?? 0;
+        return {
+            ...n,
+            likes: n.likes || 0,
+            comments: commentCount,
+            comments_count: commentCount,
+        };
+    });
 }
 
 /**

@@ -13,7 +13,7 @@ const BrandMark = ({ size = 40, className, alt = "Studyshare logo" }: BrandMarkP
       alt={alt}
       width={size}
       height={size}
-      className={cn("object-contain", className)}
+      className={cn("object-contain dark:invert dark:brightness-200", className)}
       loading="lazy"
       decoding="async"
       onError={(e) => {

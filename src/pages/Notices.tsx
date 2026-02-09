@@ -247,19 +247,6 @@ const Notices = () => {
 
         {/* --- LEFT SIDEBAR (Who to follow) --- */}
         <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto border-r border-border/50">
-          {/* Search */}
-          <div className="sticky top-0 bg-background pb-3 z-10">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                placeholder="Search notices..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 rounded-full bg-secondary/30 border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background"
-              />
-            </div>
-          </div>
-
           {/* Who to follow card */}
           <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
             <h2 className="font-bold text-xl px-2">Who to follow</h2>
@@ -661,7 +648,7 @@ const Notices = () => {
 
                     {/* Stats */}
                     <div className="flex gap-6 py-3 border-y border-border/50 text-muted-foreground text-sm mb-4">
-                      <span><strong className="text-foreground">{(comments[selectedNotice.id]?.length || selectedNotice.comments)}</strong> Comments</span>
+                      <span><strong className="text-foreground">{(comments[selectedNotice.id]?.length ?? selectedNotice.comments ?? 0)}</strong> Comments</span>
 
                     </div>
 

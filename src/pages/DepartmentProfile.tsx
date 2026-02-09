@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import type { ElementType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bell, Building, Users, MessageCircle, Share, Calendar, FileText, Video as VideoIcon, Image as ImageIcon, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
+import {ArrowLeft, Bell, Building, Users, MessageCircle, Share, FileText, Loader2, Bookmark, Send, Trash2, LayoutGrid, Cpu, Zap, Cog, Building2, PlugZap, Bot, Database, Globe, HelpCircle} from "lucide-react";
 import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +20,18 @@ import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useCollege } from "@/context/CollegeContext";
 
-const DEPARTMENTS = [
-    { value: 'all', label: 'All Departments', icon: '🏛️' },
-    { value: 'cse', label: 'Computer Science', icon: '💻' },
-    { value: 'ece', label: 'Electronics', icon: '⚡' },
-    { value: 'me', label: 'Mechanical', icon: '⚙️' },
-    { value: 'ce', label: 'Civil', icon: '🏗️' },
-    { value: 'eee', label: 'Electrical', icon: '🔌' },
-    { value: 'aiml', label: 'AI & ML', icon: '🤖' },
-    { value: 'ds', label: 'Data Science', icon: '📊' },
-    { value: 'it', label: 'Information Technology', icon: '🌐' },
+type DepartmentMeta = { value: string; label: string; icon: ElementType };
+
+const DEPARTMENTS: DepartmentMeta[] = [
+    { value: 'all', label: 'All Departments', icon: LayoutGrid },
+    { value: 'cse', label: 'Computer Science', icon: Cpu },
+    { value: 'ece', label: 'Electronics', icon: Zap },
+    { value: 'me', label: 'Mechanical', icon: Cog },
+    { value: 'ce', label: 'Civil', icon: Building2 },
+    { value: 'eee', label: 'Electrical', icon: PlugZap },
+    { value: 'aiml', label: 'AI & ML', icon: Bot },
+    { value: 'ds', label: 'Data Science', icon: Database },
+    { value: 'it', label: 'Information Technology', icon: Globe },
 ];
 
 interface Notice {
@@ -45,6 +48,7 @@ interface Notice {
     is_active: boolean;
     likes: number;
     comments: number;
+    comments_count?: number;
 }
 
 const DepartmentProfile = () => {
@@ -78,6 +82,7 @@ const DepartmentProfile = () => {
     const { isBookmarked, toggleBookmark } = useBookmarks();
 
     const department = DEPARTMENTS.find(d => d.value === deptId);
+    const DeptIcon = (department?.icon || Building2) as ElementType;
 
     useEffect(() => {
         if (deptId) {
@@ -104,8 +109,9 @@ const DepartmentProfile = () => {
                 .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
                 .map(notice => ({
                     ...notice,
-                    likes: 0,
-                    comments: 0,
+                    likes: notice.likes || 0,
+                    comments: notice.comments ?? notice.comments_count ?? 0,
+                    comments_count: notice.comments_count ?? notice.comments ?? 0,
                 }));
 
             setNotices(activeNotices);
@@ -300,7 +306,7 @@ const DepartmentProfile = () => {
                         </Button>
                         <div className="flex-1">
                             <h1 className="text-xl font-bold flex items-center gap-2">
-                                <span className="text-2xl">{department.icon}</span>
+                                <DeptIcon className="w-6 h-6 text-primary" />
                                 {department.label}
                             </h1>
                             <p className="text-sm text-muted-foreground">{notices.length} notices</p>
@@ -314,8 +320,8 @@ const DepartmentProfile = () => {
                 <Card className="p-6 mb-6">
                     <div className="flex items-start gap-6">
                         <Avatar className="w-24 h-24">
-                            <AvatarFallback className="bg-primary/10 text-primary text-4xl">
-                                {department.icon}
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                                <DeptIcon className="h-9 w-9" />
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -373,7 +379,7 @@ const DepartmentProfile = () => {
                                     <div className="flex items-start gap-4">
                                         <Avatar className="w-12 h-12">
                                             <AvatarFallback className="bg-primary/10 text-primary">
-                                                {department.icon}
+                                                <DeptIcon className="h-5 w-5" />
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
@@ -421,7 +427,7 @@ const DepartmentProfile = () => {
                                                     )}
                                                 >
                                                     <MessageCircle className={cn("w-5 h-5", expandedNotice === notice.id && "fill-current")} />
-                                                    <span className="text-sm">{(comments[notice.id]?.length || notice.comments)}</span>
+                                                    <span className="text-sm">{(comments[notice.id]?.length ?? notice.comments ?? 0)}</span>
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
@@ -541,7 +547,7 @@ const DepartmentProfile = () => {
                             <div className="p-4 border-b border-border flex items-center gap-3">
                                 <Avatar className="w-10 h-10">
                                     <AvatarFallback className="bg-primary/10 text-primary">
-                                        {department?.icon}
+                                        <DeptIcon className="h-5 w-5" />
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>

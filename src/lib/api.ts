@@ -306,26 +306,82 @@ export async function getFollowers(): Promise<{ followers: UserProfile[] }> {
         try {
             const userEmail = auth.currentUser?.email;
             if (!userEmail) return { followers: [] };
+            try {
+                const { data: rows, error: fetchError } = await supabase
+                    .from('follows')
+                    .select('follower_email')
+                    .eq('following_email', userEmail);
 
-            const { data: rows, error: fetchError } = await supabase
-                .from('follows')
-                .select('follower_email')
-                .eq('following_email', userEmail);
+                if (fetchError) throw fetchError;
 
-            if (fetchError) throw fetchError;
+                const followerEmails = (rows || []).map((row: any) => row.follower_email).filter(Boolean);
+                if (followerEmails.length > 0) {
+                    const { data: profiles, error: profilesError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .in('email', followerEmails);
 
-            const followerEmails = (rows || []).map((row: any) => row.follower_email).filter(Boolean);
-            if (followerEmails.length === 0) return { followers: [] };
+                    if (profilesError) throw profilesError;
+
+                    const followers = (profiles || []).map(normalizeUserProfile);
+                    return { followers };
+                }
+            } catch (emailFallbackError) {
+                // Ignore and try id-based fallback below
+            }
+
+            const { data: userRow, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle();
+
+            if (userError) throw userError;
+
+            const candidateIds = [userRow?.id, userRow?.firebase_uid].filter(Boolean);
+            let followerIds: string[] = [];
+
+            for (const id of candidateIds) {
+                const { data: rows, error: fetchError } = await supabase
+                    .from('follows')
+                    .select('follower_id')
+                    .eq('following_id', id)
+                    .eq('status', 'accepted');
+
+                if (fetchError) continue;
+
+                const ids = (rows || []).map((row: any) => row.follower_id).filter(Boolean);
+                if (ids.length > 0) {
+                    followerIds = ids;
+                    break;
+                }
+            }
+
+            if (followerIds.length === 0) return { followers: [] };
 
             const { data: profiles, error: profilesError } = await supabase
                 .from('users')
                 .select('*')
-                .in('email', followerEmails);
+                .in('id', followerIds);
 
             if (profilesError) throw profilesError;
 
-            const followers = (profiles || []).map(normalizeUserProfile);
-            return { followers };
+            if ((profiles || []).length > 0) {
+                return { followers: (profiles || []).map(normalizeUserProfile) };
+            }
+
+            try {
+                const { data: fallbackProfiles, error: fallbackError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .in('firebase_uid', followerIds);
+
+                if (fallbackError) throw fallbackError;
+
+                return { followers: (fallbackProfiles || []).map(normalizeUserProfile) };
+            } catch (firebaseFallbackError) {
+                return { followers: [] };
+            }
         } catch (fallbackError) {
             throw error;
         }
@@ -342,26 +398,82 @@ export async function getFollowing(): Promise<{ following: UserProfile[] }> {
         try {
             const userEmail = auth.currentUser?.email;
             if (!userEmail) return { following: [] };
+            try {
+                const { data: rows, error: fetchError } = await supabase
+                    .from('follows')
+                    .select('following_email')
+                    .eq('follower_email', userEmail);
 
-            const { data: rows, error: fetchError } = await supabase
-                .from('follows')
-                .select('following_email')
-                .eq('follower_email', userEmail);
+                if (fetchError) throw fetchError;
 
-            if (fetchError) throw fetchError;
+                const followingEmails = (rows || []).map((row: any) => row.following_email).filter(Boolean);
+                if (followingEmails.length > 0) {
+                    const { data: profiles, error: profilesError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .in('email', followingEmails);
 
-            const followingEmails = (rows || []).map((row: any) => row.following_email).filter(Boolean);
-            if (followingEmails.length === 0) return { following: [] };
+                    if (profilesError) throw profilesError;
+
+                    const following = (profiles || []).map(normalizeUserProfile);
+                    return { following };
+                }
+            } catch (emailFallbackError) {
+                // Ignore and try id-based fallback below
+            }
+
+            const { data: userRow, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle();
+
+            if (userError) throw userError;
+
+            const candidateIds = [userRow?.id, userRow?.firebase_uid].filter(Boolean);
+            let followingIds: string[] = [];
+
+            for (const id of candidateIds) {
+                const { data: rows, error: fetchError } = await supabase
+                    .from('follows')
+                    .select('following_id')
+                    .eq('follower_id', id)
+                    .eq('status', 'accepted');
+
+                if (fetchError) continue;
+
+                const ids = (rows || []).map((row: any) => row.following_id).filter(Boolean);
+                if (ids.length > 0) {
+                    followingIds = ids;
+                    break;
+                }
+            }
+
+            if (followingIds.length === 0) return { following: [] };
 
             const { data: profiles, error: profilesError } = await supabase
                 .from('users')
                 .select('*')
-                .in('email', followingEmails);
+                .in('id', followingIds);
 
             if (profilesError) throw profilesError;
 
-            const following = (profiles || []).map(normalizeUserProfile);
-            return { following };
+            if ((profiles || []).length > 0) {
+                return { following: (profiles || []).map(normalizeUserProfile) };
+            }
+
+            try {
+                const { data: fallbackProfiles, error: fallbackError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .in('firebase_uid', followingIds);
+
+                if (fallbackError) throw fallbackError;
+
+                return { following: (fallbackProfiles || []).map(normalizeUserProfile) };
+            } catch (firebaseFallbackError) {
+                return { following: [] };
+            }
         } catch (fallbackError) {
             throw error;
         }
