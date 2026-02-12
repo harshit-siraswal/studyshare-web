@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '../supabase';
 
 // College configuration
 export interface College {
@@ -12,6 +13,7 @@ export interface College {
     name: string;
     domain: string;
     logoUrl?: string;
+    collegeId?: string | null;
 }
 
 // All active colleges with verified domains
@@ -28,6 +30,7 @@ type AccessLevel = 'full' | 'readonly';
 
 interface CollegeContextType {
     selectedCollege: College | null;
+    selectedCollegeId: string | null;
     setCollege: (collegeId: string) => void;
     accessLevel: AccessLevel;
     isFullAccess: boolean;
@@ -36,6 +39,10 @@ interface CollegeContextType {
 }
 
 const CollegeContext = createContext<CollegeContextType | undefined>(undefined);
+
+function normalizeDomain(value?: string | null): string {
+    return (value || '').trim().toLowerCase();
+}
 
 // Helper to get college from localStorage (stored by Index.tsx as full object)
 const getCollegeFromLocalStorage = (): College | null => {
@@ -53,6 +60,7 @@ const getCollegeFromLocalStorage = (): College | null => {
                     id: parsed.domain,
                     name: parsed.name || 'Unknown College',
                     domain: parsed.domain,
+                    collegeId: parsed.collegeId || null,
                 };
             }
         }
@@ -65,6 +73,44 @@ const getCollegeFromLocalStorage = (): College | null => {
 export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
     const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
+    const [collegeIdMap, setCollegeIdMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadCollegeIds = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('colleges')
+                    .select('id, domain');
+
+                if (error) {
+                    console.error('[CollegeContext] Failed to load college IDs:', error);
+                    return;
+                }
+
+                const nextMap: Record<string, string> = {};
+                for (const row of data || []) {
+                    const domain = normalizeDomain((row as any).domain);
+                    const id = String((row as any).id || '').trim();
+                    if (domain && id) {
+                        nextMap[domain] = id;
+                    }
+                }
+
+                if (isMounted) {
+                    setCollegeIdMap(nextMap);
+                }
+            } catch (error) {
+                console.error('[CollegeContext] Unexpected college ID lookup error:', error);
+            }
+        };
+
+        loadCollegeIds();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     // FIXED: ALWAYS respect user's college SELECTION from localStorage
     // Email domain is ONLY used for ACCESS LEVEL (full vs readonly)
@@ -74,7 +120,11 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
         const savedCollege = getCollegeFromLocalStorage();
 
         if (savedCollege) {
-            setSelectedCollege(savedCollege);
+            const domain = normalizeDomain(savedCollege.domain);
+            setSelectedCollege({
+                ...savedCollege,
+                collegeId: collegeIdMap[domain] || savedCollege.collegeId || null,
+            });
             console.log(`[CollegeContext] Using selected college: ${savedCollege.name} (from localStorage)`);
             return;
         }
@@ -87,28 +137,43 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
             const matchedCollege = COLLEGES.find(c => c.domain.toLowerCase() === userDomain);
 
             if (matchedCollege) {
-                setSelectedCollege(matchedCollege);
+                const domain = normalizeDomain(matchedCollege.domain);
+                const hydratedCollege = {
+                    ...matchedCollege,
+                    collegeId: collegeIdMap[domain] || null,
+                };
+                setSelectedCollege(hydratedCollege);
                 // Also save to localStorage so it persists
-                localStorage.setItem('selectedCollege', JSON.stringify(matchedCollege));
+                localStorage.setItem('selectedCollege', JSON.stringify(hydratedCollege));
                 console.log(`[CollegeContext] No selection found, defaulting to email domain: ${matchedCollege.name}`);
                 return;
             }
         }
 
         // Last resort: Default to first college
-        setSelectedCollege(COLLEGES[0]);
+        const defaultCollege = {
+            ...COLLEGES[0],
+            collegeId: collegeIdMap[normalizeDomain(COLLEGES[0].domain)] || null,
+        };
+        setSelectedCollege(defaultCollege);
         console.log(`[CollegeContext] No selection found, defaulting to: ${COLLEGES[0].name}`);
-    }, [user]);
+    }, [user, collegeIdMap]);
 
     // Set college by ID (for manual selection by readonly users)
     const setCollege = (collegeId: string) => {
         const college = COLLEGES.find(c => c.id === collegeId);
         if (college) {
-            setSelectedCollege(college);
+            const hydratedCollege = {
+                ...college,
+                collegeId: collegeIdMap[normalizeDomain(college.domain)] || null,
+            };
+            setSelectedCollege(hydratedCollege);
             // Save full college object to match Index.tsx format
-            localStorage.setItem('selectedCollege', JSON.stringify(college));
+            localStorage.setItem('selectedCollege', JSON.stringify(hydratedCollege));
         }
     };
+
+    const selectedCollegeId = selectedCollege?.collegeId || null;
 
     // Derive access level from email domain
     // Policy: If user email ends with college domain = FULL access
@@ -128,6 +193,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     return (
         <CollegeContext.Provider value={{
             selectedCollege,
+            selectedCollegeId,
             setCollege,
             accessLevel,
             isFullAccess,

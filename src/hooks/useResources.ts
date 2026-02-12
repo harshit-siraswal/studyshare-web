@@ -71,13 +71,15 @@ async function fetchResources(
  * Replaces manual useEffect + useState pattern for better performance.
  */
 export function useResources(filters: ResourceFilters) {
-    const { selectedCollege } = useCollege();
+    const { selectedCollegeId } = useCollege();
     const queryClient = useQueryClient();
-    const collegeId = selectedCollege?.domain || 'kiet.edu';
+    const collegeId = selectedCollegeId;
+    const collegeScope = collegeId || 'none';
 
     const query = useQuery({
-        queryKey: ['resources', collegeId, filters],
-        queryFn: () => fetchResources(collegeId, filters),
+        queryKey: ['resources', collegeScope, filters],
+        queryFn: () => fetchResources(collegeId as string, filters),
+        enabled: !!collegeId,
         // Error handling via meta
         meta: {
             errorMessage: 'Failed to load resources',
@@ -92,7 +94,7 @@ export function useResources(filters: ResourceFilters) {
 
     // Manual refresh function (invalidates cache and refetches)
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['resources', collegeId, filters] });
+        queryClient.invalidateQueries({ queryKey: ['resources', collegeScope, filters] });
         toast.success('Resources refreshed');
     };
 
@@ -111,10 +113,10 @@ export function useResources(filters: ResourceFilters) {
  */
 export function useInvalidateResources() {
     const queryClient = useQueryClient();
-    const { selectedCollege } = useCollege();
-    const collegeId = selectedCollege?.domain || 'kiet.edu';
+    const { selectedCollegeId } = useCollege();
+    const collegeScope = selectedCollegeId || 'none';
 
     return () => {
-        queryClient.invalidateQueries({ queryKey: ['resources', collegeId] });
+        queryClient.invalidateQueries({ queryKey: ['resources', collegeScope] });
     };
 }

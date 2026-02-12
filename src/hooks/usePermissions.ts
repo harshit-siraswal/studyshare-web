@@ -51,7 +51,7 @@ export function usePermissions(): Permissions {
     const canCreateRoom = isFullAccess;
     const canViewFollowing = isFullAccess;
     const canDiscoverUsers = isFullAccess;
-    const canBookmark = isFullAccess;
+    const canBookmark = true;
 
     return {
         isFullAccess,

@@ -6,7 +6,6 @@
  */
 
 import { auth } from '../firebase';
-import { supabase } from '../supabase';
 
 // Backend URL - change for production
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -221,35 +220,12 @@ export async function unfollowUser(targetEmail: string): Promise<{ message: stri
  * Get pending follow requests
  */
 export async function getPendingFollowRequests(): Promise<{ requests: FollowRequest[] }> {
-    try {
-        const data = await apiRequest<any>('/api/follow/pending');
-        const rawRequests = Array.isArray(data) ? data : (data?.requests || []);
-        const requests = rawRequests
-            .map((request: RawFollowRequest) => normalizeFollowRequest(request))
-            .filter((request: FollowRequest) => Boolean(request.id));
-        return { requests };
-    } catch (error) {
-        try {
-            const userEmail = auth.currentUser?.email;
-            if (!userEmail) return { requests: [] };
-
-            const { data: rows, error: fetchError } = await supabase
-                .from('follow_requests')
-                .select('*')
-                .eq('target_email', userEmail)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
-
-            if (fetchError) throw fetchError;
-
-            const requests = (rows || [])
-                .map((request: RawFollowRequest) => normalizeFollowRequest(request))
-                .filter((request: FollowRequest) => Boolean(request.id));
-            return { requests };
-        } catch (fallbackError) {
-            throw error;
-        }
-    }
+    const data = await apiRequest<any>('/api/follow/pending');
+    const rawRequests = Array.isArray(data) ? data : (data?.requests || []);
+    const requests = rawRequests
+        .map((request: RawFollowRequest) => normalizeFollowRequest(request))
+        .filter((request: FollowRequest) => Boolean(request.id));
+    return { requests };
 }
 
 /**
@@ -259,230 +235,25 @@ export async function checkFollowStatus(targetEmail: string): Promise<{
     status: 'following' | 'pending' | 'not-following';
     requestId?: string;
 }> {
-    try {
-        const data = await apiRequest<any>(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
-        return {
-            status: data?.status,
-            requestId: data?.requestId || data?.request_id,
-        };
-    } catch (error) {
-        try {
-            const userEmail = auth.currentUser?.email;
-            if (!userEmail) return { status: 'not-following' };
-
-            const { data: followRow, error: followError } = await supabase
-                .from('follows')
-                .select('id')
-                .eq('follower_email', userEmail)
-                .eq('following_email', targetEmail)
-                .maybeSingle();
-
-            if (followError) throw followError;
-            if (followRow) return { status: 'following' };
-
-            const { data: requestRow, error: requestError } = await supabase
-                .from('follow_requests')
-                .select('id, status')
-                .eq('requester_email', userEmail)
-                .eq('target_email', targetEmail)
-                .in('status', ['pending'])
-                .maybeSingle();
-
-            if (requestError) throw requestError;
-            if (requestRow) {
-                return { status: 'pending', requestId: requestRow.id };
-            }
-            return { status: 'not-following' };
-        } catch (fallbackError) {
-            throw error;
-        }
-    }
+    const data = await apiRequest<any>(`/api/follow/status/${encodeURIComponent(targetEmail)}`);
+    return {
+        status: data?.status,
+        requestId: data?.requestId || data?.request_id,
+    };
 }
 
 /**
  * Get my followers
  */
 export async function getFollowers(): Promise<{ followers: UserProfile[] }> {
-    // Note: UserProfile is defined later, using any[] for now to avoid circular ref issues if moved
-    // or we can rely on hoisting if interface is exported similarly
-    try {
-        return await apiRequest('/api/follow/followers');
-    } catch (error) {
-        try {
-            const userEmail = auth.currentUser?.email;
-            if (!userEmail) return { followers: [] };
-            try {
-                const { data: rows, error: fetchError } = await supabase
-                    .from('follows')
-                    .select('follower_email')
-                    .eq('following_email', userEmail);
-
-                if (fetchError) throw fetchError;
-
-                const followerEmails = (rows || []).map((row: any) => row.follower_email).filter(Boolean);
-                if (followerEmails.length > 0) {
-                    const { data: profiles, error: profilesError } = await supabase
-                        .from('users')
-                        .select('*')
-                        .in('email', followerEmails);
-
-                    if (profilesError) throw profilesError;
-
-                    const followers = (profiles || []).map(normalizeUserProfile);
-                    return { followers };
-                }
-            } catch (emailFallbackError) {
-                // Ignore and try id-based fallback below
-            }
-
-            const { data: userRow, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', userEmail)
-                .maybeSingle();
-
-            if (userError) throw userError;
-
-            const candidateIds = [userRow?.id, userRow?.firebase_uid].filter(Boolean);
-            let followerIds: string[] = [];
-
-            for (const id of candidateIds) {
-                const { data: rows, error: fetchError } = await supabase
-                    .from('follows')
-                    .select('follower_id')
-                    .eq('following_id', id)
-                    .eq('status', 'accepted');
-
-                if (fetchError) continue;
-
-                const ids = (rows || []).map((row: any) => row.follower_id).filter(Boolean);
-                if (ids.length > 0) {
-                    followerIds = ids;
-                    break;
-                }
-            }
-
-            if (followerIds.length === 0) return { followers: [] };
-
-            const { data: profiles, error: profilesError } = await supabase
-                .from('users')
-                .select('*')
-                .in('id', followerIds);
-
-            if (profilesError) throw profilesError;
-
-            if ((profiles || []).length > 0) {
-                return { followers: (profiles || []).map(normalizeUserProfile) };
-            }
-
-            try {
-                const { data: fallbackProfiles, error: fallbackError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .in('firebase_uid', followerIds);
-
-                if (fallbackError) throw fallbackError;
-
-                return { followers: (fallbackProfiles || []).map(normalizeUserProfile) };
-            } catch (firebaseFallbackError) {
-                return { followers: [] };
-            }
-        } catch (fallbackError) {
-            throw error;
-        }
-    }
+    return apiRequest('/api/follow/followers');
 }
 
 /**
  * Get people I follow
  */
 export async function getFollowing(): Promise<{ following: UserProfile[] }> {
-    try {
-        return await apiRequest('/api/follow/following');
-    } catch (error) {
-        try {
-            const userEmail = auth.currentUser?.email;
-            if (!userEmail) return { following: [] };
-            try {
-                const { data: rows, error: fetchError } = await supabase
-                    .from('follows')
-                    .select('following_email')
-                    .eq('follower_email', userEmail);
-
-                if (fetchError) throw fetchError;
-
-                const followingEmails = (rows || []).map((row: any) => row.following_email).filter(Boolean);
-                if (followingEmails.length > 0) {
-                    const { data: profiles, error: profilesError } = await supabase
-                        .from('users')
-                        .select('*')
-                        .in('email', followingEmails);
-
-                    if (profilesError) throw profilesError;
-
-                    const following = (profiles || []).map(normalizeUserProfile);
-                    return { following };
-                }
-            } catch (emailFallbackError) {
-                // Ignore and try id-based fallback below
-            }
-
-            const { data: userRow, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', userEmail)
-                .maybeSingle();
-
-            if (userError) throw userError;
-
-            const candidateIds = [userRow?.id, userRow?.firebase_uid].filter(Boolean);
-            let followingIds: string[] = [];
-
-            for (const id of candidateIds) {
-                const { data: rows, error: fetchError } = await supabase
-                    .from('follows')
-                    .select('following_id')
-                    .eq('follower_id', id)
-                    .eq('status', 'accepted');
-
-                if (fetchError) continue;
-
-                const ids = (rows || []).map((row: any) => row.following_id).filter(Boolean);
-                if (ids.length > 0) {
-                    followingIds = ids;
-                    break;
-                }
-            }
-
-            if (followingIds.length === 0) return { following: [] };
-
-            const { data: profiles, error: profilesError } = await supabase
-                .from('users')
-                .select('*')
-                .in('id', followingIds);
-
-            if (profilesError) throw profilesError;
-
-            if ((profiles || []).length > 0) {
-                return { following: (profiles || []).map(normalizeUserProfile) };
-            }
-
-            try {
-                const { data: fallbackProfiles, error: fallbackError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .in('firebase_uid', followingIds);
-
-                if (fallbackError) throw fallbackError;
-
-                return { following: (fallbackProfiles || []).map(normalizeUserProfile) };
-            } catch (firebaseFallbackError) {
-                return { following: [] };
-            }
-        } catch (fallbackError) {
-            throw error;
-        }
-    }
+    return apiRequest('/api/follow/following');
 }
 
 // ============================================
@@ -752,6 +523,22 @@ export async function createChatRoom(
         method: 'POST',
         body: JSON.stringify({ name, description, isPrivate, collegeId, durationInDays, tags }),
     });
+}
+
+/**
+ * Get notifications for current user
+ */
+export async function getNotifications(params?: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+}): Promise<{ notifications: any[]; unreadCount?: number; hasMore?: boolean }> {
+    const query = new URLSearchParams();
+    if (params?.limit !== undefined) query.set('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.set('offset', params.offset.toString());
+    if (params?.unreadOnly !== undefined) query.set('unreadOnly', String(params.unreadOnly));
+    const qs = query.toString();
+    return apiRequest(`/api/notifications${qs ? `?${qs}` : ''}`);
 }
 
 /**

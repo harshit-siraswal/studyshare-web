@@ -42,13 +42,13 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
 
   // FIX: Use Firebase Auth instead of Supabase Auth
   const { user: authUser } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const { isReadOnly } = usePermissions();
 
-  const collegeId = useMemo(() => selectedCollege?.domain || 'kiet.edu', [selectedCollege?.domain]);
+  const collegeId = useMemo(() => selectedCollegeId || '', [selectedCollegeId]);
 
   const fetchFollowingResources = useCallback(async () => {
-    if (!authUser?.email) {
+    if (!authUser?.email || !collegeId) {
       setResources([]);
       setFollowingCount(0);
       setLoading(false);

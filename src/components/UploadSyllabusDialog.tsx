@@ -21,7 +21,7 @@ interface UploadSyllabusDialogProps {
 
 const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps) => {
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -97,7 +97,7 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
         description: formData.description || undefined,
         pdfUrl,
         fileSize: pdfFile.size,
-        collegeId: selectedCollege?.domain || 'kiet.edu',
+        collegeId: selectedCollegeId || undefined,
       });
 
       toast.success("Syllabus uploaded successfully!");

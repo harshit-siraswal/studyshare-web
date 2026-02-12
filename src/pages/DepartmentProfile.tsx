@@ -55,8 +55,8 @@ const DepartmentProfile = () => {
     const navigate = useNavigate();
     const { deptId } = useParams<{ deptId: string }>();
     const { user } = useAuth();
-    const { selectedCollege } = useCollege();
-    const collegeId = selectedCollege?.domain || 'kiet.edu';
+    const { selectedCollegeId } = useCollege();
+    const collegeId = selectedCollegeId;
 
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,12 +85,12 @@ const DepartmentProfile = () => {
     const DeptIcon = (department?.icon || Building2) as ElementType;
 
     useEffect(() => {
-        if (deptId) {
+        if (deptId && collegeId) {
             fetchNotices();
             checkFollowingStatus();
             fetchFollowerCount();
         }
-    }, [deptId, user]);
+    }, [deptId, user, collegeId]);
 
     const fetchNotices = async () => {
         try {
@@ -124,7 +124,7 @@ const DepartmentProfile = () => {
     };
 
     const checkFollowingStatus = async () => {
-        if (!user?.email || !deptId) return;
+        if (!user?.email || !deptId || !collegeId) return;
 
         try {
             const response = await api.getFollowedDepartments(collegeId);
@@ -135,7 +135,7 @@ const DepartmentProfile = () => {
     };
 
     const fetchFollowerCount = async () => {
-        if (!deptId) return;
+        if (!deptId || !collegeId) return;
 
         try {
             const { count, error } = await supabase
@@ -152,7 +152,7 @@ const DepartmentProfile = () => {
     };
 
     const handleFollow = async () => {
-        if (!user?.email || !deptId) {
+        if (!user?.email || !deptId || !collegeId) {
             toast.error('Please login to follow departments');
             return;
         }

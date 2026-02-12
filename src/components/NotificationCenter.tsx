@@ -13,7 +13,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { supabase } from "../supabase";
 import {
   approveFollowRequest,
   rejectFollowRequest,
@@ -22,6 +21,7 @@ import {
   deleteNotification,
   deleteAllNotifications,
   getPendingFollowRequests,
+  getNotifications,
   type FollowRequest
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -74,15 +74,9 @@ const NotificationCenter = () => {
     if (!user?.email) return;
 
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_email', user.email)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setNotifications((data || []).map(normalizeNotification));
+      const data = await getNotifications({ limit: 20 });
+      const rows = Array.isArray(data?.notifications) ? data.notifications : [];
+      setNotifications(rows.map(normalizeNotification));
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }

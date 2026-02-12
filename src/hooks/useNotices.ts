@@ -47,19 +47,20 @@ async function fetchNotices(collegeId: string): Promise<Notice[]> {
  * Filters notices by selected college for data isolation.
  */
 export function useNotices() {
-    const { selectedCollege } = useCollege();
+    const { selectedCollegeId } = useCollege();
     const queryClient = useQueryClient();
-    const collegeId = selectedCollege?.domain || 'kiet.edu';
+    const collegeId = selectedCollegeId;
+    const collegeScope = collegeId || 'none';
 
     const query = useQuery({
-        queryKey: ['notices', collegeId],
-        queryFn: () => fetchNotices(collegeId),
+        queryKey: ['notices', collegeScope],
+        queryFn: () => fetchNotices(collegeId as string),
         enabled: !!collegeId,
     });
 
     // Manual refresh function
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['notices', collegeId] });
+        queryClient.invalidateQueries({ queryKey: ['notices', collegeScope] });
     };
 
     return {

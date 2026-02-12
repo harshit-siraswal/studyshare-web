@@ -42,7 +42,7 @@ const AIRagChat = ({
   variant?: "rich" | "minimal";
 }) => {
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const isMinimal = variant === "minimal";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
@@ -68,7 +68,7 @@ const AIRagChat = ({
 
     try {
       const response = await queryRag(q, {
-        collegeId: selectedCollege?.domain,
+        collegeId: selectedCollegeId || undefined,
         allowWeb: true,
       });
 

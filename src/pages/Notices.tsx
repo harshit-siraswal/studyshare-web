@@ -52,8 +52,8 @@ const Notices = () => {
 
   // React Query: Fetch notices with caching
   const { notices, isLoading: loading } = useNotices();
-  const { selectedCollege } = useCollege();
-  const collegeId = selectedCollege?.domain || 'kiet.edu';
+  const { selectedCollegeId } = useCollege();
+  const collegeId = selectedCollegeId;
 
   // State
   const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou');
@@ -98,7 +98,7 @@ const Notices = () => {
   }, [selectedNotice]);
 
   const fetchFollowedDepartments = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !collegeId) return;
     try {
       const response = await api.getFollowedDepartments(collegeId);
       setFollowedDeptIds(response.departments);
@@ -110,6 +110,10 @@ const Notices = () => {
   const handleFollowDept = async (deptId: string) => {
     if (!user?.email) {
       toast.error("Login to follow departments");
+      return;
+    }
+    if (!collegeId) {
+      toast.error("College context is not available yet");
       return;
     }
 

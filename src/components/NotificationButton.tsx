@@ -13,7 +13,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '../supabase';
 import {
   approveFollowRequest,
   rejectFollowRequest,
@@ -21,6 +20,7 @@ import {
   markAllNotificationsRead,
   getPendingFollowRequests,
   deleteAllNotifications,
+  getNotifications,
   type FollowRequest
 } from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
@@ -79,55 +79,13 @@ const NotificationButton = () => {
     }
   }, [open]);
 
-  // Real-time subscription
-  useEffect(() => {
-    if (!user?.email) return;
-
-    const subscription = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-        },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'follow_requests',
-        },
-        () => {
-          fetchFollowRequests();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [user]);
-
   const fetchNotifications = async () => {
     if (!user?.email) return;
 
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_email', user.email)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      setNotifications((data || []).map(normalizeNotification));
+      const data = await getNotifications({ limit: 10 });
+      const rows = Array.isArray(data?.notifications) ? data.notifications : [];
+      setNotifications(rows.map(normalizeNotification));
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }

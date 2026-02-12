@@ -29,7 +29,7 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
   const navigate = useNavigate();
   // ... inside component
   const { user, isPremium } = useAuth(); // [MODIFIED]
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -88,7 +88,7 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
         roomName.trim(),
         description.trim() || null,
         isPrivate,
-        selectedCollege?.domain || 'kiet.edu',
+        selectedCollegeId || undefined,
         durationInDays
       );
 

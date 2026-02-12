@@ -1188,16 +1188,7 @@ const Profile = () => {
 
                                       if (error) throw error;
 
-                                      // Create approval notification
-                                      await supabase.from('notifications').insert([{
-                                        user_email: contribution.uploaded_by_email || '',
-                                        type: 'resource_approved',
-                                        title: 'Resource Approved',
-                                        message: `Your resource "${contribution.title}" has been approved and is now visible to everyone.`,
-                                        resource_id: contribution.id,
-                                        read: false,
-                                        college_id: selectedCollege?.domain || 'kiet.edu', // Policy
-                                      }]);
+                                      // Notification creation handled by backend/admin workflows
 
                                       toast.success('Resource approved!');
                                       fetchContributions();
@@ -1221,16 +1212,7 @@ const Profile = () => {
 
                                       if (error) throw error;
 
-                                      // Create rejection notification
-                                      await supabase.from('notifications').insert([{
-                                        user_email: contribution.uploaded_by_email || '',
-                                        type: 'resource_rejected',
-                                        title: 'Resource Rejected',
-                                        message: `Your resource "${contribution.title}" was not approved. Please review the guidelines and try again.`,
-                                        resource_id: contribution.id,
-                                        read: false,
-                                        college_id: selectedCollege?.domain || 'kiet.edu', // Policy
-                                      }]);
+                                      // Notification creation handled by backend/admin workflows
 
                                       toast.success('Resource rejected');
                                       fetchContributions();

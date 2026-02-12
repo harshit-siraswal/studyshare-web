@@ -124,7 +124,7 @@ const AIStudyTools = ({
   videoUrl,
 }: AIStudyToolsProps) => {
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const supportsOcr = resourceType !== "video";
   const usesTranscript = resourceType === "video";
   const isYouTubeVideo = useMemo(() => {
@@ -176,7 +176,7 @@ const AIStudyTools = ({
     setShowSource(false);
 
     try {
-      const collegeId = selectedCollege?.domain;
+      const collegeId = selectedCollegeId || undefined;
       const options = {
         collegeId,
         useOcr: override?.useOcr ?? (supportsOcr ? (useOcr || forceOcr) : shouldUseTranscript),

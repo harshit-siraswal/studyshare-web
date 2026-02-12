@@ -50,7 +50,7 @@ const Chatroom = () => {
   const navigate = useNavigate();
   const { roomId } = useParams();
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const { canChat, isReadOnly } = usePermissions();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -117,7 +117,7 @@ const Chatroom = () => {
     if (user) {
       fetchUserRooms();
     }
-  }, [user]);
+  }, [user, selectedCollegeId]);
 
   // Fetch current room and messages
   useEffect(() => {
@@ -159,7 +159,11 @@ const Chatroom = () => {
 
       if (roomIds.length > 0) {
         // Policy: Filter rooms by college_id for data isolation
-        const collegeId = selectedCollege?.domain || 'kiet.edu';
+        const collegeId = selectedCollegeId;
+        if (!collegeId) {
+          setRooms([]);
+          return;
+        }
 
         const { data: roomsData, error: roomsError } = await supabase
           .from('chat_rooms')
@@ -1022,7 +1026,7 @@ const Chatroom = () => {
                   <p className="text-muted-foreground mb-3">Join this community to post</p>
                   <Button onClick={async () => {
                     try {
-                      await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollege?.domain);
+                      await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollegeId || undefined);
                       toast.success("Joined room!");
                       setIsMember(true);
                       fetchRoomDetails();
@@ -1279,7 +1283,7 @@ const Chatroom = () => {
           {!isMember && (
             <Button className="w-full" onClick={async () => {
               try {
-                await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollege?.domain);
+                await joinChatRoomById(roomId!, user?.displayName || user?.email?.split('@')[0], selectedCollegeId || undefined);
                 toast.success("Joined room!");
                 setIsMember(true);
                 // Refresh room details to get updated member count

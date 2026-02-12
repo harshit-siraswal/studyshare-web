@@ -14,20 +14,28 @@ WHERE table_name = 'admin_keys';
 
 CREATE TABLE IF NOT EXISTS admin_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL,
+    admin_name TEXT NOT NULL,
+    email TEXT,
     key_hash TEXT NOT NULL UNIQUE,
     role TEXT DEFAULT 'admin',
     department TEXT DEFAULT 'ALL',
     subject TEXT DEFAULT 'ALL',
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    college_id TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ
 );
 
 -- If table exists but is missing email column:
+-- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS admin_name TEXT;
 -- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS email TEXT;
 -- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS key_hash TEXT UNIQUE;
 -- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'admin';
 -- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'ALL';
 -- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'ALL';
+-- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS college_id TEXT;
+-- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+-- ALTER TABLE admin_keys ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
 
 -- Enable RLS
 ALTER TABLE admin_keys ENABLE ROW LEVEL SECURITY;
@@ -40,13 +48,16 @@ CREATE POLICY "admin_keys_service_role" ON admin_keys
 -- Insert your admin key (REPLACE with actual values):
 -- Get key_hash from: console.log(session.key_hash) in admin-studyspace browser console
 -- 
--- INSERT INTO admin_keys (email, key_hash, role, department, subject)
+-- INSERT INTO admin_keys (admin_name, email, key_hash, role, department, subject, college_id, is_active)
 -- VALUES (
+--     'Harshit Admin',
 --     'harshit.25004152@gmail.com',
 --     'PASTE_YOUR_KEY_HASH_HERE',
 --     'super_admin',
 --     'ALL',
---     'ALL'
+--     'ALL',
+--     'kiet.edu',
+--     true
 -- );
 
 -- Verify table structure

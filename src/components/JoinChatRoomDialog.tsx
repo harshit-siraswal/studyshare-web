@@ -37,7 +37,7 @@ interface ChatRoom {
 const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollegeId } = useCollege();
   const [open, setOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,13 +50,17 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
     if (open) {
       fetchRooms();
     }
-  }, [open]);
+  }, [open, selectedCollegeId]);
 
   const fetchRooms = async () => {
     setLoading(true);
     try {
       // Policy: Filter by college_id for data isolation
-      const collegeId = selectedCollege?.domain || 'kiet.edu';
+      const collegeId = selectedCollegeId;
+      if (!collegeId) {
+        setRooms([]);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('chat_rooms')
@@ -105,14 +109,14 @@ const JoinChatRoomDialog = ({ trigger }: JoinChatRoomDialogProps) => {
 
       // For private rooms, use join by code
       if (room.is_private) {
-        await joinChatRoom(joinCode, selectedCollege?.domain);
+        await joinChatRoom(joinCode, selectedCollegeId || undefined);
         toast.success("Joined room successfully!");
       } else {
         // For public rooms, join directly by ID
         await joinChatRoomById(
           room.id,
           user.displayName || user.email?.split('@')[0] || 'User',
-          selectedCollege?.domain || 'kiet.edu'
+          selectedCollegeId || undefined
         );
         toast.success("Joined room successfully!");
       }
