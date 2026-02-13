@@ -1,31 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { BookOpen, GraduationCap, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { BookOpen, Filter, GraduationCap, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import { queryRag } from "@/lib/api";
+import { queryRag, type RagFilters, type RagFollowUpAction, type RagSource } from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
-
-interface RagSource {
-  file_id: string;
-  title: string;
-  pages?: { start: number; end: number };
-  score?: number;
-  file_url?: string | null;
-}
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources?: RagSource[];
+  followUps?: RagFollowUpAction[];
   cached?: boolean;
   noLocal?: boolean;
 }
+
+const DEFAULT_FILTERS: RagFilters = {
+  source_type: "both",
+};
 
 const SUGGESTIONS = [
   "Summarize Unit 2 from my latest PDF.",
@@ -42,10 +39,13 @@ const AIRagChat = ({
   variant?: "rich" | "minimal";
 }) => {
   const { user } = useAuth();
-  const { selectedCollegeId } = useCollege();
+  const { selectedCollegeId, selectedCollege } = useCollege();
+  const collegeLabel = selectedCollege?.name || "Your College";
   const isMinimal = variant === "minimal";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
+  const [filters, setFilters] = useState<RagFilters>(DEFAULT_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -56,13 +56,37 @@ const AIRagChat = ({
     }
   }, [messages, loading]);
 
-  const handleAsk = async () => {
+  const getHistoryForRequest = () => {
+    return messages.slice(-10).map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+  };
+
+  const buildQueryFromFollowUp = (action: RagFollowUpAction) => {
+    switch (action.type) {
+      case "find_related_topics":
+        return "Find related topics from my current materials.";
+      case "get_more_details":
+        return "Give me more details from the cited materials.";
+      case "rephrase_question":
+        return "Help me rephrase my previous question for better matching.";
+      case "watch_video_segments":
+        return "Show the most relevant video segments with timestamps.";
+      default:
+        return "";
+    }
+  };
+
+  const handleAsk = async (presetQuestion?: string) => {
     if (!user) return;
     if (loading) return;
-    const q = question.trim();
+    const q = (presetQuestion || question).trim();
     if (!q) return;
 
-    setQuestion("");
+    if (!presetQuestion) {
+      setQuestion("");
+    }
     setMessages((prev) => [...prev, { role: "user", content: q }]);
     setLoading(true);
 
@@ -70,6 +94,8 @@ const AIRagChat = ({
       const response = await queryRag(q, {
         collegeId: selectedCollegeId || undefined,
         allowWeb: true,
+        filters,
+        history: [...getHistoryForRequest(), { role: "user", content: q }],
       });
 
       setMessages((prev) => [
@@ -78,6 +104,7 @@ const AIRagChat = ({
           role: "assistant",
           content: response.answer || "No answer returned.",
           sources: response.sources || [],
+          followUps: response.follow_ups || [],
           cached: response.cached,
           noLocal: response.no_local,
         },
@@ -94,6 +121,44 @@ const AIRagChat = ({
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFollowUpAction = async (action: RagFollowUpAction, message: ChatMessage) => {
+    if (loading) return;
+
+    if (action.type === "search_web") {
+      const query = encodeURIComponent(
+        `${messages.filter((m) => m.role === "user").slice(-1)[0]?.content || "study topic"}`
+      );
+      window.open(`https://www.google.com/search?q=${query}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    if (action.type === "show_full_pdfs") {
+      const firstSource = message.sources?.find((source) => source.file_url);
+      if (firstSource?.file_url) {
+        window.open(firstSource.file_url, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+
+    if (action.type === "filter_results") {
+      setShowFilters((prev) => !prev);
+      return;
+    }
+
+    if (action.type === "watch_video_segments") {
+      const video = message.sources?.find((source) => source.video_url);
+      if (video?.video_url) {
+        window.open(video.video_url, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+
+    const nextQuestion = buildQueryFromFollowUp(action);
+    if (nextQuestion) {
+      await handleAsk(nextQuestion);
     }
   };
 
@@ -133,12 +198,12 @@ const AIRagChat = ({
     if (cleaned.length >= 40) return cleaned;
 
     return [
-      "I couldn’t find a relevant match in your PDFs for that question.",
+      "I couldn't find a relevant match in your uploaded materials for that question.",
       "",
       "Try:",
       "- Mention the unit/chapter name",
-      "- Use a keyword from the PDF title",
-      "- Ask while viewing the PDF (and use OCR in AI Studio if it’s a scan)",
+      "- Use a keyword from the source title",
+      "- Add filters like semester, branch, or subject",
     ].join("\n");
   };
 
@@ -249,7 +314,7 @@ const AIRagChat = ({
           </div>
           <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground">
             <Sparkles className="h-3 w-3 text-primary" />
-            {selectedCollege?.name || "Your College"}
+            {collegeLabel}
           </div>
         </div>
       )}
@@ -278,7 +343,7 @@ const AIRagChat = ({
                       Drop a question to begin
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      I will scan your PDFs first. If nothing is found, I will answer generally.
+                      I answer using your uploaded materials with inline source citations.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {SUGGESTIONS.map((suggestion) => (
@@ -333,7 +398,7 @@ const AIRagChat = ({
                         Studyspace AI
                         {msg.noLocal && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tracking-normal">
-                            No PDF match
+                            No local match
                           </span>
                         )}
                         {msg.cached && (
@@ -361,6 +426,11 @@ const AIRagChat = ({
                                   Pages {s.pages.start}-{s.pages.end}
                                 </div>
                               )}
+                              {s.timestamp && (
+                                <div className="text-[11px] text-muted-foreground">
+                                  Time {s.timestamp}
+                                </div>
+                              )}
                               {s.file_url && (
                                 <a
                                   href={s.file_url}
@@ -371,15 +441,40 @@ const AIRagChat = ({
                                   Open source
                                 </a>
                               )}
+                              {s.video_url && (
+                                <a
+                                  href={s.video_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                                >
+                                  Open video
+                                </a>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
+                    {msg.role === "assistant" && msg.followUps && msg.followUps.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {msg.followUps.map((action) => (
+                          <button
+                            key={`${action.type}-${action.label}`}
+                            type="button"
+                            onClick={() => void handleFollowUpAction(action, msg)}
+                            className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {msg.role === "assistant" && msg.noLocal && (
                       <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        Tip: Add a unit/chapter keyword or mention the PDF title.
+                        Tip: Add a unit/chapter keyword, or apply semester/branch/subject filters.
                       </div>
                     )}
                   </div>
@@ -439,13 +534,104 @@ const AIRagChat = ({
               ))}
             </div>
           )}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+            >
+              <Filter className="h-3 w-3" />
+              Filters
+            </button>
+            <div className="text-[11px] text-muted-foreground">
+              {filters.semester || filters.branch || filters.subject || (filters.source_type && filters.source_type !== "both")
+                ? `Active: ${[
+                  filters.semester ? `Sem ${filters.semester}` : "",
+                  filters.branch || "",
+                  filters.subject || "",
+                  filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
+                ]
+                  .filter(Boolean)
+                  .join(" • ")}`
+                : "No active filters"}
+            </div>
+          </div>
+          {showFilters && (
+            <div className="mb-3 grid gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:grid-cols-2">
+              <label className="text-xs text-muted-foreground">
+                Semester
+                <select
+                  value={filters.semester || ""}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, semester: e.target.value || undefined }))}
+                  className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                >
+                  <option value="">All</option>
+                  {Array.from({ length: 8 }).map((_, idx) => (
+                    <option key={`sem-${idx + 1}`} value={`${idx + 1}`}>
+                      {idx + 1}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Branch
+                <select
+                  value={filters.branch || ""}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, branch: e.target.value || undefined }))}
+                  className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                >
+                  <option value="">All</option>
+                  {["CSE", "ECE", "EEE", "Mechanical", "Civil", "Chemical", "IT", "AIML"].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Source Type
+                <select
+                  value={filters.source_type || "both"}
+                  onChange={(e) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      source_type: (e.target.value as RagFilters["source_type"]) || "both",
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                >
+                  <option value="both">Both</option>
+                  <option value="pdf">PDFs</option>
+                  <option value="youtube">Videos</option>
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Subject
+                <input
+                  value={filters.subject || ""}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, subject: e.target.value || undefined }))}
+                  placeholder="e.g. Chemistry"
+                  className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                >
+                  Clear filters
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <Textarea
               ref={inputRef}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about any topic in your PDFs..."
+              placeholder="Ask about any topic in your PDFs or video transcripts..."
               className={cn(
                 "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                 isMinimal && "bg-background"

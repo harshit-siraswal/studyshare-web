@@ -13,6 +13,7 @@ import { useCollege } from "@/context/CollegeContext";
 const AIChat = () => {
   const { user, loading } = useAuth();
   const { selectedCollege } = useCollege();
+  const collegeLabel = selectedCollege?.name || "Your College";
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -91,7 +92,7 @@ const AIChat = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {selectedCollege?.name || "Your College"}
+                    {collegeLabel}
                   </p>
                 </div>
               </div>

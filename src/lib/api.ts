@@ -922,25 +922,71 @@ export async function getAiFlashcards(
 export interface RagSource {
     file_id: string;
     title: string;
+    source_type?: 'pdf' | 'youtube';
     pages?: { start: number; end: number };
+    timestamp?: string;
     score?: number;
     file_url?: string | null;
+    video_url?: string | null;
+    semester?: string | null;
+    branch?: string | null;
+    subject?: string | null;
+    upload_date?: string | null;
+    uploader_id?: string | null;
+}
+
+export interface RagFollowUpAction {
+    type:
+    | 'search_web'
+    | 'show_full_pdfs'
+    | 'find_related_topics'
+    | 'filter_results'
+    | 'watch_video_segments'
+    | 'get_more_details'
+    | 'upload_materials'
+    | 'rephrase_question';
+    label: string;
+    payload?: Record<string, unknown>;
+}
+
+export interface RagFilters {
+    semester?: string;
+    branch?: string;
+    subject?: string;
+    source_type?: 'pdf' | 'youtube' | 'both';
+    date_from?: string;
+    date_to?: string;
+}
+
+export interface RagConversationTurn {
+    role: 'user' | 'assistant';
+    content: string;
 }
 
 export interface RagResponse {
     answer: string;
     sources: RagSource[];
+    follow_ups?: RagFollowUpAction[];
     cached: boolean;
     no_local: boolean;
     top_score: number;
     retrieval_count: number;
     query_hash: string;
     model: string;
+    intent?: 'qa' | 'summary' | 'comparison' | 'definition';
+    applied_filters?: RagFilters;
 }
 
 export async function queryRag(
     question: string,
-    options?: { collegeId?: string; topK?: number; minScore?: number; allowWeb?: boolean }
+    options?: {
+        collegeId?: string;
+        topK?: number;
+        minScore?: number;
+        allowWeb?: boolean;
+        filters?: RagFilters;
+        history?: RagConversationTurn[];
+    }
 ): Promise<RagResponse> {
     return apiRequest('/api/rag/query', {
         method: 'POST',
@@ -950,6 +996,8 @@ export async function queryRag(
             top_k: options?.topK,
             min_score: options?.minScore,
             allow_web: options?.allowWeb,
+            filters: options?.filters,
+            history: options?.history,
         }),
     });
 }
