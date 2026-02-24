@@ -1179,22 +1179,8 @@ const Profile = () => {
                                   variant="default"
                                   size="sm"
                                   className="flex-1 sm:flex-none"
-                                  onClick={async () => {
-                                    try {
-                                      const { error } = await supabase
-                                        .from('resources')
-                                        .update({ status: 'approved' })
-                                        .eq('id', contribution.id);
-
-                                      if (error) throw error;
-
-                                      // Notification creation handled by backend/admin workflows
-
-                                      toast.success('Resource approved!');
-                                      fetchContributions();
-                                    } catch (error: any) {
-                                      toast.error(error.message || 'Failed to approve resource');
-                                    }
+                                  onClick={() => {
+                                    toast.error('Use the Admin Dashboard to approve resources.');
                                   }}
                                 >
                                   Approve
@@ -1203,22 +1189,8 @@ const Profile = () => {
                                   variant="outline"
                                   size="sm"
                                   className="flex-1 sm:flex-none"
-                                  onClick={async () => {
-                                    try {
-                                      const { error } = await supabase
-                                        .from('resources')
-                                        .update({ status: 'rejected' })
-                                        .eq('id', contribution.id);
-
-                                      if (error) throw error;
-
-                                      // Notification creation handled by backend/admin workflows
-
-                                      toast.success('Resource rejected');
-                                      fetchContributions();
-                                    } catch (error: any) {
-                                      toast.error(error.message || 'Failed to reject resource');
-                                    }
+                                  onClick={() => {
+                                    toast.error('Use the Admin Dashboard to reject resources.');
                                   }}
                                 >
                                   Reject
