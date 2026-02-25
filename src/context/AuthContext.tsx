@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { verifyAndGetUser } from "@/lib/api";
+import { ApiError, verifyAndGetUser } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -27,55 +27,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
-      // Set loading to false immediately so navigation can proceed
-      setLoading(false);
-
-      if (firebaseUser) {
-        try {
-          // Parallel fetch for user info and subscription status
-          const [userInfo, { data: userRow }] = await Promise.all([
-            verifyAndGetUser(),
-            import("../supabase").then(({ supabase }) =>
-              supabase
-                .from('users')
-                .select('subscription_tier, subscription_end_date')
-                .eq('id', firebaseUser.uid)
-                .maybeSingle()
-            )
-          ]);
-
-          if (userInfo.isBanned) {
-            setIsBanned(true);
-            setBanReason(userInfo.banReason || 'You have been banned by an administrator');
-          } else {
-            setIsBanned(false);
-            setBanReason(null);
-          }
-
-          // Check subscription validity
-          let tier: 'free' | 'pro' | 'max' = 'free';
-          if (userRow?.subscription_tier && userRow.subscription_tier !== 'free') {
-            const endDate = userRow.subscription_end_date
-              ? new Date(userRow.subscription_end_date)
-              : null;
-            if (!endDate || endDate > new Date()) {
-              tier = userRow.subscription_tier;
-            }
-          }
-          setSubscriptionTier(tier);
-          setIsPremium(tier !== 'free');
-        } catch (error) {
-          console.error('Error fetching user status:', error);
-          setIsBanned(false);
-          setBanReason(null);
-          setIsPremium(false);
-          setSubscriptionTier('free');
-        }
-      } else {
+      if (!firebaseUser) {
         setIsBanned(false);
         setBanReason(null);
         setIsPremium(false);
         setSubscriptionTier('free');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // Parallel fetch for user info and subscription status
+        const [userInfo, { data: userRow }] = await Promise.all([
+          verifyAndGetUser(),
+          import("../supabase").then(({ supabase }) =>
+            supabase
+              .from('users')
+              .select('subscription_tier, subscription_end_date')
+              .eq('id', firebaseUser.uid)
+              .maybeSingle()
+          )
+        ]);
+
+        if (userInfo.isBanned) {
+          setIsBanned(true);
+          setBanReason(userInfo.banReason || 'You have been banned by an administrator');
+        } else {
+          setIsBanned(false);
+          setBanReason(null);
+        }
+
+        // Check subscription validity
+        let tier: 'free' | 'pro' | 'max' = 'free';
+        if (userRow?.subscription_tier && userRow.subscription_tier !== 'free') {
+          const endDate = userRow.subscription_end_date
+            ? new Date(userRow.subscription_end_date)
+            : null;
+          if (!endDate || endDate > new Date()) {
+            tier = userRow.subscription_tier;
+          }
+        }
+        setSubscriptionTier(tier);
+        setIsPremium(tier !== 'free');
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+
+        if (error instanceof ApiError && error.status === 403) {
+          const reason =
+            (typeof error.payload?.reason === 'string' && error.payload.reason.trim()) ||
+            (typeof error.payload?.message === 'string' && error.payload.message.trim()) ||
+            'You have been banned by an administrator';
+          setIsBanned(true);
+          setBanReason(reason);
+        } else {
+          setIsBanned(false);
+          setBanReason(null);
+        }
+
+        setIsPremium(false);
+        setSubscriptionTier('free');
+      } finally {
+        setLoading(false);
       }
     });
 

@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { MobileBottomNav } from "@/components/mobile";
 import { Analytics } from "@vercel/analytics/react";
 import BrandLoader from "@/components/BrandLoader";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -55,19 +56,19 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/study" element={<Study />} />
-              <Route path="/notices" element={<Notices />} />
-              <Route path="/notices/:accountHandle" element={<Notices />} />
-              <Route path="/department/:deptId" element={<DepartmentProfile />} />
-              <Route path="/chatroom" element={<Chatroom />} />
-              <Route path="/chatroom/:roomId" element={<Chatroom />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/:username" element={<Profile />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/bookmarks" element={<Bookmarks />} />
-              <Route path="/ai-chat" element={<AIChat />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/messages/:username" element={<Messages />} />
+              <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
+              <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+              <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+              <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
+              <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+              <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+              <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
+              <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

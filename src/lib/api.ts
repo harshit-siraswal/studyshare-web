@@ -10,6 +10,43 @@ import { auth } from '../firebase';
 // Backend URL - change for production
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+export class ApiError extends Error {
+    status: number;
+    payload: any;
+
+    constructor(message: string, status: number, payload: any) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.payload = payload;
+    }
+}
+
+function getHeaderString(value: unknown): string {
+    if (typeof value === 'string') return value.trim();
+    if (Array.isArray(value)) {
+        const first = value.find((item) => typeof item === 'string' && item.trim().length > 0);
+        return typeof first === 'string' ? first.trim() : '';
+    }
+    return '';
+}
+
+function getSelectedCollegeHint(): string {
+    try {
+        const raw = localStorage.getItem('selectedCollege');
+        if (!raw) return '';
+        const parsed = JSON.parse(raw);
+        const candidates = [
+            getHeaderString(parsed?.collegeId),
+            getHeaderString(parsed?.college_id),
+            getHeaderString(parsed?.domain),
+        ];
+        return candidates.find((value) => value.length > 0) || '';
+    } catch {
+        return '';
+    }
+}
+
 /**
  * Get current user's Firebase ID token
  */
@@ -43,6 +80,11 @@ async function apiRequest<T>(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const selectedCollegeHint = getSelectedCollegeHint();
+    if (selectedCollegeHint) {
+        headers['X-College-Id'] = selectedCollegeHint;
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
@@ -51,7 +93,7 @@ async function apiRequest<T>(
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
+        throw new ApiError(data.message || 'API request failed', response.status, data);
     }
 
     return data;
