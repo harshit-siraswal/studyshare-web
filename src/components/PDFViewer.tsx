@@ -21,7 +21,7 @@ interface PDFViewerProps {
 const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDFViewerProps) => {
   const [displayUrl, setDisplayUrl] = useState(pdfUrl);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showAiStudio, setShowAiStudio] = useState(true);
+  const [showAiStudio, setShowAiStudio] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const isStacked = useMediaQuery("(max-width: 1024px)");
 
@@ -53,7 +53,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
 
   useEffect(() => {
     if (isOpen) {
-      setShowAiStudio(true);
+      setShowAiStudio(false);
     }
   }, [isOpen, resourceId]);
 

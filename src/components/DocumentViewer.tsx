@@ -20,6 +20,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const WEBODF_SCRIPT_URL = "/vendor/webodf.js";
 let webOdfScriptPromise: Promise<void> | null = null;
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/+$/, "");
 
 const ensureWebOdf = () => {
     if (typeof window === 'undefined') {
@@ -95,6 +96,21 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         }
     }, [normalizedUrl]);
 
+    const proxiedDocumentUrl = useMemo(() => {
+        if (!normalizedUrl) return normalizedUrl;
+        if (normalizedUrl.startsWith('blob:') || normalizedUrl.startsWith('data:')) return normalizedUrl;
+        try {
+            const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+            const parsed = new URL(normalizedUrl, base);
+            const host = parsed.hostname.toLowerCase();
+            const shouldProxy = host === 'file.mystudyspace.me' || host.endsWith('.r2.dev');
+            if (!shouldProxy) return parsed.toString();
+            return `${API_BASE}/api/public/file?url=${encodeURIComponent(parsed.toString())}`;
+        } catch {
+            return normalizedUrl;
+        }
+    }, [normalizedUrl]);
+
     // Determine file type
     const fileType = useMemo(() => {
         if (type) return type;
@@ -149,7 +165,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         setLoadingDocx(true);
         setError(null);
         try {
-            const response = await fetch(normalizedUrl, { signal });
+            const response = await fetch(proxiedDocumentUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch document: ${response.statusText}`);
             const arrayBuffer = await response.arrayBuffer();
 
@@ -176,7 +192,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
                 setLoadingDocx(false);
             }
         }
-    }, [normalizedUrl, fileType]);
+    }, [proxiedDocumentUrl, fileType]);
 
     useEffect(() => {
         if (fileType === 'docx') {
@@ -193,7 +209,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         setLoadingPptx(true);
         setError(null);
         try {
-            const response = await fetch(normalizedUrl, { signal });
+            const response = await fetch(proxiedDocumentUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch presentation: ${response.statusText}`);
             const arrayBuffer = await response.arrayBuffer();
 
@@ -219,7 +235,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
                 setLoadingPptx(false);
             }
         }
-    }, [normalizedUrl, fileType]);
+    }, [proxiedDocumentUrl, fileType]);
 
     useEffect(() => {
         if (fileType === 'pptx') {
@@ -250,7 +266,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
             odfContainerRef.current.innerHTML = '';
             const odfCanvas = new (window as any).odf.OdfCanvas(odfContainerRef.current);
             odfCanvasRef.current = odfCanvas;
-            odfCanvas.load(normalizedUrl);
+            odfCanvas.load(proxiedDocumentUrl);
         } catch (err: unknown) {
             console.error("ODF load error:", err);
             const message = err instanceof Error ? err.message : "Failed to load ODF file";
@@ -262,7 +278,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         } finally {
             setLoadingOdf(false);
         }
-    }, [normalizedUrl, fileType]);
+    }, [proxiedDocumentUrl, fileType]);
 
     useEffect(() => {
         if (fileType === 'odf') {
@@ -290,7 +306,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         setError(null);
         setDocxHtml(null);
         setPptxSlides(null);
-    }, [normalizedUrl, fileType]);
+    }, [normalizedUrl, proxiedDocumentUrl, fileType]);
 
 
     // --- PDF Logic ---
@@ -342,7 +358,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
 
         const loadPdfData = async () => {
             try {
-                const response = await fetch(normalizedUrl, { signal: controller.signal });
+                const response = await fetch(proxiedDocumentUrl, { signal: controller.signal });
                 if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.statusText}`);
                 const buffer = await response.arrayBuffer();
                 if (!controller.signal.aborted) {
@@ -358,7 +374,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         loadPdfData();
 
         return () => controller.abort();
-    }, [fileType, pdfLoadMode, normalizedUrl]);
+    }, [fileType, pdfLoadMode, proxiedDocumentUrl]);
 
     const scrollToPage = useCallback((pageIndex: number) => {
         virtuosoRef.current?.scrollToIndex({
@@ -766,8 +782,8 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
                         </div>
                     ) : (
                         <Document
-                            key={`${normalizedUrl}-${pdfRetryKey}-${pdfLoadMode}`}
-                            file={pdfLoadMode === 'data' ? { data: pdfData as ArrayBuffer } : normalizedUrl}
+                            key={`${proxiedDocumentUrl}-${pdfRetryKey}-${pdfLoadMode}`}
+                            file={pdfLoadMode === 'data' ? { data: pdfData as ArrayBuffer } : proxiedDocumentUrl}
                             onLoadSuccess={onDocumentLoadSuccess}
                             onLoadError={handlePdfLoadError}
                             onSourceError={handlePdfLoadError}
