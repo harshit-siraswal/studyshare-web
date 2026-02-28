@@ -144,7 +144,14 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         ref={dialogRef}
-        className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-7xl h-[90vh] w-[94vw] sm:rounded-2xl'} p-0 flex flex-col [&>button]:hidden transition-all`}
+        className={cn(
+          isFullscreen
+            ? 'max-w-full h-screen w-screen rounded-none'
+            : showAiStudio
+              ? 'max-w-[98vw] h-[92vh] w-[98vw] sm:rounded-2xl'
+              : 'max-w-5xl h-[80vh] w-[88vw] lg:w-[84vw] sm:rounded-2xl',
+          'p-0 flex flex-col [&>button]:hidden transition-all'
+        )}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">
           <div className="flex items-center justify-between gap-3">

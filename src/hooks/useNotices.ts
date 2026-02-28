@@ -21,25 +21,32 @@ export interface Notice {
 }
 
 async function fetchNotices(collegeId: string): Promise<Notice[]> {
-    const { data, error } = await supabase
-        .from('notices')
-        .select('*')
-        .eq('is_active', true)
-        .eq('college_id', collegeId)
-        .order('created_at', { ascending: false });
+    const normalize = (rows: any[]): Notice[] => {
+        return (rows || []).map((n) => {
+            const commentCount = n.comments ?? n.comments_count ?? 0;
+            return {
+                ...n,
+                likes: n.likes || 0,
+                comments: commentCount,
+                comments_count: commentCount,
+            };
+        });
+    };
 
-    if (error) throw error;
+    const queryByScope = async (scope: string) => {
+        return supabase
+            .from('notices')
+            .select('*')
+            .eq('is_active', true)
+            .eq('college_id', scope)
+            .order('created_at', { ascending: false });
+    };
 
-    // Ensure likes and comments have fallback values
-    return (data || []).map(n => {
-        const commentCount = n.comments ?? n.comments_count ?? 0;
-        return {
-            ...n,
-            likes: n.likes || 0,
-            comments: commentCount,
-            comments_count: commentCount,
-        };
-    });
+    // Primary scope: selected college ID
+    const primaryResult = await queryByScope(collegeId);
+    if (primaryResult.error) throw primaryResult.error;
+
+    return normalize(primaryResult.data || []);
 }
 
 /**
@@ -47,15 +54,65 @@ async function fetchNotices(collegeId: string): Promise<Notice[]> {
  * Filters notices by selected college for data isolation.
  */
 export function useNotices() {
-    const { selectedCollegeId } = useCollege();
+    const { selectedCollegeId, selectedCollege } = useCollege();
     const queryClient = useQueryClient();
     const collegeId = selectedCollegeId;
-    const collegeScope = collegeId || 'none';
+    const collegeDomain = selectedCollege?.domain || null;
+    const collegeScope = collegeId || collegeDomain || 'none';
 
     const query = useQuery({
         queryKey: ['notices', collegeScope],
-        queryFn: () => fetchNotices(collegeId as string),
-        enabled: !!collegeId,
+        queryFn: async () => {
+            if (collegeId) {
+                const scoped = await fetchNotices(collegeId);
+                if (scoped.length > 0 || !collegeDomain || collegeDomain === collegeId) {
+                    return scoped;
+                }
+
+                // Backward compatibility: some notice rows may still store college domain.
+                const legacyScoped = await supabase
+                    .from('notices')
+                    .select('*')
+                    .eq('is_active', true)
+                    .eq('college_id', collegeDomain)
+                    .order('created_at', { ascending: false });
+
+                if (legacyScoped.error) {
+                    return scoped;
+                }
+
+                return (legacyScoped.data || []).map((n) => {
+                    const commentCount = n.comments ?? n.comments_count ?? 0;
+                    return {
+                        ...n,
+                        likes: n.likes || 0,
+                        comments: commentCount,
+                        comments_count: commentCount,
+                    };
+                });
+            }
+
+            if (!collegeDomain) return [];
+            const legacyScoped = await supabase
+                .from('notices')
+                .select('*')
+                .eq('is_active', true)
+                .eq('college_id', collegeDomain)
+                .order('created_at', { ascending: false });
+
+            if (legacyScoped.error) throw legacyScoped.error;
+
+            return (legacyScoped.data || []).map((n) => {
+                const commentCount = n.comments ?? n.comments_count ?? 0;
+                return {
+                    ...n,
+                    likes: n.likes || 0,
+                    comments: commentCount,
+                    comments_count: commentCount,
+                };
+            });
+        },
+        enabled: !!collegeId || !!collegeDomain,
     });
 
     // Manual refresh function

@@ -213,7 +213,7 @@ const Study = () => {
 
               {/* Search Bar - show for resources and following */}
               {(searchMode === "resources" || searchMode === "following") && (
-                <div className="relative flex-1 max-w-2xl">
+                <div className="relative flex-1 min-w-[220px] md:min-w-[320px] lg:min-w-[420px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     type="search"
@@ -227,11 +227,6 @@ const Study = () => {
 
               {/* Notification Button */}
               <NotificationButton />
-
-              {/* Premium Button */}
-              <div className="hidden md:block">
-                <PremiumButton />
-              </div>
 
               {/* Policy: Hide Upload buttons for readonly users */}
               {isFullAccess && (
@@ -250,8 +245,9 @@ const Study = () => {
             </div>
 
             {/* Filters - Show for both Resources and Syllabus */}
-            <div className="flex gap-2 pb-4 overflow-x-auto no-scrollbar">
-              <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+            <div className="flex items-center gap-2 pb-4">
+              <div className="flex flex-1 min-w-0 gap-2 overflow-x-auto no-scrollbar">
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
                 <SelectTrigger className="w-32 h-9">
                   <SelectValue placeholder="Semester" />
                 </SelectTrigger>
@@ -353,6 +349,12 @@ const Study = () => {
                   Clear Filters
                 </Button>
               )}
+              </div>
+
+              {/* Premium CTA moved out of top bar so search remains practical */}
+              <div className="hidden md:flex shrink-0">
+                <PremiumButton />
+              </div>
             </div>
           </div>
         </div>

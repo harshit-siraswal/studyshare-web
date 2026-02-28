@@ -615,9 +615,9 @@ const Chatroom = () => {
       <div className="min-h-screen-safe bg-background flex items-center justify-center">
         <div className="text-center p-8">
           <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h2 className="text-xl font-semibold mb-2">Chat Rooms</h2>
+          <h2 className="text-xl font-semibold mb-2">Rooms</h2>
           <p className="text-muted-foreground mb-4">
-            Sign in with your college email to access chat rooms
+            Sign in with your college email to access rooms
           </p>
           <Button onClick={() => navigate('/study')}>
             Back to Study
@@ -631,8 +631,8 @@ const Chatroom = () => {
     return (
       <div className="min-h-screen-safe bg-background">
         <SEO
-          title="Chat Rooms"
-          description="Join chat rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
+          title="Rooms"
+          description="Join rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
         />
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3">
@@ -641,18 +641,7 @@ const Chatroom = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-foreground">{currentRoom?.name || "Chat Room"}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{currentRoom?.member_count || 0} members</span>
-                  {currentRoom?.expires_at && (
-                    <>
-                      <span>•</span>
-                      <span className="text-amber-500 flex items-center gap-1">
-                        Expires {new Date(currentRoom.expires_at).toLocaleDateString()}
-                      </span>
-                    </>
-                  )}
-                </div>
+                <h1 className="text-xl font-bold text-foreground">Rooms</h1>
               </div>
               <div className="flex gap-2">
                 <CreateChatRoomDialog trigger={
@@ -884,7 +873,7 @@ const Chatroom = () => {
   return (
     <div className="min-h-screen-safe bg-background flex">
       <SEO
-        title={currentRoom?.name || "Chat Room"}
+        title={currentRoom?.name || "Room"}
         description={currentRoom?.description || "Join the conversation in this chat room."}
       />
       {/* Sidebar - Room list */}
