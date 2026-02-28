@@ -148,8 +148,8 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
           isFullscreen
             ? 'max-w-full h-screen w-screen rounded-none'
             : showAiStudio
-              ? 'max-w-[98vw] h-[92vh] w-[98vw] sm:rounded-2xl'
-              : 'max-w-5xl h-[80vh] w-[88vw] lg:w-[84vw] sm:rounded-2xl',
+              ? 'max-w-[95vw] h-[88vh] w-[95vw] sm:rounded-2xl'
+              : 'max-w-4xl h-[72vh] w-[80vw] lg:w-[72vw] xl:w-[68vw] sm:rounded-2xl',
           'p-0 flex flex-col [&>button]:hidden transition-all'
         )}
       >

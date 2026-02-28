@@ -167,7 +167,7 @@ const Study = () => {
         {/* Top Bar */}
         <div className="sticky top-0 z-40 bg-card/90 backdrop-blur-lg border-b border-border">
           <div className="px-4 md:px-6 lg:px-8">
-            <div className="flex items-center gap-4 h-16 md:h-20">
+            <div className="flex items-center gap-2 md:gap-3 h-16 md:h-20 min-w-0">
               {/* Mobile menu button */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -213,7 +213,7 @@ const Study = () => {
 
               {/* Search Bar - show for resources and following */}
               {(searchMode === "resources" || searchMode === "following") && (
-                <div className="relative flex-1 min-w-[220px] md:min-w-[320px] lg:min-w-[420px]">
+                <div className="relative flex-1 min-w-0 md:min-w-[180px] lg:min-w-[240px] xl:min-w-[300px] max-w-[640px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     type="search"
@@ -235,8 +235,9 @@ const Study = () => {
                   <UploadResourceDialog
                     trigger={
                       <Button className="hidden md:flex shrink-0">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Share Resource
+                        <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                        <span className="hidden xl:inline">Share Resource</span>
+                        <span className="sr-only xl:hidden">Share Resource</span>
                       </Button>
                     }
                   />

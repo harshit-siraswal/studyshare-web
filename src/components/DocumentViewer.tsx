@@ -20,7 +20,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const WEBODF_SCRIPT_URL = "/vendor/webodf.js";
 let webOdfScriptPromise: Promise<void> | null = null;
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/+$/, "");
+const API_BASE = (
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? "http://localhost:3001" : "https://api.studyshare.in")
+).replace(/\/+$/, "");
 
 const ensureWebOdf = () => {
     if (typeof window === 'undefined') {
@@ -69,6 +72,57 @@ interface SearchMatch {
     matchIndex: number;
 }
 
+type DetectedFileType = 'pdf' | 'docx' | 'pptx' | 'odf' | 'unsupported-ppt' | 'unsupported-doc';
+type ViewerFileType = DetectedFileType | 'unknown';
+
+const EXTENSION_TO_FILE_TYPE: Record<string, DetectedFileType> = {
+    pdf: 'pdf',
+    docx: 'docx',
+    pptx: 'pptx',
+    odt: 'odf',
+    odp: 'odf',
+    ods: 'odf',
+    odf: 'odf',
+    ppt: 'unsupported-ppt',
+    doc: 'unsupported-doc',
+};
+
+const FILE_EXTENSION_PATTERN = /\.(pdf|docx|pptx|odt|odp|ods|odf|ppt|doc)(?=$|[?#&"'])/i;
+
+function inferFileTypeFromValue(value?: string | null): DetectedFileType | null {
+    if (!value) return null;
+
+    const candidates = [value];
+    try {
+        candidates.push(decodeURIComponent(value));
+    } catch {
+        // Ignore malformed encoded values.
+    }
+
+    for (const candidate of candidates) {
+        const match = candidate.match(FILE_EXTENSION_PATTERN);
+        if (!match) continue;
+        const extension = match[1].toLowerCase();
+        return EXTENSION_TO_FILE_TYPE[extension] ?? null;
+    }
+
+    return null;
+}
+
+function inferFileTypeFromMime(contentType?: string | null): DetectedFileType | null {
+    if (!contentType) return null;
+    const mime = contentType.toLowerCase();
+
+    if (mime.includes('application/pdf')) return 'pdf';
+    if (mime.includes('wordprocessingml.document')) return 'docx';
+    if (mime.includes('application/msword')) return 'unsupported-doc';
+    if (mime.includes('presentationml.presentation')) return 'pptx';
+    if (mime.includes('application/vnd.ms-powerpoint')) return 'unsupported-ppt';
+    if (mime.includes('oasis.opendocument')) return 'odf';
+
+    return null;
+}
+
 const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewerProps) => {
     const normalizedUrl = useMemo(() => {
         if (!url) return url;
@@ -111,23 +165,72 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
         }
     }, [normalizedUrl]);
 
-    // Determine file type
-    const fileType = useMemo(() => {
+    // Determine file type from explicit prop / URL hint / response headers fallback.
+    const hintedFileType = useMemo<DetectedFileType | null>(() => {
         if (type) return type;
-        const lowerPath = urlPathForType;
-        if (lowerPath.endsWith('.pdf')) return 'pdf';
-        if (lowerPath.endsWith('.docx')) return 'docx';
-        if (lowerPath.endsWith('.pptx')) return 'pptx';
-        if (lowerPath.endsWith('.odt') || lowerPath.endsWith('.odp') || lowerPath.endsWith('.ods') || lowerPath.endsWith('.odf')) return 'odf';
-        if (lowerPath.endsWith('.ppt')) return 'unsupported-ppt';
-        if (lowerPath.endsWith('.doc')) return 'unsupported-doc';
-        return 'pdf'; // Default to PDF
-    }, [urlPathForType, type]);
+        return (
+            inferFileTypeFromValue(urlPathForType) ||
+            inferFileTypeFromValue(normalizedUrl) ||
+            inferFileTypeFromValue(title)
+        );
+    }, [type, urlPathForType, normalizedUrl, title]);
 
     // Common State
+    const [fileType, setFileType] = useState<ViewerFileType>(hintedFileType ?? 'unknown');
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setFileType(hintedFileType ?? 'unknown');
+    }, [hintedFileType, normalizedUrl]);
+
+    useEffect(() => {
+        if (type || hintedFileType) return;
+        if (!proxiedDocumentUrl || proxiedDocumentUrl.startsWith('blob:') || proxiedDocumentUrl.startsWith('data:')) {
+            setFileType('pdf');
+            return;
+        }
+
+        const controller = new AbortController();
+        let cancelled = false;
+
+        const detectFileType = async () => {
+            try {
+                let response = await fetch(proxiedDocumentUrl, {
+                    method: 'HEAD',
+                    signal: controller.signal,
+                });
+
+                if (!response.ok || !response.headers.get('content-type')) {
+                    response = await fetch(proxiedDocumentUrl, {
+                        method: 'GET',
+                        headers: { Range: 'bytes=0-0' },
+                        signal: controller.signal,
+                    });
+                }
+
+                if (cancelled) return;
+
+                const detectedType =
+                    inferFileTypeFromMime(response.headers.get('content-type')) ||
+                    inferFileTypeFromValue(response.headers.get('content-disposition'));
+
+                setFileType(detectedType ?? 'pdf');
+            } catch (err: unknown) {
+                if (cancelled || (err as Error).name === 'AbortError') return;
+                console.warn("Document type sniff failed; defaulting to PDF", err);
+                setFileType('pdf');
+            }
+        };
+
+        detectFileType();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+    }, [type, hintedFileType, proxiedDocumentUrl]);
 
     // --- PDF State ---
     const [numPages, setNumPages] = useState<number>(0);
@@ -603,6 +706,17 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
             return next;
         });
     }, []);
+
+    if (fileType === 'unknown') {
+        return (
+            <div className="flex items-center justify-center h-full bg-background">
+                <div className="text-center p-6">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">Detecting document format...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (error) {
         return (
