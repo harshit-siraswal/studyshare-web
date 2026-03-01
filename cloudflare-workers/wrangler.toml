@@ -13,9 +13,12 @@ id = "22baa8a1f66b4d1e86f64926a65fed51"
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
+# Upstream backend origin (must not be the same as the Worker public URL)
+# Example: "https://api-origin.studyshare.in"
+ORIGIN_API_BASE_URL = ""
 
 # Routes - Update with your actual domain
 # Uncomment after setting up your domain in Cloudflare
 # [[routes]]
-# pattern = "api.mystudyspace.me/"
-# zone_name = "mystudyspace.me"
+# pattern = "api.studyshare.in/*"
+# zone_name = "studyshare.in"

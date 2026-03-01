@@ -5,6 +5,9 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const configuredOrigin = String(
+            env.ORIGIN_API_BASE_URL || env.BACKEND_API_BASE_URL || ''
+        ).trim().replace(/\/+$/, '');
 
         // ===== 1. RATE LIMITING =====
         const rateLimitKey = `rate:${clientIP}`;
@@ -33,8 +36,28 @@ export default {
         }
 
         // ===== 3. FORWARD REQUEST TO ORIGIN =====
-        // Replace with your actual backend URL
-        const originUrl = 'https://new-jncb.onrender.com' + url.pathname + url.search;
+        if (!configuredOrigin) {
+            return new Response(JSON.stringify({
+                error: 'Origin is not configured',
+                hint: 'Set ORIGIN_API_BASE_URL (or BACKEND_API_BASE_URL) in Worker environment variables.'
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const requestOrigin = `${url.protocol}//${url.host}`.replace(/\/+$/, '');
+        if (configuredOrigin.toLowerCase() === requestOrigin.toLowerCase()) {
+            return new Response(JSON.stringify({
+                error: 'Invalid Worker origin configuration',
+                hint: 'ORIGIN_API_BASE_URL must point to upstream origin, not the Worker public URL.'
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const originUrl = configuredOrigin + url.pathname + url.search;
 
         const originRequest = new Request(originUrl, {
             method: request.method,
@@ -51,11 +74,6 @@ export default {
         newResponse.headers.set('X-XSS-Protection', '1; mode=block');
         newResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
         newResponse.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-
-        // CORS headers (adjust origin as needed)
-        newResponse.headers.set('Access-Control-Allow-Origin', '*');
-        newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
         return newResponse;
     },

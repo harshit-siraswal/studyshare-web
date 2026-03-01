@@ -24,9 +24,9 @@ If you have a domain (e.g., `api.studyspace.com`):
 ### Step 2: Update DNS
 1. Cloudflare will scan your DNS
 2. Change your domain's nameservers to Cloudflare's (instructions provided)
-3. Add a CNAME record:
+3. Add an API DNS record:
    - **Name:** `api` (or your subdomain)
-   - **Target:** `new-jncb.onrender.com`
+   - **Target:** your backend origin (EC2 public IP / load balancer hostname)
    - **Proxy status:** Proxied (orange cloud ON)
 
 ### Step 3: Enable Security Features
@@ -64,8 +64,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     
-    // Forward to Render backend
-    const targetUrl = 'https://new-jncb.onrender.com' + url.pathname + url.search;
+    // Forward to backend origin (set in Worker env var)
+    const targetBase = (env.ORIGIN_API_BASE_URL || '').replace(/\/+$/, '');
+    const targetUrl = targetBase + url.pathname + url.search;
     
     // Clone request with new URL
     const modifiedRequest = new Request(targetUrl, {

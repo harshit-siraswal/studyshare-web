@@ -72,7 +72,7 @@ In Cloudflare Dashboard → **DNS** → **Records** → **Add Record**:
 |------|------|--------|--------------|
 | CNAME | `@` | `new-exex.vercel.app` | ✅ Proxied (Orange) |
 | CNAME | `www` | `new-exex.vercel.app` | ✅ Proxied (Orange) |
-| CNAME | `api` | `new-jncb.onrender.com` | ✅ Proxied (Orange) |
+| A/CNAME | `api` | EC2 public IP or load balancer hostname | ✅ Proxied (Orange) |
 
 ### Step 3.2: Enable SSL/TLS
 1. Go to **SSL/TLS** in sidebar

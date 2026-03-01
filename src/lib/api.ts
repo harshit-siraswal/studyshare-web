@@ -7,8 +7,12 @@
 
 import { auth } from '../firebase';
 
-// Backend URL - change for production
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Backend URL
+// Production defaults to api.studyshare.in when VITE_API_URL is not set.
+const API_BASE = (
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.studyshare.in')
+);
 
 export class ApiError extends Error {
     status: number;
