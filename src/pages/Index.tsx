@@ -1,0 +1,237 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
+import RequestCollegeDialog from "@/components/RequestCollegeDialog";
+import { SEO } from "@/components/SEO";
+import { supabase } from "../supabase";
+import BrandMark from "@/components/BrandMark";
+import { HeroScrollDemo } from "@/components/ui/hero-scroll-demo";
+
+// Active colleges with verified email domains
+const activeColleges = [
+  { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
+  { id: 13, name: "IIIT Bhagalpur", location: "Bhagalpur, Bihar", students: 0, domain: "iiitbh.ac.in" },
+  { id: 14, name: "IIIT Sonepat", location: "Sonepat, Haryana", students: 0, domain: "iiitsonepat.ac.in" },
+  { id: 15, name: "ABES Engineering College", location: "Ghaziabad", students: 0, domain: "abes.ac.in" },
+  { id: 16, name: "Delhi University", location: "New Delhi", students: 0, domain: "du.ac.in" },
+];
+
+// Coming soon colleges (no domain yet - will show WIP)
+const comingSoonColleges = [
+  { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 12500, domain: null },
+  { id: 2, name: "Indian Institute of Technology Bombay", location: "Mumbai", students: 11000, domain: null },
+  { id: 3, name: "Indian Institute of Technology Madras", location: "Chennai", students: 10500, domain: null },
+  { id: 5, name: "Birla Institute of Technology", location: "Pilani", students: 15000, domain: null },
+  { id: 6, name: "Vellore Institute of Technology", location: "Vellore", students: 25000, domain: null },
+  { id: 7, name: "National Institute of Technology", location: "Trichy", students: 8000, domain: null },
+  { id: 8, name: "Anna University", location: "Chennai", students: 85000, domain: null },
+  { id: 10, name: "Amity University", location: "Noida", students: 45000, domain: null },
+  { id: 11, name: "SRM Institute of Technology", location: "Chennai", students: 38000, domain: null },
+  { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 20000, domain: null },
+];
+
+// Combine for display - active colleges first
+const initialColleges = [...activeColleges, ...comingSoonColleges];
+
+const Index = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [colleges, setColleges] = useState(initialColleges);
+  const navigate = useNavigate();
+
+  // Fetch actual user counts for all active colleges
+  useEffect(() => {
+    const fetchUserCounts = async () => {
+      try {
+        // Fetch counts for each active college domain
+        for (const college of activeColleges) {
+          if (!college.domain) continue;
+
+          const { count, error } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .ilike('email', `%@${college.domain}`);
+
+          if (!error && count !== null) {
+            setColleges(prev => prev.map(c =>
+              c.id === college.id ? { ...c, students: count } : c
+            ));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch user counts:', err);
+      }
+    };
+
+    fetchUserCounts();
+  }, []);
+
+  const filteredColleges = colleges.filter((college) =>
+    college.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    college.location.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleCollegeSelect = (collegeId: number) => {
+    const college = colleges.find(c => c.id === collegeId);
+
+    // Allow all colleges with a domain (active colleges)
+    if (college?.domain) {
+      localStorage.setItem("selectedCollege", JSON.stringify(college));
+      navigate("/auth");
+    } else {
+      // Show work in progress for colleges without domain
+      alert(`🚧 Work in Progress\n\n${college?.name} will be available soon!\n\nCheck out our active colleges with verified domains.`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen-safe bg-gradient-hero animate-hero-gradient">
+      <SEO
+        title="Select Your College"
+        description="Join your college community on MyStudySpace. Access curated study materials, notes, videos, and connect with peers."
+      />
+
+      <div className="relative z-10">
+        <HeroScrollDemo />
+
+        <div className="container mx-auto px-4 pb-16 md:pb-20 -mt-40 md:-mt-60">
+          {/* Supporting header */}
+          <header className="text-center mb-10 md:mb-14 animate-fade-in">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <div className="p-3 md:p-4 rounded-2xl bg-gradient-primary/10 border border-primary/20">
+                <BrandMark
+                  size={56}
+                  className="drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)]"
+                  alt="Studyshare"
+                />
+              </div>
+              <h2 className="text-2xl md:text-4xl font-bold">
+                My<span className="text-gradient">StudySpace</span>
+              </h2>
+            </div>
+            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
+              Choose your campus to enter a shared StudySpace with resources, chatrooms,
+              notices, and AI tools tailored to your college.
+            </p>
+          </header>
+
+          {/* Features preview */}
+          <div
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto mb-10 md:mb-14 animate-slide-up"
+            style={{ animationDelay: "0.2s" }}
+          >
+            {[
+              { icon: BookOpen, label: "Curated Resources", desc: "Notes, videos & PYQs from your campus." },
+              { icon: Users, label: "Community Driven", desc: "Chatrooms, notices & following graph." },
+              { icon: Sparkles, label: "AI Study Studio", desc: "Summaries, quizzes & flashcards from your PDFs." },
+            ].map((feature, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-glow"
+              >
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <feature.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{feature.label}</p>
+                  <p className="text-sm text-muted-foreground">{feature.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search Section */}
+          <div
+            className="max-w-2xl mx-auto mb-8 md:mb-12 animate-slide-up px-4"
+            style={{ animationDelay: "0.3s" }}
+          >
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search for your college or university..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-12 md:h-14 text-base md:text-lg bg-card border-border"
+              />
+            </div>
+          </div>
+
+          {/* College Grid */}
+          <div className="max-w-5xl mx-auto px-4">
+            <h2
+              className="text-lg font-medium text-muted-foreground mb-6 animate-slide-up"
+              style={{ animationDelay: "0.4s" }}
+            >
+              Select your institution
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {filteredColleges.map((college, index) => (
+                <Card
+                  key={college.id}
+                  variant="interactive"
+                  className="p-4 md:p-5 animate-slide-up"
+                  style={{ animationDelay: `${0.1 * index}s` }}
+                  onClick={() => handleCollegeSelect(college.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors text-sm md:text-base">
+                        {college.name}
+                      </h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">
+                        {college.location}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full shrink-0">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>
+                        {college.domain
+                          ? college.students > 0
+                            ? college.students
+                            : "..."
+                          : `${(college.students / 1000).toFixed(0)}k+`}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {filteredColleges.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-muted-foreground">
+                  No colleges found matching your search.
+                </p>
+                <Button
+                  variant="link"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2"
+                >
+                  Clear search
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <footer className="text-center mt-16 md:mt-20 text-sm text-muted-foreground">
+            <p>Can't find your college?</p>
+            <RequestCollegeDialog
+              trigger={
+                <Button variant="link" className="mt-1">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Request to add it
+                </Button>
+              }
+            />
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Index;

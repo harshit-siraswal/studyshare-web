@@ -1,6 +1,6 @@
 // src/components/mobile/MobileBottomNav.tsx
 // Fixed bottom navigation bar for mobile with 5 tabs
-// Hidden on auth pages
+// Hidden on auth and college selection pages
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Bookmark, Plus, Bell, MessageCircle } from 'lucide-react';
@@ -25,14 +25,14 @@ const navItems: NavItem[] = [
 ];
 
 // Routes where bottom nav should be hidden
-const hiddenRoutes = ['/auth'];
+const hiddenRoutes = ['/', '/auth'];
 
 export function MobileBottomNav() {
     const location = useLocation();
     const navigate = useNavigate();
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
-    // Hide nav on auth pages
+    // Hide nav on auth and college selection pages
     if (hiddenRoutes.includes(location.pathname)) {
         return null;
     }
