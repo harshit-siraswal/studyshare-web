@@ -16,7 +16,6 @@ import {
   Mail,
   Lock,
   User,
-  ArrowLeft,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -336,16 +335,6 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          className="mb-6 text-muted-foreground"
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to college selection
-        </Button>
-
         <Card>
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">

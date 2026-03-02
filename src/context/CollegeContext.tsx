@@ -44,13 +44,13 @@ function normalizeDomain(value?: string | null): string {
     return (value || '').trim().toLowerCase();
 }
 
-// Helper to get college from localStorage (stored by Index.tsx as full object)
+// Helper to get college from localStorage (stored by the college selection flow)
 const getCollegeFromLocalStorage = (): College | null => {
     try {
         const stored = localStorage.getItem('selectedCollege');
         if (stored) {
             const parsed = JSON.parse(stored);
-            // The Index.tsx stores the full college object with domain
+            // The selection flow stores the full college object with domain
             if (parsed && parsed.domain) {
                 // Find matching college from our list or create one
                 const matched = COLLEGES.find(c => c.domain === parsed.domain);
@@ -116,7 +116,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     // Email domain is ONLY used for ACCESS LEVEL (full vs readonly)
     // User can view any college, but only has full access to their own college
     useEffect(() => {
-        // First priority: Always try to load from localStorage (user's selection on landing page)
+        // First priority: Always try to load from localStorage (user's selection)
         const savedCollege = getCollegeFromLocalStorage();
 
         if (savedCollege) {
@@ -168,7 +168,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
                 collegeId: collegeIdMap[normalizeDomain(college.domain)] || null,
             };
             setSelectedCollege(hydratedCollege);
-            // Save full college object to match Index.tsx format
+            // Save full college object to match selection format
             localStorage.setItem('selectedCollege', JSON.stringify(hydratedCollege));
         }
     };
