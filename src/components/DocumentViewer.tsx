@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { ReactNode } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search, Moon, Sun, X, ChevronDown, ChevronUp, FileText, AlertTriangle } from "lucide-react";
@@ -64,6 +65,7 @@ interface DocumentViewerProps {
     title?: string;
     type?: 'pdf' | 'docx' | 'pptx' | 'odf'; // Explicit type or auto-detect
     fullscreenTargetRef?: React.RefObject<HTMLElement>;
+    toolbarActions?: ReactNode;
 }
 
 interface SearchMatch {
@@ -123,7 +125,7 @@ function inferFileTypeFromMime(contentType?: string | null): DetectedFileType | 
     return null;
 }
 
-const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewerProps) => {
+const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions }: DocumentViewerProps) => {
     const normalizedUrl = useMemo(() => {
         if (!url) return url;
         const trimmed = url.trim();
@@ -845,6 +847,8 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef }: DocumentViewe
                 </div>
 
                 <div className="flex items-center gap-1 md:gap-2">
+                    {toolbarActions}
+
                     {/* Dark Mode Toggle */}
                     <Button
                         variant="ghost"

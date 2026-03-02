@@ -1,9 +1,10 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Loader2,
   Sparkles,
   HelpCircle,
   Layers,
+  MessageSquare,
   Wand2,
   RefreshCcw,
   Eye,
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -30,8 +32,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getAiFlashcards, getAiQuiz, getAiSummary } from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
+import AIRagChat from "@/components/ai/AIRagChat";
 
-type OutputType = "summary" | "quiz" | "flashcards";
+type OutputType = "summary" | "quiz" | "flashcards" | "chat";
 
 type OcrProvider = "google" | "sarvam";
 type AiOptions = {
@@ -74,9 +77,14 @@ const OUTPUT_META: Record<OutputType, { label: string; helper: string; icon: typ
     icon: HelpCircle,
   },
   flashcards: {
-    label: "Cards",
+    label: "Flashcards",
     helper: "Flip-style flashcards for rapid recall.",
     icon: Layers,
+  },
+  chat: {
+    label: "Chat",
+    helper: "Ask context-grounded questions from this resource.",
+    icon: MessageSquare,
   },
 };
 
@@ -146,6 +154,7 @@ const AIStudyTools = ({
   const [freshRun, setFreshRun] = useState(true);
   const [showAnswers, setShowAnswers] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [activeQuizIndex, setActiveQuizIndex] = useState(0);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [cardDirection, setCardDirection] = useState<"next" | "prev" | null>(null);
@@ -163,6 +172,10 @@ const AIStudyTools = ({
   const handleGenerate = async (type: OutputType, override?: AiOptions) => {
     if (!user) {
       toast.error("Please login to use AI tools");
+      return;
+    }
+    if (type === "chat") {
+      setActive("chat");
       return;
     }
 
@@ -210,6 +223,7 @@ const AIStudyTools = ({
           setShowSource(true);
         }
         setSelectedAnswers({});
+        setActiveQuizIndex(0);
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
         setRunMeta((prev) => ({ ...prev, quiz: { usedOcr, provider: usedProvider } }));
       } else {
@@ -246,6 +260,28 @@ const AIStudyTools = ({
     }
   };
 
+  const handleExportSummary = () => {
+    if (!summary) return;
+
+    try {
+      const fileSafeTitle = (resourceTitle || "ai-summary")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `${fileSafeTitle || "ai-summary"}-summary.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error("Failed to export summary");
+    }
+  };
+
   const toggleFlip = () => {
     setIsCardFlipped((prev) => !prev);
   };
@@ -276,7 +312,7 @@ const AIStudyTools = ({
     setForceOcr(true);
     setOcrProvider("sarvam");
     setFreshRun(true);
-    handleGenerate(active, overrides);
+    handleGenerate(active === "chat" ? "summary" : active, overrides);
   };
 
   const meta = OUTPUT_META[active];
@@ -290,21 +326,17 @@ const AIStudyTools = ({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-emerald-900/10",
-        "bg-[radial-gradient(120%_120%_at_0%_0%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(90%_90%_at_100%_0%,rgba(251,191,36,0.14),transparent_60%),linear-gradient(140deg,rgba(255,255,255,0.96),rgba(248,250,252,0.98))]",
-        "dark:border-white/10 dark:bg-[radial-gradient(120%_120%_at_0%_0%,rgba(45,212,191,0.18),transparent_55%),radial-gradient(90%_90%_at_100%_0%,rgba(251,191,36,0.12),transparent_60%),linear-gradient(140deg,rgba(8,16,28,0.96),rgba(6,12,22,0.98))]",
-        "p-4 shadow-[0_18px_45px_rgba(15,23,42,0.12)] dark:shadow-[0_28px_60px_rgba(3,7,18,0.55)]",
-        "before:absolute before:inset-0 before:bg-[linear-gradient(115deg,rgba(15,23,42,0.08)_0.5px,transparent_0.5px),linear-gradient(0deg,rgba(15,23,42,0.05)_1px,transparent_1px)]",
-        "before:bg-[size:32px_32px,32px_32px] before:opacity-20 dark:before:bg-[linear-gradient(115deg,rgba(255,255,255,0.06)_0.5px,transparent_0.5px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] dark:before:opacity-30",
+        "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
+        "p-4",
         className
       )}
     >
-      <div className="relative z-10 flex flex-col gap-4 font-ai">
+      <div className="flex flex-col gap-4 font-ai">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/15 dark:text-emerald-100">
-                AI Lab
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                AI Studio
               </span>
               {resourceType === "video" ? (
                 <Badge variant="secondary" className="text-[11px]">
@@ -316,39 +348,48 @@ const AIStudyTools = ({
                 </Badge>
               )}
             </div>
-            <div className="font-editorial text-lg text-gradient">Study Studio</div>
+            <div className="text-lg font-semibold text-foreground">Powered by AI</div>
             <p className="text-xs text-muted-foreground">
               {resourceTitle ? `Working on "${resourceTitle}"` : "Structured outputs grounded in your document."}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/80">
-              <span>{cachedMap[active] ? "Cached" : "Fresh"}</span>
+            <div className={cn(
+              "hidden sm:flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] text-muted-foreground",
+              active === "chat" && "opacity-70"
+            )}>
+              <span>{active === "chat" ? "Live" : cachedMap[active] ? "Cached" : "Fresh"}</span>
               <span className="text-muted-foreground/50">•</span>
               <span>{meta.label}</span>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => handleGenerate(active)}
-              disabled={loading}
-              className="relative overflow-hidden rounded-full border border-emerald-500/40 bg-emerald-500/15 px-4 text-xs font-semibold text-emerald-800 shadow-[0_0_16px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 dark:border-emerald-400/30 dark:bg-emerald-400/15 dark:text-emerald-50 dark:shadow-[0_0_18px_rgba(16,185,129,0.25)] dark:hover:bg-emerald-400/20"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
-            </Button>
+            {active === "chat" ? (
+              <Badge variant="secondary" className="text-[11px]">
+                Live chat
+              </Badge>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleGenerate(active)}
+                disabled={loading}
+                className="rounded-md border border-border bg-muted/40 px-4 text-xs font-semibold text-foreground hover:bg-muted"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+              </Button>
+            )}
           </div>
         </div>
 
         <Tabs value={active} onValueChange={(v) => setActive(v as OutputType)}>
-          <div className="rounded-2xl border border-emerald-900/10 bg-white/60 p-3 dark:border-white/10 dark:bg-black/30">
-            <TabsList className="grid w-full grid-cols-3 rounded-full bg-emerald-500/10 p-1 dark:bg-black/50">
-              {(["summary", "quiz", "flashcards"] as OutputType[]).map((type) => {
+          <div className="rounded-2xl border border-border bg-background/60 p-3">
+            <TabsList className="grid w-full grid-cols-4 rounded-lg bg-muted/40 p-1">
+              {(["summary", "quiz", "flashcards", "chat"] as OutputType[]).map((type) => {
                 const Icon = OUTPUT_META[type].icon;
                 return (
                   <TabsTrigger
                     key={type}
                     value={type}
-                    className="gap-2 rounded-full text-xs font-semibold data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-emerald-400/20 dark:data-[state=active]:text-emerald-50"
+                    className="gap-2 rounded-md text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground"
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {OUTPUT_META[type].label}
@@ -358,8 +399,8 @@ const AIStudyTools = ({
             </TabsList>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/80">
-                <ActiveIcon className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-300" />
+              <div className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+                <ActiveIcon className="h-3.5 w-3.5 text-primary" />
                 <span>{meta.helper}</span>
               </div>
 
@@ -391,7 +432,7 @@ const AIStudyTools = ({
                       />
                     </label>
                     <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
-                      <SelectTrigger className="h-7 w-[140px] text-[11px] bg-white/70 border-emerald-500/20 text-foreground dark:bg-black/40 dark:border-white/15">
+                      <SelectTrigger className="h-7 w-[140px] text-[11px] border-border bg-background text-foreground">
                         <SelectValue placeholder="OCR provider" />
                       </SelectTrigger>
                       <SelectContent>
@@ -401,7 +442,7 @@ const AIStudyTools = ({
                     </Select>
                   </>
                 ) : (
-                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/10 dark:text-emerald-50/70">
+                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
                     {isYouTubeVideo ? "Using YouTube transcript" : "Transcript available for YouTube links"}
                   </div>
                 )}
@@ -430,7 +471,7 @@ const AIStudyTools = ({
           )}
 
           <TabsContent value="summary" className="mt-3">
-            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
+            <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingSummary ? (
                 <div className="flex min-h-[220px] items-center justify-center">
                   <BrandLoader label="Summarizing your notes..." />
@@ -497,7 +538,7 @@ const AIStudyTools = ({
                       size="sm"
                       variant="ghost"
                       onClick={handleCopySummary}
-                      className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                     >
                       {copied ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -506,12 +547,21 @@ const AIStudyTools = ({
                       )}
                       <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleExportSummary}
+                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span className="ml-1">Export</span>
+                    </Button>
                     {canRetrySarvam("summary") && (
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={handleSarvamOcrRetry}
-                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                        className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                         disabled={loading}
                       >
                         <Wand2 className="h-3.5 w-3.5" />
@@ -522,7 +572,7 @@ const AIStudyTools = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleGenerate("summary")}
-                      className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                     >
                       <RefreshCcw className="h-3.5 w-3.5" />
                       <span className="ml-1">Regenerate</span>
@@ -539,98 +589,143 @@ const AIStudyTools = ({
           </TabsContent>
 
           <TabsContent value="quiz" className="mt-3">
-            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
+            <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingQuiz ? (
                 <div className="flex min-h-[220px] items-center justify-center">
                   <BrandLoader label="Building your quiz..." />
                 </div>
               ) : quiz && quiz.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground">{quiz.length} questions</div>
-                    <div className="flex items-center gap-2">
-                      {canRetrySarvam("quiz") && (
+                (() => {
+                  const currentQuestion = quiz[activeQuizIndex];
+                  const correctIndex = currentQuestion ? getCorrectIndex(currentQuestion) : -1;
+                  const selected = selectedAnswers[activeQuizIndex];
+                  const hasSelection = selected !== undefined;
+
+                  if (!currentQuestion) return null;
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">{quiz.length} questions</div>
+                        <div className="flex items-center gap-2">
+                          {canRetrySarvam("quiz") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleSarvamOcrRetry}
+                              className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                              disabled={loading}
+                            >
+                              <Wand2 className="h-3.5 w-3.5" />
+                              <span className="ml-1">Try Sarvam OCR</span>
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowAnswers((prev) => !prev)}
+                            className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                          >
+                            {showAnswers ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            <span className="ml-1">{showAnswers ? "Hide" : "Show"} answers</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-foreground">
+                          Question {activeQuizIndex + 1} of {quiz.length}
+                        </div>
+                        <div className="flex max-w-[220px] items-center gap-1 overflow-x-auto pb-1">
+                          {quiz.map((_, idx) => (
+                            <span
+                              key={`quiz-progress-${idx}`}
+                              className={cn(
+                                "h-2 w-8 shrink-0 rounded-full",
+                                idx <= activeQuizIndex ? "bg-primary" : "bg-muted"
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/70 p-4">
+                        <div className="text-sm font-semibold leading-relaxed text-foreground">
+                          {currentQuestion.question}
+                        </div>
+                        <div className="mt-3 grid gap-2">
+                          {currentQuestion.options?.map((opt, oidx) => {
+                            const isSelected = selected === oidx;
+                            const isCorrect = oidx === correctIndex;
+                            const revealCorrect = showAnswers || hasSelection;
+                            const isRightSelected = hasSelection && isSelected && isCorrect;
+                            const isWrongSelected = hasSelection && isSelected && !isCorrect;
+                            const showCorrect = revealCorrect && isCorrect;
+                            return (
+                              <button
+                                key={`${activeQuizIndex}-opt-${oidx}`}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedAnswers((prev) => ({ ...prev, [activeQuizIndex]: oidx }))
+                                }
+                                className={cn(
+                                  "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+                                  "border-border bg-background/70",
+                                  showCorrect && "border-primary/50 bg-primary/10 text-foreground",
+                                  isWrongSelected && "border-rose-400/50 bg-rose-500/10 text-rose-800 dark:text-rose-100",
+                                  isRightSelected && "border-primary/60 bg-primary/15 text-foreground"
+                                )}
+                                aria-pressed={isSelected}
+                              >
+                                <span className="text-[11px] font-semibold text-muted-foreground">
+                                  {String.fromCharCode(65 + oidx)}
+                                </span>
+                                <span>{opt}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(showAnswers || hasSelection) && correctIndex >= 0 && (
+                          <div className="mt-2 text-[11px] text-primary">
+                            Correct: {String.fromCharCode(65 + correctIndex)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
-                          disabled={loading}
+                          onClick={() => setActiveQuizIndex((prev) => Math.max(prev - 1, 0))}
+                          disabled={activeQuizIndex === 0}
+                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                         >
-                          <Wand2 className="h-3.5 w-3.5" />
-                          <span className="ml-1">Try Sarvam OCR</span>
+                          Previous
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowAnswers((prev) => !prev)}
-                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
-                      >
-                        {showAnswers ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        <span className="ml-1">{showAnswers ? "Hide" : "Show"} answers</span>
-                      </Button>
+                        {activeQuizIndex < quiz.length - 1 ? (
+                          <Button
+                            size="sm"
+                            onClick={() => setActiveQuizIndex((prev) => Math.min(prev + 1, quiz.length - 1))}
+                            disabled={!hasSelection}
+                            className="h-8 rounded-md px-6 text-xs"
+                          >
+                            Next
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleGenerate("quiz")}
+                            className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                          >
+                            <RefreshCcw className="h-3.5 w-3.5" />
+                            <span className="ml-1">Regenerate</span>
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid gap-4">
-                    {quiz.map((q, idx) => {
-                      const correctIndex = getCorrectIndex(q);
-                      const selected = selectedAnswers[idx];
-                      const hasSelection = selected !== undefined;
-                      return (
-                        <div key={`${idx}-${q.question}`} className="rounded-xl border border-emerald-900/10 bg-white/80 p-4 dark:border-white/10 dark:bg-black/30">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="text-sm font-semibold text-foreground">
-                              <span className="text-primary/80">Q{idx + 1}.</span> {q.question}
-                            </div>
-                            {cachedMap.quiz && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                cached
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="mt-3 grid gap-2">
-                            {q.options?.map((opt, oidx) => {
-                              const isSelected = selected === oidx;
-                              const isCorrect = oidx === correctIndex;
-                              const revealCorrect = showAnswers || hasSelection;
-                              const isRightSelected = hasSelection && isSelected && isCorrect;
-                              const isWrongSelected = hasSelection && isSelected && !isCorrect;
-                              const showCorrect = revealCorrect && isCorrect;
-                              return (
-                                <button
-                                  key={`${idx}-opt-${oidx}`}
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedAnswers((prev) => ({ ...prev, [idx]: oidx }))
-                                  }
-                                  className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
-                                    "border-emerald-500/20 bg-emerald-500/5 dark:border-white/10 dark:bg-white/10",
-                                    showCorrect && "border-emerald-400/40 bg-emerald-400/10 text-emerald-800 dark:text-emerald-100",
-                                    isWrongSelected && "border-rose-400/50 bg-rose-500/10 text-rose-800 dark:text-rose-100",
-                                    isRightSelected && "border-emerald-400/60 bg-emerald-400/15 text-emerald-900 dark:text-emerald-50"
-                                  )}
-                                  aria-pressed={isSelected}
-                                >
-                                  <span className="text-[11px] font-semibold text-muted-foreground">
-                                    {String.fromCharCode(65 + oidx)}
-                                  </span>
-                                  <span>{opt}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {(showAnswers || hasSelection) && correctIndex >= 0 && (
-                            <div className="mt-2 text-[11px] text-emerald-200">
-                              Correct: {String.fromCharCode(65 + correctIndex)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  );
+                })()
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-xs text-muted-foreground">
                   <HelpCircle className="h-6 w-6 text-primary" />
@@ -641,7 +736,7 @@ const AIStudyTools = ({
           </TabsContent>
 
           <TabsContent value="flashcards" className="mt-3">
-            <div className="rounded-2xl border border-emerald-900/10 bg-white/75 p-4 dark:border-white/10 dark:bg-black/25">
+            <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingFlashcards ? (
                 <div className="flex min-h-[220px] items-center justify-center">
                   <BrandLoader label="Creating flashcards..." />
@@ -658,7 +753,7 @@ const AIStudyTools = ({
                           size="sm"
                           variant="ghost"
                           onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                           disabled={loading}
                         >
                           <Wand2 className="h-3.5 w-3.5" />
@@ -670,7 +765,7 @@ const AIStudyTools = ({
                         variant="ghost"
                         onClick={handlePrevCard}
                         disabled={activeCardIndex === 0}
-                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                        className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         <span className="ml-1">Prev</span>
@@ -680,7 +775,7 @@ const AIStudyTools = ({
                         variant="ghost"
                         onClick={() => handleNextCard(flashcards.length)}
                         disabled={activeCardIndex >= flashcards.length - 1}
-                        className="h-8 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-xs text-emerald-800 dark:border-white/15 dark:bg-white/10 dark:text-foreground"
+                        className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
                       >
                         <span className="mr-1">Next</span>
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -704,7 +799,7 @@ const AIStudyTools = ({
                       aria-pressed={isCardFlipped}
                     >
                       <div
-                        className="relative h-full w-full rounded-2xl border border-emerald-900/10 bg-gradient-to-br from-emerald-500/12 via-white/70 to-transparent p-4 transition-transform duration-500 dark:border-white/10 dark:from-emerald-400/15 dark:via-white/5"
+                        className="relative h-full w-full rounded-2xl border border-border bg-gradient-to-br from-card via-background to-muted/40 p-4 transition-transform duration-500"
                         style={{
                           transformStyle: "preserve-3d",
                           transform: isCardFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -760,8 +855,14 @@ const AIStudyTools = ({
             </div>
           </TabsContent>
 
-          {sourceText && sourceType && sourceType !== "primary" && (
-            <div className="mt-3 rounded-2xl border border-emerald-900/10 bg-white/75 p-3 dark:border-white/10 dark:bg-black/40">
+          <TabsContent value="chat" className="mt-3">
+            <div className="h-[560px] rounded-2xl border border-border bg-background/80 p-1">
+              <AIRagChat variant="minimal" className="h-full rounded-xl border border-border/50 bg-card/40" />
+            </div>
+          </TabsContent>
+
+          {sourceText && sourceType && sourceType !== "primary" && active !== "chat" && (
+            <div className="mt-3 rounded-2xl border border-border bg-background/70 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   {sourceType === "transcript" ? "Transcript" : "OCR Output"}
@@ -771,20 +872,20 @@ const AIStudyTools = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowSource((prev) => !prev)}
-                  className="h-7 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-[11px] text-emerald-800 dark:border-white/15 dark:bg-white/15 dark:text-foreground"
+                  className="h-7 rounded-md border border-border bg-muted/40 text-[11px] text-foreground hover:bg-muted"
                 >
                   {showSource ? "Hide" : "Show"}
                 </Button>
               </div>
               {showSource && (
-                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white/80 p-3 text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap dark:border-white/10 dark:bg-black/50">
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-card/70 p-3 text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
                   {sourceText}
                 </div>
               )}
             </div>
           )}
 
-          <div className="mt-3 rounded-xl border border-emerald-900/10 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-800/80 dark:border-white/10 dark:bg-black/40 dark:text-muted-foreground">
+          <div className="mt-3 rounded-xl border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
             {supportsOcr ? (
               <>
                 Tip: If the output feels off, enable <span className="text-primary">Use OCR</span> or run a{" "}
@@ -804,3 +905,4 @@ const AIStudyTools = ({
 };
 
 export default AIStudyTools;
+

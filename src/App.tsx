@@ -11,7 +11,6 @@ import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Lazy load all pages for code splitting
-const Landing = lazy(() => import("./pages/Landing"));
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Study = lazy(() => import("./pages/Study"));
@@ -55,7 +54,7 @@ const App = () => (
         <div className="pb-16 md:pb-0">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={<Index />} />
               <Route path="/select-college" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />

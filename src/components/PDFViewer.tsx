@@ -65,6 +65,16 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
     if (!videoUrl) return false;
     return /(?:youtu\.be|youtube\.com|youtube-nocookie\.com)/i.test(videoUrl);
   }, [videoUrl]);
+  const aiToggleButton = resourceId ? (
+    <button
+      onClick={() => setShowAiStudio((prev) => !prev)}
+      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+      title={showAiStudio ? "Hide AI Studio" : "Show AI Studio"}
+    >
+      <Sparkles className="h-3.5 w-3.5" />
+      {showAiStudio ? "Hide AI" : "AI Studio"}
+    </button>
+  ) : null;
 
   const mainContent = videoUrl ? (
     <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
@@ -77,6 +87,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
           url={displayUrl}
           title={title}
           fullscreenTargetRef={dialogRef}
+          toolbarActions={aiToggleButton}
         />
       </ResizablePanel>
       <ResizableHandle withHandle className={cn(isStacked ? "h-2" : "")} />
@@ -137,6 +148,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
       url={displayUrl}
       title={title}
       fullscreenTargetRef={dialogRef}
+      toolbarActions={aiToggleButton}
     />
   );
 
@@ -157,16 +169,6 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-lg font-semibold truncate">{title}</DialogTitle>
             <div className="flex items-center gap-2">
-              {resourceId && (
-                <button
-                  onClick={() => setShowAiStudio((prev) => !prev)}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                  title={showAiStudio ? "Hide AI Studio" : "Show AI Studio"}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {showAiStudio ? "Hide AI" : "Show AI"}
-                </button>
-              )}
               <button
                 onClick={onClose}
                 className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
@@ -198,27 +200,27 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
               >
                 <div
                   className={cn(
-                    "flex h-full flex-col bg-gradient-to-b from-background via-background/95 to-emerald-500/8 dark:to-emerald-500/5",
+                    "flex h-full flex-col bg-background",
                     isStacked ? "border-t border-border/60" : "border-l border-border/60"
                   )}
                 >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-gradient-to-r from-emerald-500/12 via-white/80 to-white dark:from-emerald-400/10 dark:via-background/80 dark:to-background">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-card/70">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/30 dark:bg-emerald-400/15 dark:ring-emerald-400/30">
-                        <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30">
+                        <Sparkles className="h-4 w-4 text-primary" />
                       </span>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700/80 dark:text-emerald-100/80">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-foreground/80">
                           AI Studio
                         </div>
-                        <div className="text-[11px] text-emerald-700/60 dark:text-emerald-100/60">
+                        <div className="text-[11px] text-muted-foreground">
                           Summaries, quizzes, flashcards.
                         </div>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowAiStudio(false)}
-                      className="rounded-full p-1 text-emerald-700/70 transition hover:text-emerald-900 dark:text-emerald-100/70 dark:hover:text-emerald-100"
+                      className="rounded-full p-1 text-muted-foreground transition hover:text-foreground"
                       title="Hide AI Studio"
                     >
                       <X className="h-4 w-4" />

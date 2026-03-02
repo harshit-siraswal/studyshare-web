@@ -143,20 +143,20 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
             >
               <div
                 className={cn(
-                  "flex h-full flex-col bg-gradient-to-b from-background via-background/95 to-emerald-500/8 dark:to-emerald-500/5",
+                  "flex h-full flex-col bg-background",
                   isStacked ? "border-t border-border/60" : "border-l border-border/60"
                 )}
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-gradient-to-r from-emerald-500/12 via-white/80 to-white dark:from-emerald-400/10 dark:via-background/80 dark:to-background">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-card/70">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/30 dark:bg-emerald-400/15 dark:ring-emerald-400/30">
-                      <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30">
+                      <Sparkles className="h-4 w-4 text-primary" />
                     </span>
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700/80 dark:text-emerald-100/80">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-foreground/80">
                         AI Studio
                       </div>
-                      <div className="text-[11px] text-emerald-700/60 dark:text-emerald-100/60">
+                      <div className="text-[11px] text-muted-foreground">
                         Summaries, quizzes, flashcards.
                       </div>
                     </div>
