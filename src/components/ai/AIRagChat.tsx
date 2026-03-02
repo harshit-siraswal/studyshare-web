@@ -34,14 +34,17 @@ const SUGGESTIONS = [
 const AIRagChat = ({
   className,
   variant = "rich",
+  compact = false,
 }: {
   className?: string;
   variant?: "rich" | "minimal";
+  compact?: boolean;
 }) => {
   const { user } = useAuth();
   const { selectedCollegeId, selectedCollege } = useCollege();
   const collegeLabel = selectedCollege?.name || "Your College";
   const isMinimal = variant === "minimal";
+  const isCompact = compact;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [filters, setFilters] = useState<RagFilters>(DEFAULT_FILTERS);
@@ -263,11 +266,11 @@ const AIRagChat = ({
     <div
       className={cn(
         "flex h-full flex-col",
-        isMinimal ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+        isCompact ? "gap-2 p-2" : isMinimal ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
         className
       )}
     >
-      {!isMinimal ? (
+      {!isCompact && (!isMinimal ? (
         <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-background/80 to-card/70 p-4 shadow-card sm:p-6">
           <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
           <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
@@ -317,7 +320,7 @@ const AIRagChat = ({
             {collegeLabel}
           </div>
         </div>
-      )}
+      ))}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3">
         <ScrollArea
@@ -330,46 +333,64 @@ const AIRagChat = ({
         >
           <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "p-4" : "p-4 sm:p-6")}>
             {messages.length === 0 && !loading && (
-              <div
-                className={cn(
-                  "rounded-2xl border border-dashed border-border/70 p-4 sm:p-6",
-                  isMinimal ? "bg-muted/20" : "bg-background/40"
-                )}
-              >
-                <div className={cn("flex flex-col gap-4", isMinimal ? "" : "md:flex-row md:items-center")}>
-                  <div className="flex-1 space-y-2">
-                    <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Getting started</p>
-                    <h3 className={cn("text-xl text-foreground", !isMinimal && "font-editorial")}>
-                      Drop a question to begin
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      I answer using your uploaded materials with inline source citations.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {SUGGESTIONS.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => handleSuggestion(suggestion)}
-                          className={cn(
-                            "rounded-full border border-border/60 px-3 py-1 text-xs transition",
-                            isMinimal
-                              ? "bg-background/80 text-muted-foreground hover:border-primary/60 hover:text-primary"
-                              : "bg-background/70 text-foreground hover:border-primary/60 hover:text-primary"
-                          )}
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
+              isCompact ? (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
+                  <p className="text-sm font-medium text-foreground">Ask a question about this document</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {SUGGESTIONS.slice(0, 3).map((suggestion) => (
+                      <button
+                        key={`compact-${suggestion}`}
+                        type="button"
+                        onClick={() => handleSuggestion(suggestion)}
+                        className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
                   </div>
-                  {!isMinimal && (
-                    <div className="flex w-full max-w-[220px] items-center justify-center md:justify-end">
-                      <BrandMark size={160} className="opacity-90 drop-shadow-[0_18px_35px_rgba(0,0,0,0.2)]" alt="Studyshare" />
-                    </div>
-                  )}
                 </div>
-              </div>
+              ) : (
+                <div
+                  className={cn(
+                    "rounded-2xl border border-dashed border-border/70 p-4 sm:p-6",
+                    isMinimal ? "bg-muted/20" : "bg-background/40"
+                  )}
+                >
+                  <div className={cn("flex flex-col gap-4", isMinimal ? "" : "md:flex-row md:items-center")}>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Getting started</p>
+                      <h3 className={cn("text-xl text-foreground", !isMinimal && "font-editorial")}>
+                        Drop a question to begin
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        I answer using your uploaded materials with inline source citations.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {SUGGESTIONS.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => handleSuggestion(suggestion)}
+                            className={cn(
+                              "rounded-full border border-border/60 px-3 py-1 text-xs transition",
+                              isMinimal
+                                ? "bg-background/80 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                                : "bg-background/70 text-foreground hover:border-primary/60 hover:text-primary"
+                            )}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {!isMinimal && (
+                      <div className="flex w-full max-w-[220px] items-center justify-center md:justify-end">
+                        <BrandMark size={160} className="opacity-90 drop-shadow-[0_18px_35px_rgba(0,0,0,0.2)]" alt="Studyshare" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             )}
 
             {messages.map((msg, idx) => {
@@ -534,29 +555,31 @@ const AIRagChat = ({
               ))}
             </div>
           )}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-            >
-              <Filter className="h-3 w-3" />
-              Filters
-            </button>
-            <div className="text-[11px] text-muted-foreground">
-              {filters.semester || filters.branch || filters.subject || (filters.source_type && filters.source_type !== "both")
-                ? `Active: ${[
-                  filters.semester ? `Sem ${filters.semester}` : "",
-                  filters.branch || "",
-                  filters.subject || "",
-                  filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
-                ]
-                  .filter(Boolean)
-                  .join(" • ")}`
-                : "No active filters"}
+                    {!isCompact && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+              >
+                <Filter className="h-3 w-3" />
+                Filters
+              </button>
+              <div className="text-[11px] text-muted-foreground">
+                {filters.semester || filters.branch || filters.subject || (filters.source_type && filters.source_type !== "both")
+                  ? `Active: ${[
+                    filters.semester ? `Sem ${filters.semester}` : "",
+                    filters.branch || "",
+                    filters.subject || "",
+                    filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" • ")}`
+                  : "No active filters"}
+              </div>
             </div>
-          </div>
-          {showFilters && (
+          )}
+          {!isCompact && showFilters && (
             <div className="mb-3 grid gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:grid-cols-2">
               <label className="text-xs text-muted-foreground">
                 Semester
@@ -633,7 +656,9 @@ const AIRagChat = ({
               onKeyDown={handleKeyDown}
               placeholder="Ask about any topic in your PDFs or video transcripts..."
               className={cn(
-                "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
+                isCompact
+                  ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                  : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                 isMinimal && "bg-background"
               )}
             />

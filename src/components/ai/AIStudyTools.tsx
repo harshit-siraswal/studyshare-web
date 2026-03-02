@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Settings2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,31 @@ function getCorrectIndex(question: QuizQuestion) {
   return idx ?? -1;
 }
 
+function extractSummaryThemes(parsed: ReturnType<typeof parseSummary> | null) {
+  if (!parsed) return [] as string[];
+  const blocks = (parsed.bullets.length ? parsed.bullets : parsed.paragraphs).filter(Boolean);
+  const themes: string[] = [];
+  const seen = new Set<string>();
+
+  for (const block of blocks) {
+    const words = block
+      .replace(/[^a-zA-Z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .filter((word) => word.length > 3);
+    if (!words.length) continue;
+    const theme = words.slice(0, 2).join(" ");
+    const key = theme.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      themes.push(theme.charAt(0).toUpperCase() + theme.slice(1));
+    }
+    if (themes.length >= 4) break;
+  }
+
+  return themes;
+}
+
 const AIStudyTools = ({
   resourceId,
   className,
@@ -163,11 +189,17 @@ const AIStudyTools = ({
   const [sourceType, setSourceType] = useState<"primary" | "ocr" | "transcript" | null>(null);
   const [sourceProvider, setSourceProvider] = useState<OcrProvider | null>(null);
   const [showSource, setShowSource] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const [runMeta, setRunMeta] = useState<
     Partial<Record<OutputType, { usedOcr: boolean; provider: OcrProvider | null }>>
   >({});
 
   const summaryParsed = useMemo(() => (summary ? parseSummary(summary) : null), [summary]);
+  const summaryThemes = useMemo(() => extractSummaryThemes(summaryParsed), [summaryParsed]);
+  const summaryWordCount = useMemo(
+    () => (summary ? summary.split(/\s+/).filter(Boolean).length : 0),
+    [summary]
+  );
 
   const handleGenerate = async (type: OutputType, override?: AiOptions) => {
     if (!user) {
@@ -316,102 +348,78 @@ const AIStudyTools = ({
   };
 
   const meta = OUTPUT_META[active];
-  const ActiveIcon = meta.icon;
   const canRetrySarvam = (type: OutputType) =>
     supportsOcr && runMeta[type]?.usedOcr && runMeta[type]?.provider === "google";
   const isLoadingSummary = loading && loadingType === "summary";
   const isLoadingQuiz = loading && loadingType === "quiz";
   const isLoadingFlashcards = loading && loadingType === "flashcards";
 
-  return (
+    return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
-        "p-4",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card",
         className
       )}
     >
-      <div className="flex flex-col gap-4 font-ai">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                AI Studio
-              </span>
-              {resourceType === "video" ? (
-                <Badge variant="secondary" className="text-[11px]">
-                  Transcript
+      <div className="flex h-full min-h-0 flex-col font-ai">
+        <Tabs value={active} onValueChange={(v) => setActive(v as OutputType)} className="flex h-full min-h-0 flex-col">
+          <div className="border-b border-border/70 bg-card/70 px-2">
+            <div className="flex items-center gap-2 py-2">
+              <TabsList className="grid h-11 flex-1 grid-cols-4 rounded-none bg-transparent p-0">
+                {(["summary", "quiz", "flashcards", "chat"] as OutputType[]).map((type) => {
+                  const Icon = OUTPUT_META[type].icon;
+                  return (
+                    <TabsTrigger
+                      key={type}
+                      value={type}
+                      className="h-11 gap-1 rounded-none border-b-2 border-transparent text-xs font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-muted/30 data-[state=active]:text-foreground"
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{OUTPUT_META[type].label}</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {active === "chat" ? (
+                <Badge variant="secondary" className="hidden sm:inline-flex text-[11px]">
+                  Live chat
                 </Badge>
               ) : (
-                <Badge variant="secondary" className="text-[11px]">
-                  PDF / DOCX / PPTX
-                </Badge>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleGenerate(active)}
+                  disabled={loading}
+                  className="h-8 rounded-md px-3 text-xs"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+                </Button>
               )}
-            </div>
-            <div className="text-lg font-semibold text-foreground">Powered by AI</div>
-            <p className="text-xs text-muted-foreground">
-              {resourceTitle ? `Working on "${resourceTitle}"` : "Structured outputs grounded in your document."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "hidden sm:flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] text-muted-foreground",
-              active === "chat" && "opacity-70"
-            )}>
-              <span>{active === "chat" ? "Live" : cachedMap[active] ? "Cached" : "Fresh"}</span>
-              <span className="text-muted-foreground/50">•</span>
-              <span>{meta.label}</span>
-            </div>
-            {active === "chat" ? (
-              <Badge variant="secondary" className="text-[11px]">
-                Live chat
-              </Badge>
-            ) : (
+
               <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleGenerate(active)}
-                disabled={loading}
-                className="rounded-md border border-border bg-muted/40 px-4 text-xs font-semibold text-foreground hover:bg-muted"
+                size="icon"
+                variant="ghost"
+                onClick={() => setShowOptions((prev) => !prev)}
+                className="h-8 w-8 rounded-md border border-border bg-muted/30"
+                title={showOptions ? "Hide options" : "Show options"}
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+                <Settings2 className="h-3.5 w-3.5" />
               </Button>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <Tabs value={active} onValueChange={(v) => setActive(v as OutputType)}>
-          <div className="rounded-2xl border border-border bg-background/60 p-3">
-            <TabsList className="grid w-full grid-cols-4 rounded-lg bg-muted/40 p-1">
-              {(["summary", "quiz", "flashcards", "chat"] as OutputType[]).map((type) => {
-                const Icon = OUTPUT_META[type].icon;
-                return (
-                  <TabsTrigger
-                    key={type}
-                    value={type}
-                    className="gap-2 rounded-md text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {OUTPUT_META[type].label}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
-                <ActiveIcon className="h-3.5 w-3.5 text-primary" />
-                <span>{meta.helper}</span>
-              </div>
-
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      Fresh run
-                      <Switch checked={freshRun} onCheckedChange={setFreshRun} />
-                    </label>
-                    {supportsOcr ? (
+            {showOptions && (
+              <div className="flex flex-wrap items-center gap-3 border-t border-border/60 py-2 text-[11px] text-muted-foreground">
+                <span className="rounded-full border border-border bg-muted/40 px-2 py-1">
+                  {meta.helper}
+                </span>
+                <label className="flex items-center gap-2">
+                  Fresh run
+                  <Switch checked={freshRun} onCheckedChange={setFreshRun} />
+                </label>
+                {supportsOcr ? (
                   <>
-                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <label className="flex items-center gap-2">
                       Use OCR
                       <Switch
                         checked={useOcr}
@@ -421,7 +429,7 @@ const AIStudyTools = ({
                         }}
                       />
                     </label>
-                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <label className="flex items-center gap-2">
                       Force OCR
                       <Switch
                         checked={forceOcr}
@@ -432,7 +440,7 @@ const AIStudyTools = ({
                       />
                     </label>
                     <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
-                      <SelectTrigger className="h-7 w-[140px] text-[11px] border-border bg-background text-foreground">
+                      <SelectTrigger className="h-7 w-[140px] border-border bg-background text-[11px] text-foreground">
                         <SelectValue placeholder="OCR provider" />
                       </SelectTrigger>
                       <SelectContent>
@@ -442,16 +450,20 @@ const AIStudyTools = ({
                     </Select>
                   </>
                 ) : (
-                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+                  <span className="rounded-full border border-border bg-muted/40 px-2 py-1">
                     {isYouTubeVideo ? "Using YouTube transcript" : "Transcript available for YouTube links"}
-                  </div>
+                  </span>
                 )}
+                <span className="ml-auto hidden md:inline text-muted-foreground/80">
+                  {active === "chat" ? "Live mode" : cachedMap[active] ? "Cached result" : "Fresh result"}
+                </span>
               </div>
-            </div>
+            )}
           </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3">
           {error && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
               <Wand2 className="h-4 w-4" />
               <div className="flex flex-1 items-center justify-between gap-3">
                 <span>{error}</span>
@@ -460,7 +472,7 @@ const AIStudyTools = ({
                     size="sm"
                     variant="ghost"
                     onClick={handleSarvamOcrRetry}
-                    className="h-7 rounded-full border border-white/15 bg-white/15 text-[11px]"
+                    className="h-7 rounded-md border border-border bg-background text-[11px] text-foreground hover:bg-muted"
                     disabled={loading}
                   >
                     Run OCR (Sarvam)
@@ -470,112 +482,113 @@ const AIStudyTools = ({
             </div>
           )}
 
-          <TabsContent value="summary" className="mt-3">
+          <TabsContent value="summary" className="mt-0">
             <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingSummary ? (
                 <div className="flex min-h-[220px] items-center justify-center">
                   <BrandLoader label="Summarizing your notes..." />
                 </div>
               ) : summary ? (
-                <div className="space-y-4 text-sm leading-relaxed">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        Summary
-                      </div>
-                      <div className="text-base font-semibold text-foreground">
-                        {resourceTitle ? "Key Insights" : "Key Highlights"}
-                      </div>
-                    </div>
-                    {cachedMap.summary && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        cached
-                      </Badge>
-                    )}
+                <div className="space-y-5 text-sm leading-relaxed">
+                  <div className="space-y-1">
+                    <div className="text-xl font-semibold text-foreground">Quick Summary</div>
+                    <p className="text-xs text-muted-foreground">
+                      {resourceTitle ? `Generated from ${resourceTitle}` : "Generated from your selected content"}
+                    </p>
                   </div>
-                  {summaryParsed?.bullets?.length ? (
-                    <div className="space-y-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Key Takeaways
-                      </div>
-                      <ul className="space-y-2">
+
+                  <div className="space-y-3">
+                    <div className="text-base font-semibold text-foreground">Key Points</div>
+                    {summaryParsed?.bullets?.length ? (
+                      <ul className="space-y-2.5">
                         {summaryParsed.bullets.map((item, idx) => (
                           <li key={`${idx}-${item}`} className="flex gap-3">
-                            <span className="mt-1.5 h-2 w-2 rounded-full bg-primary/70" />
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/80" />
                             <span className="text-sm text-foreground/90">{item}</span>
                           </li>
                         ))}
                       </ul>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                          Overview
-                        </div>
-                        <p className="mt-2 text-sm text-foreground/90">
-                          {(summaryParsed?.paragraphs || [summary])[0]}
-                        </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {(summaryParsed?.paragraphs || [summary]).map((block, idx) => (
+                          <p key={`${idx}-${block}`} className="text-sm text-foreground/90">
+                            {block}
+                          </p>
+                        ))}
                       </div>
-                      {(summaryParsed?.paragraphs || []).slice(1).length > 0 && (
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                            More Detail
-                          </div>
-                          <div className="mt-2 space-y-3">
-                            {(summaryParsed?.paragraphs || []).slice(1).map((block, idx) => (
-                              <p key={`${idx}-${block}`} className="text-xs text-foreground/80">
-                                {block}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    )}
+                  </div>
+
+                  {summaryThemes.length > 0 && (
+                    <div className="space-y-2 border-t border-border/70 pt-4">
+                      <div className="text-base font-semibold text-foreground">Main Themes</div>
+                      <div className="flex flex-wrap gap-2">
+                        {summaryThemes.map((theme) => (
+                          <span
+                            key={theme}
+                            className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-foreground/90"
+                          >
+                            {theme}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCopySummary}
-                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                    >
-                      {copied ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      ) : (
-                        <ClipboardCopy className="h-3.5 w-3.5" />
-                      )}
-                      <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleExportSummary}
-                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span className="ml-1">Export</span>
-                    </Button>
-                    {canRetrySarvam("summary") && (
+
+                  <div className="space-y-3 border-t border-border/70 pt-4">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                      <span>
+                        <span className="font-semibold text-foreground">Words:</span>{" "}
+                        {summaryWordCount.toLocaleString()}
+                      </span>
+                      <span>
+                        <span className="font-semibold text-foreground">Blocks:</span>{" "}
+                        {summaryParsed?.bullets?.length || summaryParsed?.paragraphs?.length || 1}
+                      </span>
+                      {cachedMap.summary && <span className="text-xs">Cached result</span>}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={handleSarvamOcrRetry}
+                        onClick={handleCopySummary}
                         className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                        disabled={loading}
                       >
-                        <Wand2 className="h-3.5 w-3.5" />
-                        <span className="ml-1">Try Sarvam OCR</span>
+                        {copied ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : (
+                          <ClipboardCopy className="h-3.5 w-3.5" />
+                        )}
+                        <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
                       </Button>
-                    )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleGenerate("summary")}
+                        className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                      >
+                        <RefreshCcw className="h-3.5 w-3.5" />
+                        <span className="ml-1">Regenerate</span>
+                      </Button>
+                      {canRetrySarvam("summary") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleSarvamOcrRetry}
+                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                          disabled={loading}
+                        >
+                          <Wand2 className="h-3.5 w-3.5" />
+                          <span className="ml-1">Try Sarvam OCR</span>
+                        </Button>
+                      )}
+                    </div>
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleGenerate("summary")}
-                      className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                      onClick={handleExportSummary}
+                      className="h-10 w-full rounded-md"
                     >
-                      <RefreshCcw className="h-3.5 w-3.5" />
-                      <span className="ml-1">Regenerate</span>
+                      <Download className="h-3.5 w-3.5" />
+                      <span className="ml-2">Export Summary</span>
                     </Button>
                   </div>
                 </div>
@@ -588,7 +601,7 @@ const AIStudyTools = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="quiz" className="mt-3">
+          <TabsContent value="quiz" className="mt-0">
             <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingQuiz ? (
                 <div className="flex min-h-[220px] items-center justify-center">
@@ -692,34 +705,32 @@ const AIStudyTools = ({
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setActiveQuizIndex((prev) => Math.max(prev - 1, 0))}
-                          disabled={activeQuizIndex === 0}
-                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                        >
-                          Previous
-                        </Button>
-                        {activeQuizIndex < quiz.length - 1 ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        {activeQuizIndex > 0 && (
                           <Button
                             size="sm"
+                            variant="ghost"
+                            onClick={() => setActiveQuizIndex((prev) => Math.max(prev - 1, 0))}
+                            className="h-10 rounded-md border border-border bg-muted/40 px-4 text-xs text-foreground hover:bg-muted"
+                          >
+                            Previous
+                          </Button>
+                        )}
+                        {activeQuizIndex < quiz.length - 1 ? (
+                          <Button
                             onClick={() => setActiveQuizIndex((prev) => Math.min(prev + 1, quiz.length - 1))}
                             disabled={!hasSelection}
-                            className="h-8 rounded-md px-6 text-xs"
+                            className="h-10 flex-1 rounded-md"
                           >
                             Next
                           </Button>
                         ) : (
                           <Button
-                            size="sm"
-                            variant="ghost"
                             onClick={() => handleGenerate("quiz")}
-                            className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
+                            className="h-10 flex-1 rounded-md"
                           >
                             <RefreshCcw className="h-3.5 w-3.5" />
-                            <span className="ml-1">Regenerate</span>
+                            <span className="ml-2">Regenerate Quiz</span>
                           </Button>
                         )}
                       </div>
@@ -735,7 +746,7 @@ const AIStudyTools = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="flashcards" className="mt-3">
+          <TabsContent value="flashcards" className="mt-0">
             <div className="rounded-2xl border border-border bg-background/70 p-4">
               {isLoadingFlashcards ? (
                 <div className="flex min-h-[220px] items-center justify-center">
@@ -855,9 +866,13 @@ const AIStudyTools = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-3">
+          <TabsContent value="chat" className="mt-0">
             <div className="h-[560px] rounded-2xl border border-border bg-background/80 p-1">
-              <AIRagChat variant="minimal" className="h-full rounded-xl border border-border/50 bg-card/40" />
+              <AIRagChat
+                variant="minimal"
+                compact
+                className="h-full rounded-xl border border-border/50 bg-card/40"
+              />
             </div>
           </TabsContent>
 
@@ -885,7 +900,7 @@ const AIStudyTools = ({
             </div>
           )}
 
-          <div className="mt-3 rounded-xl border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+          <div className="mt-2 rounded-xl border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
             {supportsOcr ? (
               <>
                 Tip: If the output feels off, enable <span className="text-primary">Use OCR</span> or run a{" "}
@@ -897,6 +912,7 @@ const AIStudyTools = ({
                 <span className="text-primary">Fresh run</span> to re-fetch captions.
               </>
             )}
+          </div>
           </div>
         </Tabs>
       </div>

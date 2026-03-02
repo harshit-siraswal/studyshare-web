@@ -129,7 +129,7 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
         {resourceId ? (
           <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
             <ResizablePanel
-              defaultSize={isStacked ? 62 : 68}
+              defaultSize={isStacked ? 58 : 60}
               minSize={isStacked ? 35 : 40}
               className={cn(isStacked ? "min-h-[320px]" : "min-w-[320px]")}
             >
@@ -137,9 +137,9 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
             </ResizablePanel>
             <ResizableHandle withHandle className={cn(isStacked ? "h-2" : "")} />
             <ResizablePanel
-              defaultSize={isStacked ? 38 : 32}
+              defaultSize={isStacked ? 42 : 40}
               minSize={isStacked ? 25 : 25}
-              className={cn("bg-background", isStacked ? "min-h-[260px]" : "min-w-[320px]")}
+              className={cn("bg-background", isStacked ? "min-h-[260px]" : "min-w-[360px]")}
             >
               <div
                 className={cn(
@@ -147,28 +147,20 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
                   isStacked ? "border-t border-border/60" : "border-l border-border/60"
                 )}
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-card/70">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-card/70">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                    </span>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-foreground/80">
-                        AI Studio
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        Summaries, quizzes, flashcards.
-                      </div>
-                    </div>
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <div className="text-sm font-semibold text-foreground">AI Studio</div>
                   </div>
                 </div>
                 <ScrollArea className="flex-1">
-                  <div className="p-4">
+                  <div className="p-2 h-full">
                     <AIStudyTools
                       resourceId={resourceId}
                       resourceTitle={title}
                       resourceType="video"
                       videoUrl={videoUrl}
+                      className="h-full"
                     />
                   </div>
                 </ScrollArea>
