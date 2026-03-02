@@ -8,7 +8,6 @@ import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
-import { HeroScrollDemo } from "@/components/ui/hero-scroll-demo";
 
 // Active colleges with verified email domains
 const activeColleges = [
@@ -94,9 +93,7 @@ const Index = () => {
       />
 
       <div className="relative z-10">
-        <HeroScrollDemo />
-
-        <div className="container mx-auto px-4 pb-16 md:pb-20 -mt-40 md:-mt-60">
+        <div className="container mx-auto px-4 pb-16 md:pb-20 pt-10 md:pt-12">
           {/* Supporting header */}
           <header className="text-center mb-10 md:mb-14 animate-fade-in">
             <div className="inline-flex items-center gap-3 mb-4">
