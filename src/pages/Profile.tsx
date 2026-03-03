@@ -883,7 +883,7 @@ const Profile = () => {
       <SEO
         title={isViewingOther ? `${displayName}'s Profile` : "Your Profile"}
         description={isViewingOther
-          ? `View ${displayName}'s profile and contributions on Studyshare.`
+          ? `View ${displayName}'s profile and contributions on StudyShare.`
           : "Manage your profile, view your contributions, and connect with other students."
         }
       />

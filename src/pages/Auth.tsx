@@ -301,7 +301,7 @@ const Auth = () => {
                 Account Banned
               </CardTitle>
               <CardDescription className="text-red-500/80 dark:text-red-400/80">
-                Your access to MyStudySpace has been suspended.
+                Your access to StudyShare has been suspended.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -1,5 +1,5 @@
 /**
- * API Client for Studyshare Backend
+ * API Client for StudyShare Backend
  * 
  * All privileged operations should go through these functions
  * instead of direct Supabase calls.

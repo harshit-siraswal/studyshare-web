@@ -89,7 +89,7 @@ export class SubscriptionService {
             key: keyId,
             amount: plan.price * 100, // Amount in paise
             currency: 'INR',
-            name: 'MyStudySpace',
+            name: 'StudyShare',
             description: `Upgrade to ${plan.name}`,
             image: '/icons/icon-192.png', // Ensure this exists or use a remote URL
             order_id: order.id,

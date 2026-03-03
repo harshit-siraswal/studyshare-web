@@ -1,6 +1,6 @@
 {
-    "name": "MyStudySpace",
-    "short_name": "StudySpace",
+    "name": "StudyShare",
+    "short_name": "StudyShare",
     "description": "Community Learning Platform - Access study materials, notes, videos, and resources",
     "start_url": "/",
     "display": "standalone",

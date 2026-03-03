@@ -305,7 +305,7 @@ const Notices = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <BrandMark size={28} className="shrink-0" alt="Studyshare" />
+                <BrandMark size={28} className="shrink-0" alt="StudyShare" />
                 <div>
                   <h1 className="font-bold text-xl leading-tight">Notices</h1>
                   <p className="text-[11px] text-muted-foreground">Live updates from your departments</p>
@@ -376,7 +376,7 @@ const Notices = () => {
             ) : displayedNotices.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <div className="flex flex-col items-center gap-3">
-                  <BrandMark size={56} className="opacity-70" alt="Studyshare" />
+                  <BrandMark size={56} className="opacity-70" alt="StudyShare" />
                   <div>
                     <h3 className="text-lg font-bold mb-2">No notices yet</h3>
                     <p>Check back later or follow more departments!</p>

@@ -27,13 +27,13 @@ export function MobileHeader({
         if (title) return title;
 
         const path = location.pathname;
-        if (path === '/study' || path === '/') return 'MyStudySpace';
+        if (path === '/study' || path === '/') return 'StudyShare';
         if (path === '/explore') return 'Explore';
         if (path === '/notices') return 'Notifications';
         if (path === '/profile') return 'Profile';
         if (path.startsWith('/chatroom')) return 'Chatroom';
         if (path.startsWith('/messages')) return 'Messages';
-        return 'MyStudySpace';
+        return 'StudyShare';
     };
 
     return (
@@ -62,7 +62,7 @@ export function MobileHeader({
                     ) : null}
 
                     <div className="flex items-center gap-2">
-                        <BrandMark size={24} className="shrink-0" alt="Studyshare" />
+                        <BrandMark size={24} className="shrink-0" alt="StudyShare" />
                         <h1 className="text-lg font-semibold truncate">{getTitle()}</h1>
                     </div>
                 </div>

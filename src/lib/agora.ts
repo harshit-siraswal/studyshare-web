@@ -4,7 +4,7 @@ import AgoraRTC from 'agora-rtc-sdk-ng';
 export const AGORA_CONFIG = {
   appId: 'c09c0ffe323241adb34572cd0b83c1ef',
   primaryCertificate: '8bca4a44ed894bf5a40e8a0339e1d3f2',
-  projectName: 'Studyspace',
+  projectName: 'StudyShare',
 };
 
 // Agora RTC Client instance
