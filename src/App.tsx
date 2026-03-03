@@ -16,6 +16,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Study = lazy(() => import("./pages/Study"));
 const Notices = lazy(() => import("./pages/Notices"));
 const Chatroom = lazy(() => import("./pages/Chatroom"));
+const ChatPostDetail = lazy(() => import("./pages/ChatPostDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Explore = lazy(() => import("./pages/Explore"));
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
               <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
               <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+              <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />

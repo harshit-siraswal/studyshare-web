@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, Send, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2, Copy, Settings } from "lucide-react";
+import { ArrowLeft, Search, MessageSquare, ChevronUp, ChevronDown, MessageCircle, Share, Hash, Lock, Users, Plus, X, Image as ImageIcon, Loader2, Bookmark, BookmarkCheck, Pin, Trash2, Copy, Settings } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { CommentThread, CommentData } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, addChatComment, deleteChatComment, getChatComments, ChatComment, getUserChatVotes, getChatRoomInfo, joinChatRoomById } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, getUserChatVotes, getChatRoomInfo, joinChatRoomById } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -67,12 +66,8 @@ const Chatroom = () => {
   const [postImage, setPostImage] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageViewer, setImageViewer] = useState({ isOpen: false, url: "" });
-  const [showComments, setShowComments] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState("");
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
-  const [postComments, setPostComments] = useState<Record<string, ChatComment[]>>({});
-  const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "top">("recent");
@@ -496,86 +491,6 @@ const Chatroom = () => {
     }
   };
 
-  // Fetch comments for a post
-  const fetchCommentsForPost = async (messageId: string) => {
-    if (postComments[messageId]) return; // Already fetched
-
-    setLoadingComments(messageId);
-    try {
-      const { comments } = await getChatComments(messageId);
-      setPostComments(prev => ({ ...prev, [messageId]: comments }));
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    } finally {
-      setLoadingComments(null);
-    }
-  };
-
-  // Toggle comments visibility and fetch if needed
-  const togglePostComments = (messageId: string) => {
-    if (showComments === messageId) {
-      setShowComments(null);
-    } else {
-      setShowComments(messageId);
-      fetchCommentsForPost(messageId);
-    }
-  };
-
-  const handleChatReply = async (messageId: string, content: string, parentId?: string) => {
-    if (!user?.email || !content.trim()) return;
-
-    try {
-      const authorName = user.displayName || user.email?.split('@')[0] || 'User';
-
-      // Use backend API for secure comment posting
-      const result = await addChatComment(
-        messageId,
-        content.trim(),
-        authorName,
-        parentId
-      );
-
-      // Add to local state
-      const newComment: ChatComment = {
-        id: result.id,
-        message_id: messageId,
-        author_name: authorName,
-        author_email: user.email!,
-        content: content.trim(),
-        created_at: new Date().toISOString(),
-        parent_id: parentId
-      };
-
-      setPostComments(prev => ({
-        ...prev,
-        [messageId]: [...(prev[messageId] || []), newComment]
-      }));
-
-      if (!parentId) setCommentText('');
-      toast.success('Reply posted!');
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      setCommentText(''); // Clear main input if reply logic fails or succeeds
-      toast.error('Failed to add comment');
-    }
-  };
-
-  const handleDeleteComment = async (messageId: string, commentId: string) => {
-    try {
-      await deleteChatComment(messageId, commentId);
-
-      setPostComments(prev => ({
-        ...prev,
-        [messageId]: prev[messageId]?.filter(c => c.id !== commentId) || []
-      }));
-
-      toast.success('Comment deleted');
-    } catch (error) {
-      console.error('Failed to delete comment:', error);
-      toast.error('Failed to delete comment');
-    }
-  };
-
   const handleShare = async (message: Message) => {
     const shareText = `${message.author_name}: ${message.content}`;
     if (navigator.share) {
@@ -703,7 +618,11 @@ const Chatroom = () => {
                 savedMessages.map((msg) => {
                   const { title, body } = splitPostContent(msg.content);
                   return (
-                  <Card key={msg.id} className="p-4">
+                  <Card
+                    key={msg.id}
+                    className="p-4 cursor-pointer transition-colors hover:bg-accent/20"
+                    onClick={() => navigate(`/chatroom/${msg.room_id}/post/${msg.id}`)}
+                  >
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10 shrink-0">
                         <AvatarFallback className="bg-primary/10 text-primary">
@@ -728,12 +647,19 @@ const Chatroom = () => {
                           <p className="text-foreground whitespace-pre-wrap">{msg.content}</p>
                         )}
                         {msg.image_url && (
-                          <img
-                            src={msg.image_url}
-                            alt="Post"
-                            className="mt-2 rounded-lg max-h-64 object-cover cursor-pointer"
-                            onClick={() => setImageViewer({ isOpen: true, url: msg.image_url! })}
-                          />
+                          <div
+                            className="mt-2 overflow-hidden rounded-lg border border-border/60 bg-muted/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageViewer({ isOpen: true, url: msg.image_url! });
+                            }}
+                          >
+                            <img
+                              src={msg.image_url}
+                              alt="Post"
+                              className="max-h-[320px] w-full object-contain"
+                            />
+                          </div>
                         )}
                         <div className="flex items-center gap-4 mt-3 text-muted-foreground text-sm">
                           <span className="flex items-center gap-1">
@@ -744,7 +670,10 @@ const Chatroom = () => {
                             variant="ghost"
                             size="sm"
                             className="text-primary h-7"
-                            onClick={() => handleSavePost(msg.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSavePost(msg.id);
+                            }}
                           >
                             <BookmarkCheck className="w-4 h-4 mr-1" />
                             Unsave
@@ -1040,7 +969,11 @@ const Chatroom = () => {
                 {filteredMessages.map((message) => {
                   const { title, body } = splitPostContent(message.content);
                   return (
-                  <Card key={message.id} className="overflow-hidden">
+                  <Card
+                    key={message.id}
+                    className="overflow-hidden cursor-pointer transition-colors hover:bg-accent/20"
+                    onClick={() => navigate(`/chatroom/${roomId}/post/${message.id}`)}
+                  >
                     <div className="flex">
                       {/* Vote sidebar */}
                       <div className="flex flex-col items-center gap-1 p-3 bg-muted/30">
@@ -1048,7 +981,10 @@ const Chatroom = () => {
                           variant="ghost"
                           size="icon"
                           className={cn("h-8 w-8", votedPosts[message.id] === "up" && "text-primary")}
-                          onClick={() => handleVote(message.id, "up")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVote(message.id, "up");
+                          }}
                         >
                           <ChevronUp className="w-5 h-5" />
                         </Button>
@@ -1063,7 +999,10 @@ const Chatroom = () => {
                           variant="ghost"
                           size="icon"
                           className={cn("h-8 w-8", votedPosts[message.id] === "down" && "text-red-500")}
-                          onClick={() => handleVote(message.id, "down")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVote(message.id, "down");
+                          }}
                         >
                           <ChevronDown className="w-5 h-5" />
                         </Button>
@@ -1074,7 +1013,10 @@ const Chatroom = () => {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <Avatar
                             className="w-6 h-6 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                            onClick={() => navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`);
+                            }}
                           >
                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
                               {message.author_name[0]}
@@ -1082,7 +1024,10 @@ const Chatroom = () => {
                           </Avatar>
                           <button
                             className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
-                            onClick={() => navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`);
+                            }}
                           >
                             {message.author_name}
                           </button>
@@ -1101,12 +1046,19 @@ const Chatroom = () => {
                         )}
 
                         {message.image_url && (
-                          <img
-                            src={message.image_url}
-                            alt="Post image"
-                            className="mt-3 rounded-lg max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => setImageViewer({ isOpen: true, url: message.image_url! })}
-                          />
+                          <div
+                            className="mt-3 overflow-hidden rounded-lg border border-border/60 bg-muted/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageViewer({ isOpen: true, url: message.image_url! });
+                            }}
+                          >
+                            <img
+                              src={message.image_url}
+                              alt="Post image"
+                              className="max-h-[420px] w-full object-contain transition-opacity hover:opacity-95"
+                            />
+                          </div>
                         )}
 
                         <div className="flex items-center gap-4">
@@ -1114,7 +1066,10 @@ const Chatroom = () => {
                             variant="ghost"
                             size="sm"
                             className="text-muted-foreground"
-                            onClick={() => handleShare(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShare(message);
+                            }}
                           >
                             <Share className="w-4 h-4 mr-1" />
                             Share
@@ -1126,7 +1081,10 @@ const Chatroom = () => {
                               "text-muted-foreground",
                               savedPosts.has(message.id) && "text-primary"
                             )}
-                            onClick={() => handleSavePost(message.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSavePost(message.id);
+                            }}
                           >
                             {savedPosts.has(message.id) ? (
                               <><BookmarkCheck className="w-4 h-4 mr-1" /> Saved</>
@@ -1137,56 +1095,16 @@ const Chatroom = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={cn(
-                              "text-muted-foreground",
-                              showComments === message.id && "text-primary"
-                            )}
-                            onClick={() => togglePostComments(message.id)}
+                            className="text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/chatroom/${roomId}/post/${message.id}`);
+                            }}
                           >
-                            <MessageCircle className={cn("w-4 h-4 mr-1", showComments === message.id && "fill-current")} />
-                            {(postComments[message.id]?.length || 0) > 0 ? `${postComments[message.id]?.length}` : 'Comment'}
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            Comments
                           </Button>
                         </div>
-
-                        {/* Comments Section */}
-                        {showComments === message.id && (
-                          <div className="mt-4 pt-4 border-t border-border">
-                            <h4 className="text-sm font-semibold mb-3">Comments</h4>
-
-                            {/* Comment Input */}
-                            <div className="flex gap-2 mb-4">
-                              <Input
-                                placeholder="Add a comment..."
-                                value={commentText}
-                                onChange={(e) => setCommentText(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && commentText.trim() && handleChatReply(message.id, commentText)}
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => handleChatReply(message.id, commentText)}
-                                disabled={!commentText.trim()}
-                              >
-                                <Send className="w-4 h-4" />
-                              </Button>
-                            </div>
-
-                            {/* Comments List */}
-                            <div className="space-y-3">
-                              {loadingComments === message.id ? (
-                                <div className="flex justify-center py-3">
-                                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                                </div>
-                              ) : (
-                                <CommentThread
-                                  comments={postComments[message.id] || []}
-                                  currentUserEmail={user?.email}
-                                  onReply={(content, parentId) => handleChatReply(message.id, content, parentId)}
-                                  onDelete={(commentId) => handleDeleteComment(message.id, commentId)}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </Card>
