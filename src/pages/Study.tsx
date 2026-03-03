@@ -149,6 +149,8 @@ const Study = () => {
       <SEO
         title="Study Resources"
         description="Access curated study materials, notes, videos, and previous year questions for your courses."
+        noIndex
+        keywords={["study resources", "college notes", "previous year questions", "video lectures"]}
       />
       {/* Desktop Sidebar - Fixed height */}
       <div className={`hidden lg:block transition-all duration-300 ${sidebarOpen ? "w-72" : "w-14"} h-screen overflow-hidden shrink-0`}>

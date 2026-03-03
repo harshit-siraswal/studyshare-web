@@ -125,6 +125,7 @@ const Explore = () => {
             <SEO
                 title="Explore Students"
                 description="Discover and connect with students from your college. Find classmates, follow peers, and build your academic network."
+                noIndex
             />
             {/* Header */}
             <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">

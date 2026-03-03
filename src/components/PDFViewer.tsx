@@ -33,7 +33,8 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
   // Listen for fullscreen changes on this dialog
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement === dialogRef.current);
+      const target = dialogRef.current;
+      setIsFullscreen(!!target && document.fullscreenElement === target);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -48,6 +49,9 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
       document.exitFullscreen().catch(() => {
         // Ignore if document is not active
       });
+    }
+    if (!isOpen) {
+      setIsFullscreen(false);
     }
   }, [isOpen]);
 
@@ -160,9 +164,9 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
           isFullscreen
             ? '!left-0 !top-0 !translate-x-0 !translate-y-0 !max-w-none !h-screen !w-screen !rounded-none border-0'
             : showAiStudio
-              ? 'max-w-none w-[min(1320px,90vw)] h-[min(860px,84vh)] sm:rounded-2xl'
-              : 'max-w-none w-[min(980px,82vw)] h-[min(700px,74vh)] sm:rounded-2xl',
-          'pdf-viewer-dialog p-0 flex flex-col [&>button]:hidden transition-all'
+              ? 'max-w-none w-[min(1240px,88vw)] h-[min(820px,82vh)] rounded-2xl'
+              : 'max-w-none w-[min(920px,78vw)] h-[min(620px,70vh)] rounded-2xl',
+          'pdf-viewer-dialog p-0 flex flex-col [&>button]:hidden overflow-hidden transition-[width,height,border-radius,transform] duration-300 ease-out'
         )}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">

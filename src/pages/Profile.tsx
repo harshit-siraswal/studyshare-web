@@ -886,6 +886,7 @@ const Profile = () => {
           ? `View ${displayName}'s profile and contributions on StudyShare.`
           : "Manage your profile, view your contributions, and connect with other students."
         }
+        noIndex
       />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/90 backdrop-blur-lg border-b border-border">

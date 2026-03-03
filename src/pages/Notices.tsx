@@ -246,6 +246,7 @@ const Notices = () => {
       <SEO
         title="Notices"
         description="Stay updated with the latest announcements and notices from your college departments."
+        noIndex
       />
       <div className="w-full max-w-[1200px] flex px-2 sm:px-0">
 

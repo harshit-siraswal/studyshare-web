@@ -29,7 +29,11 @@ const AIChat = () => {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
-      <SEO title="AI Chat" description="Ask AI questions about your PDFs and study material." />
+      <SEO
+        title="AI Chat"
+        description="Ask AI questions about your PDFs and study materials for faster revision and exam prep."
+        noIndex
+      />
 
       {/* Desktop Sidebar */}
       <div className={`hidden lg:block transition-all duration-300 ${sidebarOpen ? "w-72" : "w-14"} h-screen overflow-hidden shrink-0`}>

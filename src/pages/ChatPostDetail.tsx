@@ -315,6 +315,7 @@ const ChatPostDetail = () => {
       <SEO
         title={`${roomName || "Room"} Post`}
         description={contentParts.body || contentParts.title || "Chat post detail and comments."}
+        noIndex
       />
 
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">

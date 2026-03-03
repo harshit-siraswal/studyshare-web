@@ -35,6 +35,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
+import { SEO } from "@/components/SEO";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -228,6 +229,11 @@ const Auth = () => {
   if (verificationPending && user && !user.emailVerified) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <SEO
+          title="Verify Email"
+          description="Verify your email to access your StudyShare account."
+          noIndex
+        />
         <div className="w-full max-w-md">
           <Card>
             <CardHeader className="text-center">
@@ -289,6 +295,11 @@ const Auth = () => {
   if (isBanned && user) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <SEO
+          title="Account Access Restricted"
+          description="Account access status for StudyShare."
+          noIndex
+        />
         <div className="w-full max-w-md">
           <Card className="border-red-500/50 bg-red-50 dark:bg-red-900/20">
             <CardHeader className="text-center">
@@ -335,6 +346,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+      <SEO
+        title="Sign In"
+        description="Sign in to StudyShare with your college account to access resources, notices, chatrooms, and AI study tools."
+        noIndex
+      />
       <div className="w-full max-w-md">
         {/* Back button */}
         <Button

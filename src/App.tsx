@@ -23,6 +23,8 @@ const Explore = lazy(() => import("./pages/Explore"));
 const DepartmentProfile = lazy(() => import("./pages/DepartmentProfile"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks"));
 const AIChat = lazy(() => import("./pages/AIChat"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient configuration for better caching and reduced network requests
@@ -57,6 +59,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/select-college" element={<Index />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
               <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />

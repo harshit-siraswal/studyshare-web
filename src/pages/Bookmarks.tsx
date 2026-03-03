@@ -109,6 +109,7 @@ const Bookmarks = () => {
             <SEO
                 title="Bookmarks"
                 description="Access your saved resources and notices. Your personal collection of study materials and important announcements."
+                noIndex
             />
             {/* Desktop Sidebar */}
             <div className="hidden md:block shrink-0">

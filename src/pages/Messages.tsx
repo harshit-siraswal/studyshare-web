@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 interface Message {
   id: number;
@@ -102,6 +103,11 @@ const Messages = () => {
   if (!username) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
+        <SEO
+          title="Messages"
+          description="Direct messages in StudyShare."
+          noIndex
+        />
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border px-4 py-3">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/study")}>
@@ -167,6 +173,11 @@ const Messages = () => {
   // Chat Conversation View
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <SEO
+        title={currentChat?.name ? `Chat with ${currentChat.name}` : "Messages"}
+        description="Conversation view in StudyShare."
+        noIndex
+      />
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>

@@ -239,6 +239,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
     // --- PDF State ---
     const [numPages, setNumPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
+    const [richDocScale, setRichDocScale] = useState(1.0);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -413,6 +414,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
         setError(null);
         setDocxHtml(null);
         setPptxSlides(null);
+        setRichDocScale(1.0);
     }, [normalizedUrl, proxiedDocumentUrl, fileType]);
 
 
@@ -630,11 +632,19 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
             // + / - for Zoom
             if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
                 e.preventDefault();
-                setScale(prev => Math.min(prev + 0.2, 3.0));
+                if (fileType === 'pdf') {
+                    setScale(prev => Math.min(prev + 0.2, 3.0));
+                } else if (fileType === 'docx' || fileType === 'pptx') {
+                    setRichDocScale(prev => Math.min(prev + 0.1, 2.0));
+                }
             }
             if ((e.ctrlKey || e.metaKey) && e.key === '-') {
                 e.preventDefault();
-                setScale(prev => Math.max(prev - 0.2, 0.5));
+                if (fileType === 'pdf') {
+                    setScale(prev => Math.max(prev - 0.2, 0.5));
+                } else if (fileType === 'docx' || fileType === 'pptx') {
+                    setRichDocScale(prev => Math.max(prev - 0.1, 0.6));
+                }
             }
         };
 
@@ -674,6 +684,8 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
     const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3.0));
     const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
+    const handleRichDocZoomIn = () => setRichDocScale((prev) => Math.min(prev + 0.1, 2.0));
+    const handleRichDocZoomOut = () => setRichDocScale((prev) => Math.max(prev - 0.1, 0.6));
     const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
     // Text renderer for highlighting
@@ -770,7 +782,10 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
     }
 
     return (
-        <div ref={containerRef} className="flex flex-col h-full bg-background relative">
+        <div
+            ref={containerRef}
+            className="flex flex-col h-full bg-background relative overflow-hidden rounded-[inherit] transition-colors duration-200"
+        >
             {/* Controls Bar */}
             <div className="flex items-center justify-between p-2 md:p-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 gap-2 overflow-x-auto">
                 <div className="flex items-center gap-1 md:gap-2">
@@ -862,7 +877,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                         {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     </Button>
 
-                    {/* Zoom Controls (PDF Only - DOCX handles its own font size naturally via HTML) */}
+                    {/* Zoom Controls */}
                     {fileType === 'pdf' && (
                         <div className="flex items-center gap-1 border rounded-md px-1 bg-muted/20">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut} disabled={scale <= 0.5} title="Zoom Out (Ctrl+-)">
@@ -872,6 +887,33 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                 {Math.round(scale * 100)}%
                             </span>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn} disabled={scale >= 3} title="Zoom In (Ctrl++)">
+                                <ZoomIn className="w-3.5 h-3.5" />
+                            </Button>
+                        </div>
+                    )}
+                    {(fileType === 'docx' || fileType === 'pptx') && (
+                        <div className="flex items-center gap-1 border rounded-md px-1 bg-muted/20">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={handleRichDocZoomOut}
+                                disabled={richDocScale <= 0.6}
+                                title="Decrease content size (Ctrl+-)"
+                            >
+                                <ZoomOut className="w-3.5 h-3.5" />
+                            </Button>
+                            <span className="text-xs min-w-[3rem] text-center font-mono">
+                                {Math.round(richDocScale * 100)}%
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={handleRichDocZoomIn}
+                                disabled={richDocScale >= 2}
+                                title="Increase content size (Ctrl++)"
+                            >
                                 <ZoomIn className="w-3.5 h-3.5" />
                             </Button>
                         </div>
@@ -930,7 +972,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                         return (
                                             <div key={index} className="flex justify-center py-4">
                                                 <div className={cn(
-                                                    "relative shadow-md transition-all duration-200",
+                                                    "relative shadow-md rounded-lg border border-black/5 overflow-hidden transition-all duration-200",
                                                     context.isDarkMode ? "invert-[1] hue-rotate-180" : ""
                                                 )}>
                                                     <Page
@@ -965,17 +1007,17 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                     )
                 ) : fileType === 'pptx' ? (
                     // PPTX Viewer
-                    <div className="h-full overflow-y-auto p-6 custom-scrollbar">
+                    <div className="h-full overflow-auto p-6 custom-scrollbar">
                         {loadingPptx ? (
                             <div className="flex flex-col items-center justify-center h-full">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
                                 <p className="text-sm text-muted-foreground">Rendering PPTX...</p>
                             </div>
                         ) : (
-                            <div className="space-y-6">
+                            <div className="space-y-6 origin-top transition-[zoom] duration-200" style={{ zoom: richDocScale }}>
                                 {pptxSlides && pptxSlides.length > 0 ? (
                                     pptxSlides.map((slide, index) => (
-                                        <div key={index} className="mx-auto w-[960px] max-w-full bg-white shadow-md overflow-hidden">
+                                        <div key={index} className="mx-auto w-[960px] max-w-full bg-white shadow-md overflow-hidden rounded-xl border border-black/5">
                                             <div dangerouslySetInnerHTML={{ __html: slide }} />
                                         </div>
                                     ))
@@ -1000,7 +1042,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                             <div
                                 ref={odfContainerRef}
                                 className={cn(
-                                    "bg-white shadow-sm p-4 min-h-full",
+                                    "bg-white shadow-sm p-4 min-h-full rounded-xl border border-black/5",
                                     isDarkMode ? "invert-[1] hue-rotate-180" : ""
                                 )}
                             />
@@ -1008,7 +1050,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                     </div>
                 ) : (
                     // DOCX Viewer
-                    <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+                    <div className="h-full overflow-auto p-8 custom-scrollbar">
                         {loadingDocx ? (
                             <div className="flex flex-col items-center justify-center h-full">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
@@ -1016,9 +1058,9 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                             </div>
                         ) : (
                             <div className={cn(
-                                "max-w-4xl mx-auto shadow-sm p-8 min-h-full",
+                                "max-w-4xl mx-auto shadow-sm p-8 min-h-full rounded-xl border border-black/5 origin-top transition-[zoom] duration-200",
                                 isDarkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900"
-                            )}>
+                            )} style={{ zoom: richDocScale }}>
                                 {docxHtml ? (
                                     <div
                                         className={cn(

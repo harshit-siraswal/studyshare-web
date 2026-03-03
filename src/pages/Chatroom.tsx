@@ -548,6 +548,7 @@ const Chatroom = () => {
         <SEO
           title="Rooms"
           description="Join rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
+          noIndex
         />
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3">
@@ -804,6 +805,7 @@ const Chatroom = () => {
       <SEO
         title={currentRoom?.name || "Room"}
         description={currentRoom?.description || "Join the conversation in this chat room."}
+        noIndex
       />
       {/* Sidebar - Room list */}
       <div className="w-64 border-r border-border hidden md:block sticky top-0 h-screen overflow-hidden">
