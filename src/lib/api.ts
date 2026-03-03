@@ -878,7 +878,17 @@ function toOptionalNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function pickFirstNumber(...values: unknown[]): number | undefined {
+    for (const value of values) {
+        const parsed = toOptionalNumber(value);
+        if (parsed !== undefined) return parsed;
+    }
+    return undefined;
+}
+
 function normalizeUserProfile(raw: any): UserProfile {
+    const balance = raw?.balance || raw?.ai_balance || raw?.token_balance || {};
+
     return {
         id: raw?.id || raw?.user_id || raw?.uid || raw?.email || '',
         email: raw?.email || raw?.user_email || '',
@@ -890,10 +900,52 @@ function normalizeUserProfile(raw: any): UserProfile {
         branch: raw?.branch,
         semester: raw?.semester,
         subject: raw?.subject,
-        ai_token_budget: toOptionalNumber(raw?.ai_token_budget),
-        ai_token_used: toOptionalNumber(raw?.ai_token_used),
-        ai_token_remaining: toOptionalNumber(raw?.ai_token_remaining),
-        ai_budget_inr: toOptionalNumber(raw?.ai_budget_inr),
+        ai_token_budget: pickFirstNumber(
+            raw?.ai_token_budget,
+            raw?.aiTokenBudget,
+            raw?.budget_tokens,
+            raw?.budgetTokens,
+            raw?.token_budget,
+            raw?.tokenBudget,
+            balance?.ai_token_budget,
+            balance?.aiTokenBudget,
+            balance?.budget_tokens,
+            balance?.budgetTokens
+        ),
+        ai_token_used: pickFirstNumber(
+            raw?.ai_token_used,
+            raw?.aiTokenUsed,
+            raw?.used_tokens,
+            raw?.usedTokens,
+            raw?.token_used,
+            raw?.tokenUsed,
+            balance?.ai_token_used,
+            balance?.aiTokenUsed,
+            balance?.used_tokens,
+            balance?.usedTokens
+        ),
+        ai_token_remaining: pickFirstNumber(
+            raw?.ai_token_remaining,
+            raw?.aiTokenRemaining,
+            raw?.remaining_tokens,
+            raw?.remainingTokens,
+            raw?.token_remaining,
+            raw?.tokenRemaining,
+            balance?.ai_token_remaining,
+            balance?.aiTokenRemaining,
+            balance?.remaining_tokens,
+            balance?.remainingTokens
+        ),
+        ai_budget_inr: pickFirstNumber(
+            raw?.ai_budget_inr,
+            raw?.aiBudgetInr,
+            raw?.budget_inr,
+            raw?.budgetInr,
+            balance?.ai_budget_inr,
+            balance?.aiBudgetInr,
+            balance?.budget_inr,
+            balance?.budgetInr
+        ),
     };
 }
 
@@ -902,7 +954,10 @@ function normalizeUserProfile(raw: any): UserProfile {
  */
 export async function getMyProfile(): Promise<{ profile: UserProfile }> {
     const data = await apiRequest<any>('/api/users/profile');
-    const profile = normalizeUserProfile(data?.profile || data);
+    const profilePayload = (data && typeof data.profile === 'object')
+        ? { ...data, ...data.profile }
+        : data;
+    const profile = normalizeUserProfile(profilePayload);
     return { ...data, profile };
 }
 

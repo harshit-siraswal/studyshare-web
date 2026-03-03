@@ -101,8 +101,7 @@ interface AiTokenUsage {
   budget: number;
   used: number;
   remaining: number;
-  budgetInr: number;
-}
+  }
 
 function toSafeNumber(value: unknown): number {
   const parsed = Number(value);
@@ -368,7 +367,6 @@ const Profile = () => {
           budget,
           used: budget > 0 ? Math.min(used, budget) : used,
           remaining: budget > 0 ? Math.max(0, Math.min(remaining, budget)) : remaining,
-          budgetInr: toSafeNumber(profile.ai_budget_inr || 1),
         });
       } catch (error) {
         console.error('Failed to fetch AI token usage:', error);
@@ -1028,10 +1026,10 @@ const Profile = () => {
                 <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                      AI Token Budget (₹{aiTokenUsage.budgetInr || 1} cap)
+                      AI Token Budget
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Remaining {aiTokenUsage.remaining} / {aiTokenUsage.budget}
+                      Remaining {aiTokenUsage.remaining} / {aiTokenUsage.budget} tokens
                     </p>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -1641,3 +1639,4 @@ const Profile = () => {
 };
 
 export default Profile;
+
