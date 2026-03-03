@@ -1,5 +1,5 @@
 /**
- * API Client for MyStudySpace Backend
+ * API Client for Studyshare Backend
  * 
  * All privileged operations should go through these functions
  * instead of direct Supabase calls.
@@ -24,6 +24,35 @@ export class ApiError extends Error {
         this.status = status;
         this.payload = payload;
     }
+}
+
+export interface AiTokenQuotaErrorPayload {
+    error: 'AiTokenQuotaExceeded';
+    message?: string;
+    required_tokens?: number;
+    balance?: {
+        budget_tokens?: number;
+        used_tokens?: number;
+        remaining_tokens?: number;
+        budget_inr?: number;
+    };
+}
+
+export function isAiTokenQuotaExceededPayload(payload: any): payload is AiTokenQuotaErrorPayload {
+    return payload?.error === 'AiTokenQuotaExceeded';
+}
+
+export function formatAiTokenQuotaMessage(payload: AiTokenQuotaErrorPayload): string {
+    const balance = payload.balance || {};
+    const remaining = Number(balance.remaining_tokens ?? 0);
+    const budget = Number(balance.budget_tokens ?? 0);
+    const required = Number(payload.required_tokens ?? 0);
+    const parts = [
+        payload.message || 'AI token limit reached.',
+        budget > 0 ? `Remaining: ${remaining} / ${budget} tokens.` : '',
+        required > 0 ? `Estimated required for this request: ${required} tokens.` : '',
+    ].filter(Boolean);
+    return parts.join(' ');
 }
 
 function getHeaderString(value: unknown): string {
@@ -837,6 +866,16 @@ export interface UserProfile {
     college?: string;
     branch?: string;
     semester?: string;
+    subject?: string;
+    ai_token_budget?: number;
+    ai_token_used?: number;
+    ai_token_remaining?: number;
+    ai_budget_inr?: number;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function normalizeUserProfile(raw: any): UserProfile {
@@ -850,6 +889,11 @@ function normalizeUserProfile(raw: any): UserProfile {
         college: raw?.college,
         branch: raw?.branch,
         semester: raw?.semester,
+        subject: raw?.subject,
+        ai_token_budget: toOptionalNumber(raw?.ai_token_budget),
+        ai_token_used: toOptionalNumber(raw?.ai_token_used),
+        ai_token_remaining: toOptionalNumber(raw?.ai_token_remaining),
+        ai_budget_inr: toOptionalNumber(raw?.ai_budget_inr),
     };
 }
 
@@ -857,7 +901,9 @@ function normalizeUserProfile(raw: any): UserProfile {
  * Get current user's profile
  */
 export async function getMyProfile(): Promise<{ profile: UserProfile }> {
-    return apiRequest('/api/users/profile');
+    const data = await apiRequest<any>('/api/users/profile');
+    const profile = normalizeUserProfile(data?.profile || data);
+    return { ...data, profile };
 }
 
 /**

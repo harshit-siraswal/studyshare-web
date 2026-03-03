@@ -89,7 +89,24 @@ interface UserProfile {
   college?: string;
   branch?: string;
   semester?: string;
+  subject?: string;
   username?: string;
+  ai_token_budget?: number;
+  ai_token_used?: number;
+  ai_token_remaining?: number;
+  ai_budget_inr?: number;
+}
+
+interface AiTokenUsage {
+  budget: number;
+  used: number;
+  remaining: number;
+  budgetInr: number;
+}
+
+function toSafeNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 const mockContributions: Contribution[] = [
@@ -166,6 +183,7 @@ const Profile = () => {
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
   const [showFollowingDialog, setShowFollowingDialog] = useState(false);
   const [viewingOtherProfile, setViewingOtherProfile] = useState<UserProfile | null>(null);
+  const [aiTokenUsage, setAiTokenUsage] = useState<AiTokenUsage | null>(null);
 
   // Discover Users State
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
@@ -186,6 +204,9 @@ const Profile = () => {
     bio: "",
     username: generateUsername(),
     profilePhoto: authUser?.photoURL || "",
+    semester: "",
+    branch: "",
+    subject: "",
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +264,9 @@ const Profile = () => {
             bio: created.bio || '',
             username: created.username,
             profilePhoto: created.profile_photo_url || prev.profilePhoto,
+            semester: created.semester || '',
+            branch: created.branch || '',
+            subject: created.subject || '',
           }));
         } else if (error) {
           throw error;
@@ -254,6 +278,9 @@ const Profile = () => {
             bio: data.bio || '',
             username: data.username || prev.username,
             profilePhoto: data.profile_photo_url || prev.profilePhoto,
+            semester: data.semester || '',
+            branch: data.branch || '',
+            subject: data.subject || '',
           }));
         }
       } catch (error) {
@@ -322,6 +349,33 @@ const Profile = () => {
   useEffect(() => {
     fetchProfileData();
   }, [authUser]);
+
+  useEffect(() => {
+    const fetchAiTokenUsage = async () => {
+      if (!authUser || isViewingOther) return;
+
+      try {
+        const result = await api.getMyProfile();
+        const profile = result.profile;
+        const budget = toSafeNumber(profile.ai_token_budget);
+        const used = toSafeNumber(profile.ai_token_used);
+        const remaining = toSafeNumber(
+          profile.ai_token_remaining ?? (budget > 0 ? budget - used : 0)
+        );
+
+        setAiTokenUsage({
+          budget,
+          used: budget > 0 ? Math.min(used, budget) : used,
+          remaining: budget > 0 ? Math.max(0, Math.min(remaining, budget)) : remaining,
+          budgetInr: toSafeNumber(profile.ai_budget_inr || 1),
+        });
+      } catch (error) {
+        console.error('Failed to fetch AI token usage:', error);
+      }
+    };
+
+    fetchAiTokenUsage();
+  }, [authUser, isViewingOther]);
 
   // Fetch Discover Users (users not yet followed)
   const fetchDiscoverUsers = async () => {
@@ -732,6 +786,9 @@ const Profile = () => {
         display_name: editForm.name,
         bio: editForm.bio,
         username: editForm.username,
+        semester: editForm.semester.trim(),
+        branch: editForm.branch.trim(),
+        subject: editForm.subject.trim(),
       });
 
       console.log('Update successful:', result);
@@ -741,6 +798,9 @@ const Profile = () => {
         display_name: editForm.name,
         bio: editForm.bio,
         username: editForm.username,
+        semester: editForm.semester.trim() || undefined,
+        branch: editForm.branch.trim() || undefined,
+        subject: editForm.subject.trim() || undefined,
       } : null);
 
       setIsEditing(false);
@@ -823,7 +883,7 @@ const Profile = () => {
       <SEO
         title={isViewingOther ? `${displayName}'s Profile` : "Your Profile"}
         description={isViewingOther
-          ? `View ${displayName}'s profile and contributions on MyStudySpace.`
+          ? `View ${displayName}'s profile and contributions on Studyshare.`
           : "Manage your profile, view your contributions, and connect with other students."
         }
       />
@@ -965,6 +1025,33 @@ const Profile = () => {
                   </button>
                 </div>
               </div>
+              {!isViewingOther && aiTokenUsage && (
+                <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      AI Token Budget (₹{aiTokenUsage.budgetInr || 1} cap)
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Remaining {aiTokenUsage.remaining} / {aiTokenUsage.budget}
+                    </p>
+                  </div>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{
+                        width: `${
+                          aiTokenUsage.budget > 0
+                            ? Math.min((aiTokenUsage.used / aiTokenUsage.budget) * 100, 100)
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Used {aiTokenUsage.used} tokens
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -1288,6 +1375,33 @@ const Profile = () => {
                 onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
                 placeholder="Tell us about yourself..."
                 className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Semester</Label>
+              <Input
+                value={editForm.semester}
+                onChange={(e) => setEditForm(prev => ({ ...prev, semester: e.target.value }))}
+                placeholder="e.g. 5"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Branch</Label>
+              <Input
+                value={editForm.branch}
+                onChange={(e) => setEditForm(prev => ({ ...prev, branch: e.target.value }))}
+                placeholder="e.g. CSE"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Subject</Label>
+              <Input
+                value={editForm.subject}
+                onChange={(e) => setEditForm(prev => ({ ...prev, subject: e.target.value }))}
+                placeholder="e.g. Data Structures"
               />
             </div>
 

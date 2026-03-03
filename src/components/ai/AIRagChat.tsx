@@ -7,7 +7,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import { queryRag, type RagFilters, type RagFollowUpAction, type RagSource } from "@/lib/api";
+import {
+  ApiError,
+  formatAiTokenQuotaMessage,
+  isAiTokenQuotaExceededPayload,
+  queryRag,
+  type RagFilters,
+  type RagFollowUpAction,
+  type RagSource,
+} from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
 
@@ -45,6 +53,7 @@ const AIRagChat = ({
   const collegeLabel = selectedCollege?.name || "Your College";
   const isMinimal = variant === "minimal";
   const isCompact = compact;
+  const isSimpleMinimal = isMinimal && !isCompact;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [filters, setFilters] = useState<RagFilters>(DEFAULT_FILTERS);
@@ -113,8 +122,10 @@ const AIRagChat = ({
         },
       ]);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to get AI response.";
+      let message = error instanceof Error ? error.message : "Failed to get AI response.";
+      if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
+        message = `${formatAiTokenQuotaMessage(error.payload)} Check your profile for token balance.`;
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -274,7 +285,7 @@ const AIRagChat = ({
     <div
       className={cn(
         "flex h-full flex-col",
-        isCompact ? "gap-2 p-2" : isMinimal ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+        isCompact ? "gap-2 p-2" : isMinimal ? "gap-2 p-2 sm:p-3" : "gap-4 p-4 sm:p-6",
         className
       )}
     >
@@ -316,8 +327,8 @@ const AIRagChat = ({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+          <div className="flex items-center justify-between px-1 pb-1">
+            <h2 className="text-sm font-semibold text-foreground">StudyShare AI</h2>
             <p className="max-w-[60%] truncate text-right text-xs text-muted-foreground">{collegeLabel}</p>
           </div>
         )
@@ -328,11 +339,11 @@ const AIRagChat = ({
           className={cn(
             "relative flex-1",
             isMinimal
-              ? "rounded-2xl border border-border/60 bg-background"
+              ? "rounded-2xl border border-border/50 bg-background/30"
               : "rounded-3xl border border-border/60 bg-gradient-to-b from-background/80 via-background/60 to-background/40 shadow-card"
           )}
         >
-          <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "p-4" : "p-4 sm:p-6")}>
+          <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "space-y-6 p-3 sm:p-4" : "p-4 sm:p-6")}>
             {messages.length === 0 && !loading && (
               isCompact ? (
                 <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
@@ -351,10 +362,13 @@ const AIRagChat = ({
                   </div>
                 </div>
               ) : isMinimal ? (
-                <div className="rounded-xl border border-border/60 bg-background p-4">
-                  <p className="text-sm font-medium text-foreground">Ask about your notes, PDFs, or recorded lectures.</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {SUGGESTIONS.slice(0, 3).map((suggestion) => (
+                <div className="mx-auto w-full max-w-2xl rounded-2xl border border-border/60 bg-background/80 p-4 text-center sm:p-5">
+                  <p className="text-sm font-medium text-foreground">How can I help with your studies today?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Ask from your notes, PDFs, and lectures. I will answer with references.
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {SUGGESTIONS.slice(0, 2).map((suggestion) => (
                       <button
                         key={`minimal-${suggestion}`}
                         type="button"
@@ -402,15 +416,17 @@ const AIRagChat = ({
               const isUser = msg.role === "user";
               const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
               return (
-                <div key={`${msg.role}-${idx}`} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+                <div key={`${msg.role}-${idx}`} className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
-                      "w-full max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-[80%]",
-                      isUser
-                        ? isMinimal
-                          ? "border border-primary/20 bg-primary/10 text-foreground"
-                          : "bg-gradient-primary text-primary-foreground shadow-glow"
-                        : "border border-border/60 bg-card/70 text-foreground"
+                      "text-sm",
+                      isMinimal
+                        ? isUser
+                          ? "max-w-[88%] rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-foreground"
+                          : "w-full max-w-full px-1 py-1 text-foreground"
+                        : "w-full max-w-[90%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[80%]",
+                      !isMinimal && isUser && "bg-gradient-primary text-primary-foreground shadow-glow",
+                      !isMinimal && !isUser && "border border-border/60 bg-card/70 text-foreground"
                     )}
                   >
                     {!isUser && !isMinimal && (
@@ -448,13 +464,23 @@ const AIRagChat = ({
                     {renderMessageContent(displayContent)}
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground">Sources</div>
-                        <div className="grid gap-2 sm:grid-cols-2">
+                      <div
+                        className={cn(
+                          "mt-4 space-y-2",
+                          isMinimal && "rounded-xl border border-border/60 bg-background/70 p-3"
+                        )}
+                      >
+                        <div className="text-xs font-semibold text-muted-foreground">
+                          {isMinimal ? "References" : "Sources"}
+                        </div>
+                        <div className={cn("grid gap-2", isMinimal ? "grid-cols-1" : "sm:grid-cols-2")}>
                           {msg.sources.map((s, sidx) => (
                             <div
                               key={`${s.file_id}-${sidx}`}
-                              className="rounded-xl border border-border/60 bg-background/60 p-2 text-xs text-muted-foreground"
+                              className={cn(
+                                "rounded-xl border p-2 text-xs text-muted-foreground",
+                                isMinimal ? "border-border/50 bg-background" : "border-border/60 bg-background/60"
+                              )}
                             >
                               <div className="font-medium text-foreground">{s.title}</div>
                               {s.pages && (
@@ -500,7 +526,12 @@ const AIRagChat = ({
                             key={`${action.type}-${action.label}`}
                             type="button"
                             onClick={() => void handleFollowUpAction(action, msg)}
-                            className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                            className={cn(
+                              "rounded-full border border-border/60 px-3 py-1 transition hover:border-primary/60 hover:text-primary",
+                              isMinimal
+                                ? "bg-background text-xs text-muted-foreground"
+                                : "bg-background/60 text-[11px] text-muted-foreground"
+                            )}
                           >
                             {action.label}
                           </button>
@@ -510,7 +541,7 @@ const AIRagChat = ({
 
                     {msg.role === "assistant" && msg.noLocal && (
                       <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        Tip: Add a unit/chapter keyword, or apply semester/branch/subject filters.
+                        Tip: Add a unit or chapter keyword for better matches.
                       </div>
                     )}
                   </div>
@@ -520,7 +551,7 @@ const AIRagChat = ({
 
             {loading && (
               isMinimal ? (
-                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 px-1 py-1 text-sm text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                   Thinking...
                 </div>
@@ -548,7 +579,7 @@ const AIRagChat = ({
         <div
           className={cn(
             "border border-border/60 p-3",
-            isMinimal ? "rounded-xl bg-background" : "rounded-2xl bg-card/70 shadow-card"
+            isMinimal ? "rounded-2xl bg-background/95 p-2.5 sm:p-3" : "rounded-2xl bg-card/70 shadow-card"
           )}
         >
           {!isMinimal && (
@@ -568,7 +599,7 @@ const AIRagChat = ({
               ))}
             </div>
           )}
-          {!isCompact && (
+          {!isCompact && !isMinimal && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
@@ -580,12 +611,12 @@ const AIRagChat = ({
               </button>
               <div className="text-[11px] text-muted-foreground">
                 {hasActiveFilters
-                  ? (isMinimal ? "Filters active" : `Active: ${activeFilterParts.join(" • ")}`)
+                  ? `Active: ${activeFilterParts.join(", ")}`
                   : "No active filters"}
               </div>
             </div>
           )}
-          {!isCompact && showFilters && (
+          {!isCompact && !isMinimal && showFilters && (
             <div className="mb-3 grid gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:grid-cols-2">
               <label className="text-xs text-muted-foreground">
                 Semester
@@ -660,12 +691,12 @@ const AIRagChat = ({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isMinimal ? "Ask from your study materials..." : "Ask about any topic in your PDFs or video transcripts..."}
+              placeholder={isMinimal ? "Message StudyShare AI..." : "Ask about any topic in your PDFs or video transcripts..."}
               className={cn(
                 isCompact
                   ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
                   : isMinimal
-                    ? "min-h-[72px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                    ? "min-h-[60px] max-h-[180px] resize-none rounded-2xl border border-border/70 bg-background px-3 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
                     : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                 isMinimal && "bg-background"
               )}
@@ -674,7 +705,7 @@ const AIRagChat = ({
               onClick={() => void handleAsk()}
               disabled={loading || !question.trim()}
               className={cn(
-                isMinimal ? "h-11 w-11 rounded-xl transition" : "h-12 w-12 rounded-2xl transition",
+                isMinimal ? "h-10 w-10 shrink-0 rounded-xl transition" : "h-12 w-12 rounded-2xl transition",
                 isMinimal
                   ? "bg-primary text-primary-foreground hover:shadow-hover"
                   : "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
@@ -684,6 +715,11 @@ const AIRagChat = ({
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
+          {isSimpleMinimal && (
+            <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+              Press Enter to send, Shift + Enter for a new line.
+            </p>
+          )}
         </div>
       </div>
     </div>

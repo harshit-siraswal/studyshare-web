@@ -31,7 +31,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getAiFlashcards, getAiQuiz, getAiSummary } from "@/lib/api";
+import {
+  ApiError,
+  formatAiTokenQuotaMessage,
+  getAiFlashcards,
+  getAiQuiz,
+  getAiSummary,
+  isAiTokenQuotaExceededPayload,
+} from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
 import AIRagChat from "@/components/ai/AIRagChat";
 
@@ -170,6 +177,11 @@ const AIStudyTools = ({
   const [loading, setLoading] = useState(false);
   const [loadingType, setLoadingType] = useState<OutputType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quotaLimit, setQuotaLimit] = useState<{
+    remaining: number;
+    used: number;
+    budget: number;
+  } | null>(null);
   const [cachedMap, setCachedMap] = useState<Partial<Record<OutputType, boolean>>>({});
   const [summary, setSummary] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
@@ -215,6 +227,7 @@ const AIStudyTools = ({
     setLoading(true);
     setLoadingType(type);
     setError(null);
+    setQuotaLimit(null);
     setSourceText(null);
     setSourceType(null);
     setSourceProvider(null);
@@ -273,8 +286,18 @@ const AIStudyTools = ({
         setCachedMap((prev) => ({ ...prev, flashcards: !!result.cached }));
         setRunMeta((prev) => ({ ...prev, flashcards: { usedOcr, provider: usedProvider } }));
       }
-    } catch (err: any) {
-      setError(err.message || "AI request failed");
+    } catch (err: unknown) {
+      if (err instanceof ApiError && isAiTokenQuotaExceededPayload(err.payload)) {
+        const balance = err.payload.balance || {};
+        setQuotaLimit({
+          remaining: Number(balance.remaining_tokens ?? 0),
+          used: Number(balance.used_tokens ?? 0),
+          budget: Number(balance.budget_tokens ?? 0),
+        });
+        setError(formatAiTokenQuotaMessage(err.payload));
+      } else {
+        setError(err instanceof Error ? err.message : "AI request failed");
+      }
     } finally {
       setLoading(false);
       setLoadingType(null);
@@ -466,8 +489,15 @@ const AIStudyTools = ({
             <div className="mb-2 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
               <Wand2 className="h-4 w-4" />
               <div className="flex flex-1 items-center justify-between gap-3">
-                <span>{error}</span>
-                {resourceType !== "video" && (
+                <div className="space-y-1">
+                  <span>{error}</span>
+                  {quotaLimit && (
+                    <div className="text-[11px] text-red-700/90 dark:text-red-200/90">
+                      Used {quotaLimit.used} • Remaining {quotaLimit.remaining} / {quotaLimit.budget}
+                    </div>
+                  )}
+                </div>
+                {resourceType !== "video" && !quotaLimit && (
                   <Button
                     size="sm"
                     variant="ghost"
