@@ -177,6 +177,14 @@ const AIRagChat = ({
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const activeFilterParts = [
+    filters.semester ? `Sem ${filters.semester}` : "",
+    filters.branch || "",
+    filters.subject || "",
+    filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
+  ].filter(Boolean);
+  const hasActiveFilters = activeFilterParts.length > 0;
+
   const getAssistantDisplayContent = (msg: ChatMessage) => {
     if (msg.role !== "assistant") return msg.content;
     if (!msg.noLocal) return msg.content;
@@ -270,57 +278,50 @@ const AIRagChat = ({
         className
       )}
     >
-      {!isCompact && (!isMinimal ? (
-        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-background/80 to-card/70 p-4 shadow-card sm:p-6">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
-          <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex-1 space-y-3 pr-8 sm:pr-16">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                <Sparkles className="h-3 w-3 text-primary" />
-                Studyspace AI Buddy
+      {!isCompact && (
+        !isMinimal ? (
+          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-background/80 to-card/70 p-4 shadow-card sm:p-6">
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+            <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex-1 space-y-3 pr-8 sm:pr-16">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  StudyShare AI Buddy
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Ask, revise, and learn faster.</p>
+                  <h2 className="mt-1 font-editorial text-2xl text-foreground sm:text-3xl">
+                    Ask anything from your PDFs
+                  </h2>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
+                    <BookOpen className="h-3 w-3 text-primary" />
+                    PDF-first answers
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-accent-foreground">
+                    <GraduationCap className="h-3 w-3" />
+                    Exam-ready format
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                    <MessageSquare className="h-3 w-3" />
+                    Smart follow-ups
+                  </span>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Ask, revise, and learn faster.</p>
-                <h2 className="mt-1 font-editorial text-2xl text-foreground sm:text-3xl">
-                  Ask anything from your PDFs
-                </h2>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
-                  <BookOpen className="h-3 w-3 text-primary" />
-                  PDF-first answers
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-accent-foreground">
-                  <GraduationCap className="h-3 w-3" />
-                  Exam-ready format
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
-                  <MessageSquare className="h-3 w-3" />
-                  Smart follow-ups
-                </span>
+              <div className="relative flex h-32 w-full max-w-[190px] items-center justify-center self-center sm:h-36 sm:self-auto">
+                <BrandMark size={152} className="drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]" alt="StudyShare AI" />
               </div>
             </div>
-            <div className="relative h-32 w-full max-w-[190px] self-center sm:h-36 sm:self-auto">
-              <div className="flex h-full w-full items-center justify-center rounded-3xl bg-primary/5">
-                <BrandMark size={140} className="drop-shadow-[0_14px_30px_rgba(0,0,0,0.2)]" alt="Studyshare AI" />
-              </div>
-            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">AI Chat</p>
-            <h2 className="mt-1 text-xl font-semibold text-foreground">Ask about your PDFs</h2>
-            <p className="text-xs text-muted-foreground">Minimal, focused answers grounded in your study files.</p>
+        ) : (
+          <div className="flex items-center justify-between border-b border-border/60 pb-2">
+            <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+            <p className="max-w-[60%] truncate text-right text-xs text-muted-foreground">{collegeLabel}</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground">
-            <Sparkles className="h-3 w-3 text-primary" />
-            {collegeLabel}
-          </div>
-        </div>
-      ))}
+        )
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3">
         <ScrollArea
@@ -349,17 +350,28 @@ const AIRagChat = ({
                     ))}
                   </div>
                 </div>
+              ) : isMinimal ? (
+                <div className="rounded-xl border border-border/60 bg-background p-4">
+                  <p className="text-sm font-medium text-foreground">Ask about your notes, PDFs, or recorded lectures.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {SUGGESTIONS.slice(0, 3).map((suggestion) => (
+                      <button
+                        key={`minimal-${suggestion}`}
+                        type="button"
+                        onClick={() => handleSuggestion(suggestion)}
+                        className="rounded-full border border-border/60 bg-background px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <div
-                  className={cn(
-                    "rounded-2xl border border-dashed border-border/70 p-4 sm:p-6",
-                    isMinimal ? "bg-muted/20" : "bg-background/40"
-                  )}
-                >
-                  <div className={cn("flex flex-col gap-4", isMinimal ? "" : "md:flex-row md:items-center")}>
+                <div className="rounded-2xl border border-dashed border-border/70 bg-background/40 p-4 sm:p-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="flex-1 space-y-2">
                       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Getting started</p>
-                      <h3 className={cn("text-xl text-foreground", !isMinimal && "font-editorial")}>
+                      <h3 className="font-editorial text-xl text-foreground">
                         Drop a question to begin
                       </h3>
                       <p className="text-sm text-muted-foreground">
@@ -371,23 +383,16 @@ const AIRagChat = ({
                             key={suggestion}
                             type="button"
                             onClick={() => handleSuggestion(suggestion)}
-                            className={cn(
-                              "rounded-full border border-border/60 px-3 py-1 text-xs transition",
-                              isMinimal
-                                ? "bg-background/80 text-muted-foreground hover:border-primary/60 hover:text-primary"
-                                : "bg-background/70 text-foreground hover:border-primary/60 hover:text-primary"
-                            )}
+                            className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs text-foreground transition hover:border-primary/60 hover:text-primary"
                           >
                             {suggestion}
                           </button>
                         ))}
                       </div>
                     </div>
-                    {!isMinimal && (
-                      <div className="flex w-full max-w-[220px] items-center justify-center md:justify-end">
-                        <BrandMark size={160} className="opacity-90 drop-shadow-[0_18px_35px_rgba(0,0,0,0.2)]" alt="Studyshare" />
-                      </div>
-                    )}
+                    <div className="flex w-full max-w-[220px] items-center justify-center md:justify-end">
+                      <BrandMark size={160} className="opacity-90 drop-shadow-[0_18px_35px_rgba(0,0,0,0.2)]" alt="StudyShare" />
+                    </div>
                   </div>
                 </div>
               )
@@ -408,15 +413,10 @@ const AIRagChat = ({
                         : "border border-border/60 bg-card/70 text-foreground"
                     )}
                   >
-                    {!isUser && (
-                      <div
-                        className={cn(
-                          "mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground",
-                          isMinimal && "text-[10px] tracking-[0.18em]"
-                        )}
-                      >
+                    {!isUser && !isMinimal && (
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                         <Sparkles className="h-3 w-3 text-primary" />
-                        Studyspace AI
+                        StudyShare AI
                         {msg.noLocal && (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tracking-normal">
                             No local match
@@ -424,6 +424,21 @@ const AIRagChat = ({
                         )}
                         {msg.cached && (
                           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] tracking-normal text-primary">
+                            Cached
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {!isUser && isMinimal && (msg.noLocal || msg.cached) && (
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                        {msg.noLocal && (
+                          <span className="rounded-full bg-muted px-2 py-0.5">
+                            No local match
+                          </span>
+                        )}
+                        {msg.cached && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
                             Cached
                           </span>
                         )}
@@ -504,38 +519,36 @@ const AIRagChat = ({
             })}
 
             {loading && (
-              <div
-                className={cn(
-                  "relative overflow-hidden rounded-2xl border px-4 py-4 text-sm",
-                  isMinimal ? "border-border/60 bg-muted/30" : "border-border/60 bg-card/70 shadow-card"
-                )}
-              >
-                {!isMinimal && (
-                  <>
-                    <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
-                    <div className="absolute bottom-0 right-10 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
-                  </>
-                )}
-                <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <BrandLoader size={isMinimal ? 60 : 80} label={isMinimal ? "Thinking..." : "Crafting your answer"} />
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      <Sparkles className="h-3 w-3 text-primary" />
-                      Scanning your notes
+              isMinimal ? (
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  Thinking...
+                </div>
+              ) : (
+                <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 px-4 py-4 text-sm shadow-card">
+                  <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+                  <div className="absolute bottom-0 right-10 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+                  <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <BrandLoader size={80} label="Crafting your answer" />
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        Scanning your notes
+                      </div>
+                      <div className="h-3 w-28 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
+                      <div className="h-3 w-48 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
                     </div>
-                    <div className="h-3 w-28 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
-                    <div className="h-3 w-48 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.2),rgba(255,255,255,0.05))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
                   </div>
                 </div>
-              </div>
+              )
             )}
           </div>
         </ScrollArea>
 
         <div
           className={cn(
-            "rounded-2xl border border-border/60 p-3",
-            isMinimal ? "bg-background/80" : "bg-card/70 shadow-card"
+            "border border-border/60 p-3",
+            isMinimal ? "rounded-xl bg-background" : "rounded-2xl bg-card/70 shadow-card"
           )}
         >
           {!isMinimal && (
@@ -555,7 +568,7 @@ const AIRagChat = ({
               ))}
             </div>
           )}
-                    {!isCompact && (
+          {!isCompact && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
@@ -566,15 +579,8 @@ const AIRagChat = ({
                 Filters
               </button>
               <div className="text-[11px] text-muted-foreground">
-                {filters.semester || filters.branch || filters.subject || (filters.source_type && filters.source_type !== "both")
-                  ? `Active: ${[
-                    filters.semester ? `Sem ${filters.semester}` : "",
-                    filters.branch || "",
-                    filters.subject || "",
-                    filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" • ")}`
+                {hasActiveFilters
+                  ? (isMinimal ? "Filters active" : `Active: ${activeFilterParts.join(" • ")}`)
                   : "No active filters"}
               </div>
             </div>
@@ -654,11 +660,13 @@ const AIRagChat = ({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about any topic in your PDFs or video transcripts..."
+              placeholder={isMinimal ? "Ask from your study materials..." : "Ask about any topic in your PDFs or video transcripts..."}
               className={cn(
                 isCompact
                   ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
-                  : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
+                  : isMinimal
+                    ? "min-h-[72px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                    : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                 isMinimal && "bg-background"
               )}
             />
@@ -666,7 +674,7 @@ const AIRagChat = ({
               onClick={() => void handleAsk()}
               disabled={loading || !question.trim()}
               className={cn(
-                "h-12 w-12 rounded-2xl transition",
+                isMinimal ? "h-11 w-11 rounded-xl transition" : "h-12 w-12 rounded-2xl transition",
                 isMinimal
                   ? "bg-primary text-primary-foreground hover:shadow-hover"
                   : "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",

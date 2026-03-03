@@ -159,7 +159,9 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
             const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
             const parsed = new URL(normalizedUrl, base);
             const host = parsed.hostname.toLowerCase();
-            const shouldProxy = host === 'file.mystudyspace.me' || host.endsWith('.r2.dev');
+            const shouldProxy =
+                host === 'file.studyshare.in' ||
+                host.endsWith('.r2.dev');
             if (!shouldProxy) return parsed.toString();
             return `${API_BASE}/api/public/file?url=${encodeURIComponent(parsed.toString())}`;
         } catch {

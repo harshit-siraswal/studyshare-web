@@ -6,7 +6,7 @@ interface BrandMarkProps {
   alt?: string;
 }
 
-const BrandMark = ({ size = 40, className, alt = "Studyshare logo" }: BrandMarkProps) => {
+const BrandMark = ({ size = 40, className, alt = "StudyShare logo" }: BrandMarkProps) => {
   return (
     <img
       src="/brand/logo-mark.png"

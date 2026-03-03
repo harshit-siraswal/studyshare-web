@@ -7,9 +7,11 @@ export const HeroScrollDemo: React.FC = () => {
   const titleComponent = (
     <div className="space-y-4">
       <div className="flex items-center justify-center gap-3">
-        <div className="p-3 rounded-2xl bg-white/5 dark:bg-black/40 backdrop-blur-xl border border-white/10 shadow-glow">
-          <BrandMark size={40} alt="Studyshare logo" />
-        </div>
+        <BrandMark
+          size={52}
+          className="h-10 w-10 md:h-12 md:w-12 drop-shadow-[0_10px_22px_rgba(0,0,0,0.2)]"
+          alt="StudyShare logo"
+        />
         <span className="text-xs md:text-sm uppercase tracking-[0.25em] text-muted-foreground">
           studyshare.in
         </span>
