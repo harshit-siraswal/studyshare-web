@@ -154,6 +154,7 @@ function generateUsername() {
 const Profile = () => {
   const navigate = useNavigate();
   const { username: viewingUsername } = useParams();
+  const isViewingOther = !!viewingUsername;
 
   /* 🔐 AUTH */
   const { user: authUser, loading, logout } = useAuth();
@@ -408,9 +409,6 @@ const Profile = () => {
       fetchDiscoverUsers();
     }
   }, [showDiscoverDialog, following]);
-
-  // Check if viewing other user and if we're following them - MUST be before early returns
-  const isViewingOther = !!viewingUsername;
 
   // Generic Follow Handler
   const handleFollowUser = async (targetEmail: string, targetName?: string) => {
@@ -1584,7 +1582,7 @@ const Profile = () => {
                     <Avatar
                       className="w-12 h-12 cursor-pointer"
                       onClick={() => {
-                        navigate(`/profile/${user.username}`);
+                        navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`);
                         setShowDiscoverDialog(false);
                       }}
                     >
@@ -1598,7 +1596,7 @@ const Profile = () => {
                     </Avatar>
                     <div className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
-                        navigate(`/profile/${user.username}`);
+                        navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`);
                         setShowDiscoverDialog(false);
                       }}>
                       <p className="font-medium text-foreground truncate">
