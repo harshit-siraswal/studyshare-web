@@ -158,11 +158,11 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
         ref={dialogRef}
         className={cn(
           isFullscreen
-            ? 'max-w-full h-screen w-screen rounded-none'
+            ? '!left-0 !top-0 !translate-x-0 !translate-y-0 !max-w-none !h-screen !w-screen !rounded-none border-0'
             : showAiStudio
-              ? 'max-w-[95vw] h-[88vh] w-[95vw] sm:rounded-2xl'
-              : 'max-w-4xl h-[72vh] w-[80vw] lg:w-[72vw] xl:w-[68vw] sm:rounded-2xl',
-          'p-0 flex flex-col [&>button]:hidden transition-all'
+              ? 'max-w-none w-[min(1320px,90vw)] h-[min(860px,84vh)] sm:rounded-2xl'
+              : 'max-w-none w-[min(980px,82vw)] h-[min(700px,74vh)] sm:rounded-2xl',
+          'pdf-viewer-dialog p-0 flex flex-col [&>button]:hidden transition-all'
         )}
       >
         <DialogHeader className="p-4 border-b flex-shrink-0 bg-background">

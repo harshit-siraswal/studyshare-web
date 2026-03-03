@@ -1148,7 +1148,7 @@ const Chatroom = () => {
         <div className="p-4 border-b border-border bg-primary/5">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             {currentRoom?.is_private ? <Lock className="w-4 h-4 text-amber-500" /> : <Hash className="w-4 h-4 text-primary" />}
-            r/{currentRoom?.name}
+            {currentRoom?.name}
           </h2>
           {currentRoom?.description && (
             <p className="text-sm text-muted-foreground mt-1">{currentRoom.description}</p>

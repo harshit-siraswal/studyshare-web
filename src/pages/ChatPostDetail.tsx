@@ -332,7 +332,7 @@ const ChatPostDetail = () => {
             ) : (
               <Hash className="w-4 h-4 text-primary shrink-0" />
             )}
-            <p className="truncate text-sm text-muted-foreground">r/{roomName || "room"}</p>
+            <p className="truncate text-sm text-muted-foreground">{roomName || "room"}</p>
           </div>
         </div>
       </header>

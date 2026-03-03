@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Menu, Sparkles } from "lucide-react";
+import { ArrowLeft, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -46,9 +46,9 @@ const AIChat = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
         <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="px-4 md:px-6 lg:px-8">
-            <div className="flex h-14 items-center gap-3">
-              <div className="flex items-center gap-2">
+          <div className="px-3 sm:px-4 md:px-6">
+            <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3">
+              <div className="flex items-center gap-2 shrink-0">
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button
@@ -79,24 +79,20 @@ const AIChat = () => {
                   Back to Resources
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">AI Chat</p>
-                  <p className="text-xs text-muted-foreground">{collegeLabel}</p>
-                </div>
+              <div className="min-w-0 text-center">
+                <p className="text-sm font-semibold text-foreground">StudyShare AI</p>
+                <p className="truncate text-xs text-muted-foreground">{collegeLabel}</p>
               </div>
+              <div className="w-8 sm:w-[132px]" />
             </div>
           </div>
         </div>
 
         {/* Chat Body */}
-        <div className="flex-1 overflow-hidden px-3 py-4 md:px-6">
+        <div className="flex-1 overflow-hidden px-2 py-2 sm:px-3 sm:py-3 md:px-6">
           <div className="h-full max-w-5xl mx-auto">
-            <div className="h-full rounded-2xl border border-border bg-card">
-              <AIRagChat variant="minimal" className="h-full" />
+            <div className="h-full rounded-2xl border border-border/60 bg-card/40">
+              <AIRagChat variant="minimal" className="h-full rounded-2xl" />
             </div>
           </div>
         </div>

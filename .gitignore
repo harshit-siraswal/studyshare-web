@@ -30,3 +30,4 @@ dist-ssr
 
 # Local vendor drops (not referenced in app)
 public/vendor/webodf*
+public/downloads/*.apk
