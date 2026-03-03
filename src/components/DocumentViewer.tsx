@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import mammoth from "mammoth";
 import DOMPurify from "dompurify";
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -257,12 +256,13 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- DOCX State ---
-    const [docxHtml, setDocxHtml] = useState<string | null>(null);
+    const [hasDocxContent, setHasDocxContent] = useState(false);
     const [loadingDocx, setLoadingDocx] = useState(false);
     const [pptxSlides, setPptxSlides] = useState<string[] | null>(null);
     const [loadingPptx, setLoadingPptx] = useState(false);
     const [loadingOdf, setLoadingOdf] = useState(false);
 
+    const docxContainerRef = useRef<HTMLDivElement>(null);
     const odfContainerRef = useRef<HTMLDivElement>(null);
     const odfCanvasRef = useRef<any>(null);
 
@@ -272,6 +272,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
         setLoadingDocx(true);
         setError(null);
+        setHasDocxContent(false);
         try {
             const response = await fetch(proxiedDocumentUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch document: ${response.statusText}`);
@@ -279,22 +280,29 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
             if (signal?.aborted) return;
 
-            const result = await mammoth.convertToHtml({ arrayBuffer });
+            const docxContainer = docxContainerRef.current;
+            if (!docxContainer) {
+                throw new Error("DOCX renderer is not ready");
+            }
 
-            // Sanitize HTML
-            const cleanHtml = DOMPurify.sanitize(result.value);
+            docxContainer.innerHTML = "";
+            const { renderAsync } = await import("docx-preview");
+            await renderAsync(arrayBuffer, docxContainer, undefined, {
+                className: "docx-preview",
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                breakPages: true,
+            });
 
             if (!signal?.aborted) {
-                setDocxHtml(cleanHtml);
-
-                if (result.messages.length > 0) {
-                    console.warn("Mammoth messages:", result.messages);
-                }
+                setHasDocxContent(true);
             }
         } catch (err: unknown) {
             if (signal?.aborted || (err as Error).name === 'AbortError') return;
             console.error("DOCX load error:", err);
             setError(err instanceof Error ? err.message : "Failed to load DOCX file");
+            setHasDocxContent(false);
         } finally {
             if (!signal?.aborted) {
                 setLoadingDocx(false);
@@ -332,7 +340,14 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
             });
 
             if (!signal?.aborted) {
-                setPptxSlides(slides);
+                const sanitizedSlides = slides.map((slide) =>
+                    DOMPurify.sanitize(slide, {
+                        USE_PROFILES: { html: true, svg: true, svgFilters: true },
+                        FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
+                        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onmouseenter'],
+                    })
+                );
+                setPptxSlides(sanitizedSlides);
             }
         } catch (err: unknown) {
             if (signal?.aborted || (err as Error).name === 'AbortError') return;
@@ -412,7 +427,10 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
         setPdfData(null);
         setPdfRetryKey(0);
         setError(null);
-        setDocxHtml(null);
+        setHasDocxContent(false);
+        if (docxContainerRef.current) {
+            docxContainerRef.current.innerHTML = "";
+        }
         setPptxSlides(null);
         setRichDocScale(1.0);
     }, [normalizedUrl, proxiedDocumentUrl, fileType]);
@@ -1051,31 +1069,29 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                 ) : (
                     // DOCX Viewer
                     <div className="h-full overflow-auto p-8 custom-scrollbar">
-                        {loadingDocx ? (
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                                <p className="text-sm text-muted-foreground">Converting DOCX...</p>
-                            </div>
-                        ) : (
-                            <div className={cn(
-                                "max-w-4xl mx-auto shadow-sm p-8 min-h-full rounded-xl border border-black/5 origin-top transition-[zoom] duration-200",
-                                isDarkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900"
-                            )} style={{ zoom: richDocScale }}>
-                                {docxHtml ? (
-                                    <div
-                                        className={cn(
-                                            "prose max-w-none",
-                                            isDarkMode ? "prose-invert" : ""
-                                        )}
-                                        dangerouslySetInnerHTML={{ __html: docxHtml }}
-                                    />
-                                ) : (
-                                    <div className="text-center text-muted-foreground">
-                                        No content to display
-                                    </div>
+                        <div className={cn(
+                            "relative max-w-4xl mx-auto shadow-sm p-8 min-h-full rounded-xl border border-black/5 origin-top transition-[zoom] duration-200",
+                            isDarkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900"
+                        )} style={{ zoom: richDocScale }}>
+                            {loadingDocx && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 z-10 rounded-xl">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                                    <p className="text-sm text-muted-foreground">Converting DOCX...</p>
+                                </div>
+                            )}
+                            <div
+                                ref={docxContainerRef}
+                                className={cn(
+                                    "docx-viewer-content",
+                                    isDarkMode ? "invert-[1] hue-rotate-180" : ""
                                 )}
-                            </div>
-                        )}
+                            />
+                            {!loadingDocx && !hasDocxContent && !error && (
+                                <div className="text-center text-muted-foreground">
+                                    No content to display
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
