@@ -8,6 +8,10 @@ declare global {
     }
 }
 
+// Razorpay Key ID is public by design (safe for frontend). Keep a hard fallback
+// so production does not break when Vercel env is accidentally missing.
+const FALLBACK_RAZORPAY_KEY_ID = 'rzp_live_S9IWIDxf81JDDM';
+
 export interface PremiumPlan {
     id: string;
     name: string;
@@ -43,6 +47,26 @@ export const PLANS: PremiumPlan[] = [
 ];
 
 export class SubscriptionService {
+    private static resolveRazorpayKey(order: Record<string, unknown>): string {
+        const candidates = [
+            import.meta.env.VITE_RAZORPAY_KEY_ID,
+            // backend may include key id in different shapes
+            order?.key,
+            order?.key_id,
+            order?.keyId,
+            order?.razorpay_key_id,
+            order?.razorpayKeyId,
+            FALLBACK_RAZORPAY_KEY_ID,
+        ];
+
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim().startsWith('rzp_')) {
+                return candidate.trim();
+            }
+        }
+        return '';
+    }
+
     /**
      * Check if user is premium
      */
@@ -74,16 +98,21 @@ export class SubscriptionService {
         const plan = PLANS.find(p => p.id === planId);
         if (!plan) throw new Error('Invalid plan selected');
 
-        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+        const backendPlanId = plan.duration === 'yearly' ? 'max' : 'pro';
+        const order = await createPaymentOrder(plan.price * 100, backendPlanId) as Record<string, unknown>;
+        const keyId = SubscriptionService.resolveRazorpayKey(order);
 
         if (!keyId) {
-            toast.error('Payment configuration missing. Please start locally or contact support.');
-            console.error('Missing VITE_RAZORPAY_KEY_ID');
+            toast.error('Payment setup incomplete. Please contact support.');
+            console.error('Unable to resolve Razorpay key ID');
             return;
         }
 
-        const backendPlanId = plan.duration === 'yearly' ? 'max' : 'pro';
-        const order = await createPaymentOrder(plan.price * 100, backendPlanId);
+        if (typeof window.Razorpay === 'undefined') {
+            toast.error('Payment SDK failed to load. Please refresh and try again.');
+            console.error('window.Razorpay is unavailable');
+            return;
+        }
 
         const options = {
             key: keyId,

@@ -171,7 +171,16 @@ export async function getMe(): Promise<UserInfo> {
 export async function createPaymentOrder(
     amount: number,
     planId: string
-): Promise<{ id: string; amount: number; currency: string }> {
+): Promise<{
+    id: string;
+    amount: number;
+    currency: string;
+    key?: string;
+    key_id?: string;
+    keyId?: string;
+    razorpay_key_id?: string;
+    razorpayKeyId?: string;
+}> {
     return apiRequest('/api/payments/order', {
         method: 'POST',
         body: JSON.stringify({ amount, planId }),
