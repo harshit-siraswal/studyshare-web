@@ -9,8 +9,7 @@ import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
-
-const ANDROID_APK_PATH = "/downloads/studyshare-android.apk";
+import { openAndroidApkDownload } from "@/lib/apk";
 
 // All active colleges with online-verified institutional/student domains
 const initialColleges = [
@@ -77,6 +76,10 @@ const SelectCollege = () => {
         navigate("/auth");
     };
 
+    const handleDownloadApk = () => {
+        openAndroidApkDownload();
+    };
+
     return (
         <div className="min-h-screen bg-gradient-hero text-foreground font-ai overflow-x-hidden">
             <SEO
@@ -106,7 +109,7 @@ const SelectCollege = () => {
                         type="button"
                         variant="default"
                         size="sm"
-                        onClick={() => window.open(ANDROID_APK_PATH, "_blank", "noopener,noreferrer")}
+                        onClick={handleDownloadApk}
                     >
                         <Download className="h-4 w-4" />
                         Download APK

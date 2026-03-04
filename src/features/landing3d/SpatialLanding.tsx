@@ -8,8 +8,7 @@ import { useLandingPerformanceTier } from "./useLandingPerformanceTier";
 import { LandingSceneProvider, useLandingSceneStore } from "./state/LandingSceneContext";
 import { trackLandingEvent } from "./analytics";
 import type { SpatialLandingProps } from "./types";
-
-const ANDROID_APK_PATH = "/downloads/studyshare-android.apk";
+import { openAndroidApkDownload } from "@/lib/apk";
 
 interface SpatialLandingShellProps extends SpatialLandingProps {
   sceneReady: boolean;
@@ -66,12 +65,7 @@ export function SpatialLanding() {
 
   const handleDownload = () => {
     trackLandingEvent("landing_download_click", { chapter: "global" });
-    const anchor = document.createElement("a");
-    anchor.href = ANDROID_APK_PATH;
-    anchor.download = "";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    openAndroidApkDownload();
   };
 
   return (
