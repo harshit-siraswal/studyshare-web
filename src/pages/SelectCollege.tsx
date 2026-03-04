@@ -3,55 +3,52 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Search, Users, BookOpen, Sparkles, Plus } from "lucide-react";
+import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
+import { useTheme } from "@/hooks/useTheme";
 
-// Active colleges with verified email domains
-const activeColleges = [
+const ANDROID_APK_PATH = "/downloads/studyshare-android.apk";
+
+// All active colleges with online-verified institutional/student domains
+const initialColleges = [
     { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
     { id: 13, name: "IIIT Bhagalpur", location: "Bhagalpur, Bihar", students: 0, domain: "iiitbh.ac.in" },
     { id: 14, name: "IIIT Sonepat", location: "Sonepat, Haryana", students: 0, domain: "iiitsonepat.ac.in" },
     { id: 15, name: "ABES Engineering College", location: "Ghaziabad", students: 0, domain: "abes.ac.in" },
     { id: 16, name: "Delhi University", location: "New Delhi", students: 0, domain: "du.ac.in" },
+    { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 0, domain: "iitd.ac.in" },
+    { id: 2, name: "Indian Institute of Technology Bombay", location: "Mumbai", students: 0, domain: "iitb.ac.in" },
+    { id: 3, name: "Indian Institute of Technology Madras", location: "Chennai", students: 0, domain: "smail.iitm.ac.in" },
+    { id: 5, name: "Birla Institute of Technology and Science, Pilani", location: "Pilani", students: 0, domain: "bits-pilani.ac.in" },
+    { id: 6, name: "Vellore Institute of Technology", location: "Vellore", students: 0, domain: "vit.ac.in" },
+    { id: 7, name: "National Institute of Technology Tiruchirappalli", location: "Tiruchirappalli", students: 0, domain: "nitt.edu" },
+    { id: 8, name: "Anna University", location: "Chennai", students: 0, domain: "student.annauniv.edu" },
+    { id: 10, name: "Amity University", location: "Noida", students: 0, domain: "amity.edu" },
+    { id: 11, name: "SRM Institute of Science and Technology", location: "Chennai", students: 0, domain: "srmist.edu.in" },
+    { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 0, domain: "learner.manipal.edu" },
 ];
-
-// Coming soon colleges (no domain yet - will show WIP)
-const comingSoonColleges = [
-    { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 12500, domain: null },
-    { id: 2, name: "Indian Institute of Technology Bombay", location: "Mumbai", students: 11000, domain: null },
-    { id: 3, name: "Indian Institute of Technology Madras", location: "Chennai", students: 10500, domain: null },
-    { id: 5, name: "Birla Institute of Technology", location: "Pilani", students: 15000, domain: null },
-    { id: 6, name: "Vellore Institute of Technology", location: "Vellore", students: 25000, domain: null },
-    { id: 7, name: "National Institute of Technology", location: "Trichy", students: 8000, domain: null },
-    { id: 8, name: "Anna University", location: "Chennai", students: 85000, domain: null },
-    { id: 10, name: "Amity University", location: "Noida", students: 45000, domain: null },
-    { id: 11, name: "SRM Institute of Technology", location: "Chennai", students: 38000, domain: null },
-    { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 20000, domain: null },
-];
-
-// Combine for display - active colleges first
-const initialColleges = [...activeColleges, ...comingSoonColleges];
 
 const SelectCollege = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [colleges, setColleges] = useState(initialColleges);
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
 
     // Fetch actual user counts for all active colleges
     useEffect(() => {
         const fetchUserCounts = async () => {
             try {
                 // Fetch counts for each active college domain
-                for (const college of activeColleges) {
+                for (const college of initialColleges) {
                     if (!college.domain) continue;
 
                     const { count, error } = await supabase
                         .from('users')
                         .select('*', { count: 'exact', head: true })
-                        .ilike('email', `%@${college.domain}`);
+                        .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
 
                     if (!error && count !== null) {
                         setColleges(prev => prev.map(c =>
@@ -74,15 +71,10 @@ const SelectCollege = () => {
 
     const handleCollegeSelect = (collegeId: number) => {
         const college = colleges.find(c => c.id === collegeId);
+        if (!college) return;
 
-        // Allow all colleges with a domain (active colleges)
-        if (college?.domain) {
-            localStorage.setItem("selectedCollege", JSON.stringify(college));
-            navigate("/auth");
-        } else {
-            // Show work in progress for colleges without domain
-            alert(`🚧 Work in Progress\n\n${college?.name} will be available soon!\n\nCheck out our active colleges with verified domains.`);
-        }
+        localStorage.setItem("selectedCollege", JSON.stringify(college));
+        navigate("/auth");
     };
 
     return (
@@ -99,6 +91,28 @@ const SelectCollege = () => {
             </div>
 
             <div className="relative z-10 container mx-auto px-4 py-8 md:py-12">
+                <div className="mb-6 flex items-center justify-end gap-2 md:mb-8">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleTheme}
+                        className="bg-card/70 backdrop-blur-sm"
+                    >
+                        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        {theme === "dark" ? "Light" : "Dark"}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => window.open(ANDROID_APK_PATH, "_blank", "noopener,noreferrer")}
+                    >
+                        <Download className="h-4 w-4" />
+                        Download APK
+                    </Button>
+                </div>
+
                 {/* Header */}
                 <header className="text-center mb-12 md:mb-16 animate-fade-in">
                     <div className="inline-flex items-center gap-3 md:gap-4 mb-6">
@@ -172,10 +186,7 @@ const SelectCollege = () => {
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/80 group-hover:bg-primary/10 group-hover:text-primary transition-colors px-2.5 py-1 rounded-full shrink-0">
                                         <Users className="w-3.5 h-3.5" />
                                         <span>
-                                            {college.domain
-                                                ? (college.students > 0 ? college.students : '...')
-                                                : `${(college.students / 1000).toFixed(0)}k+`
-                                            }
+                                            {college.students > 0 ? college.students : '...'}
                                         </span>
                                     </div>
                                 </div>

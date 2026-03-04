@@ -12,7 +12,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Lazy load all pages for code splitting
-const Index = lazy(() => import("./pages/Index"));
 const SelectCollege = lazy(() => import("./pages/SelectCollege"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Study = lazy(() => import("./pages/Study"));
@@ -61,7 +60,7 @@ const AnimatedAppRoutes = () => {
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       >
         <Routes location={location}>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<SelectCollege />} />
           <Route path="/select-college" element={<SelectCollege />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />

@@ -22,6 +22,16 @@ export const COLLEGES: College[] = [
     { id: 'iiitbh', name: 'IIIT Bhagalpur', domain: 'iiitbh.ac.in' },
     { id: 'iiitsonepat', name: 'IIIT Sonepat', domain: 'iiitsonepat.ac.in' },
     { id: 'abes', name: 'ABES Engineering College', domain: 'abes.ac.in' },
+    { id: 'iitd', name: 'Indian Institute of Technology Delhi', domain: 'iitd.ac.in' },
+    { id: 'iitb', name: 'Indian Institute of Technology Bombay', domain: 'iitb.ac.in' },
+    { id: 'iitm', name: 'Indian Institute of Technology Madras', domain: 'smail.iitm.ac.in' },
+    { id: 'bitspilani', name: 'Birla Institute of Technology and Science, Pilani', domain: 'bits-pilani.ac.in' },
+    { id: 'vit', name: 'Vellore Institute of Technology', domain: 'vit.ac.in' },
+    { id: 'nittrichy', name: 'National Institute of Technology Tiruchirappalli', domain: 'nitt.edu' },
+    { id: 'anna', name: 'Anna University', domain: 'student.annauniv.edu' },
+    { id: 'amity', name: 'Amity University', domain: 'amity.edu' },
+    { id: 'srm', name: 'SRM Institute of Science and Technology', domain: 'srmist.edu.in' },
+    { id: 'manipal', name: 'Manipal Institute of Technology', domain: 'learner.manipal.edu' },
     { id: 'du', name: 'Delhi University', domain: 'du.ac.in' },
     { id: 'du-students', name: 'Delhi University (Students)', domain: 'students.du.ac.in' },
 ];
@@ -42,6 +52,13 @@ const CollegeContext = createContext<CollegeContextType | undefined>(undefined);
 
 function normalizeDomain(value?: string | null): string {
     return (value || '').trim().toLowerCase();
+}
+
+function domainMatches(userDomain?: string | null, collegeDomain?: string | null): boolean {
+    const user = normalizeDomain(userDomain);
+    const college = normalizeDomain(collegeDomain);
+    if (!user || !college) return false;
+    return user === college || user.endsWith(`.${college}`);
 }
 
 // Helper to get college from localStorage (stored by Index.tsx as full object)
@@ -133,7 +150,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
             const userDomain = user.email.split('@')[1]?.toLowerCase();
 
             // Try to find a college matching user's email domain
-            const matchedCollege = COLLEGES.find(c => c.domain.toLowerCase() === userDomain);
+            const matchedCollege = COLLEGES.find(c => domainMatches(userDomain, c.domain));
 
             if (matchedCollege) {
                 const domain = normalizeDomain(matchedCollege.domain);
@@ -181,7 +198,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
         const userDomain = user.email.split('@')[1]?.toLowerCase();
         const collegeDomain = selectedCollege.domain.toLowerCase();
 
-        return userDomain === collegeDomain ? 'full' : 'readonly';
+        return domainMatches(userDomain, collegeDomain) ? 'full' : 'readonly';
     })();
 
     const isFullAccess = accessLevel === 'full';
