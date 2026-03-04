@@ -1,11 +1,25 @@
 import { NavBar } from "@/components/ui/tubelight-navbar.tsx";
 import { Hero } from "@/components/ui/animated-hero";
 import { NeuralShaderField } from "@/components/landing/NeuralShaderField";
+import { LogoWheelTransition } from "@/components/landing/LogoWheelTransition";
 import { SEO } from "@/components/SEO";
 import { Link } from "react-router-dom";
-import { Home, Compass, Library, MessageCircle, Search, BookOpen, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  Home,
+  Compass,
+  Library,
+  MessageCircle,
+  Search,
+  BookOpen,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  BrainCircuit,
+  Users,
+  CalendarCheck2,
+} from "lucide-react";
 import { blogPosts } from "@/content/blogPosts";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { PLANS } from "@/lib/subscription";
 
 const ANDROID_APK_PATH = "/downloads/studyshare-android.apk";
@@ -25,28 +39,37 @@ const featureVisuals = [
   {
     title: "AI Note Summaries",
     description: "Turn long notes into crisp revision points with context-aware summaries.",
-    image: "/ai-features/ai-note-summaries.png",
+    icon: FileText,
+    badge: "Revision",
   },
   {
     title: "Smart Resource Search",
     description: "Find PYQs, notes, and topic threads in seconds across your college content.",
-    image: "/ai-features/ai-smart-search.png",
+    icon: BrainCircuit,
+    badge: "Search",
   },
   {
     title: "Collaborative Doubt Rooms",
     description: "Ask, discuss, and solve doubts with classmates and seniors in department channels.",
-    image: "/ai-features/ai-collab-chat.png",
+    icon: Users,
+    badge: "Community",
   },
   {
     title: "Exam Prep Planner",
     description: "Get structured prep flow by topic weight, deadlines, and your weak areas.",
-    image: "/ai-features/ai-exam-planner.png",
+    icon: CalendarCheck2,
+    badge: "Planning",
   },
 ];
 
 const Index = () => {
   const featuredBlogPosts = blogPosts.slice(0, 3);
   const shouldReduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll();
+  const scrollProgress = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const PrimaryFeatureIcon = featureVisuals[0].icon;
+  const SecondaryFeatureIcon = featureVisuals[1].icon;
+  const TertiaryFeatureIcon = featureVisuals[2].icon;
 
   const studentSearchIntentTopics = [
     {
@@ -175,13 +198,17 @@ const Index = () => {
       />
 
       <NavBar items={navItems} />
+      <motion.div
+        className="fixed top-0 left-0 right-0 z-[60] h-[2px] origin-left bg-gradient-to-r from-primary via-cyan-400 to-violet-400"
+        style={{ scaleX: scrollProgress }}
+      />
 
       <section
         id="home"
         className="relative z-10 flex-1 flex items-center justify-center min-h-screen pt-24 pb-14 px-6 md:px-12 w-full max-w-7xl mx-auto scroll-mt-24"
       >
         <NeuralShaderField className="absolute inset-0 z-0 opacity-90" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.16),transparent_38%),radial-gradient(circle_at_85%_85%,rgba(14,165,233,0.14),transparent_36%)] z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(45,212,191,0.14),transparent_38%),radial-gradient(circle_at_85%_85%,rgba(167,139,250,0.13),transparent_36%)] z-0" />
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 w-full items-center">
           <div className="flex justify-center lg:justify-start">
@@ -192,16 +219,28 @@ const Index = () => {
             initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: shouldReduceMotion ? 0.2 : 0.6, delay: 0.14 }}
-            className="relative w-full min-h-[380px] sm:min-h-[460px]"
+            className="relative w-full min-h-[380px] sm:min-h-[460px] [perspective:1200px]"
           >
+            <div className="absolute right-6 md:right-16 bottom-4 h-16 w-[70%] bg-black/40 blur-2xl rounded-full" />
             <motion.div
-              className="absolute right-4 md:right-10 top-0 w-[73%] rounded-2xl overflow-hidden border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_26px_80px_rgba(0,0,0,0.35)]"
+              className="absolute right-4 md:right-10 top-0 w-[73%] rounded-2xl overflow-hidden border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_30px_90px_rgba(0,0,0,0.38)]"
               animate={shouldReduceMotion ? undefined : { y: [0, -8, 0] }}
               transition={shouldReduceMotion ? undefined : { duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={shouldReduceMotion ? undefined : { rotateX: 6, rotateY: -8, y: -10 }}
+              style={{ transformStyle: "preserve-3d" }}
             >
-              <img src={featureVisuals[0].image} alt={featureVisuals[0].title} className="w-full h-[260px] md:h-[320px] object-cover" />
+              <div className="h-[260px] md:h-[320px] p-5 md:p-6 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.22),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(167,139,250,0.2),transparent_55%),linear-gradient(140deg,rgba(8,20,43,0.9),rgba(16,25,64,0.92))] flex flex-col justify-between">
+                <div className="inline-flex items-center gap-2 self-start rounded-full border border-primary/30 bg-background/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+                  <PrimaryFeatureIcon className="h-3.5 w-3.5" />
+                  {featureVisuals[0].badge}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Feature Preview</p>
+                  <h3 className="text-2xl font-semibold">{featureVisuals[0].title}</h3>
+                  <p className="text-sm text-muted-foreground">{featureVisuals[0].description}</p>
+                </div>
+              </div>
               <div className="p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Feature Preview</p>
                 <h3 className="text-xl font-semibold mt-1">{featureVisuals[0].title}</h3>
                 <p className="text-sm text-muted-foreground mt-2">{featureVisuals[0].description}</p>
               </div>
@@ -212,9 +251,13 @@ const Index = () => {
               initial={{ opacity: 0, x: -14 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: shouldReduceMotion ? 0.2 : 0.5, delay: 0.32 }}
+              whileHover={shouldReduceMotion ? undefined : { rotateX: 10, rotateY: 10, z: 12, y: -6 }}
+              style={{ transformStyle: "preserve-3d" }}
             >
-              <img src={featureVisuals[1].image} alt={featureVisuals[1].title} className="w-full h-36 object-cover" />
-              <p className="px-3 py-2 text-xs font-medium">{featureVisuals[1].title}</p>
+              <div className="h-36 p-4 bg-[linear-gradient(150deg,rgba(30,41,59,0.86),rgba(21,53,104,0.72))] flex flex-col justify-between">
+                <SecondaryFeatureIcon className="h-6 w-6 text-primary" />
+                <p className="text-xs font-medium">{featureVisuals[1].title}</p>
+              </div>
             </motion.div>
 
             <motion.div
@@ -222,22 +265,35 @@ const Index = () => {
               initial={{ opacity: 0, x: -14 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: shouldReduceMotion ? 0.2 : 0.5, delay: 0.4 }}
+              whileHover={shouldReduceMotion ? undefined : { rotateX: -8, rotateY: 9, z: 12, y: -6 }}
+              style={{ transformStyle: "preserve-3d" }}
             >
-              <img src={featureVisuals[2].image} alt={featureVisuals[2].title} className="w-full h-36 object-cover" />
-              <p className="px-3 py-2 text-xs font-medium">{featureVisuals[2].title}</p>
+              <div className="h-36 p-4 bg-[linear-gradient(150deg,rgba(67,56,202,0.72),rgba(30,41,59,0.86))] flex flex-col justify-between">
+                <TertiaryFeatureIcon className="h-6 w-6 text-primary" />
+                <p className="text-xs font-medium">{featureVisuals[2].title}</p>
+              </div>
             </motion.div>
           </motion.div>
         </div>
       </section>
 
-      <section id="features" className="relative z-10 py-24 px-6 md:px-12 bg-secondary/25 backdrop-blur-sm border-y border-border/50 scroll-mt-24">
+      <LogoWheelTransition label="Explore the platform" />
+
+      <motion.section
+        id="features"
+        className="relative z-10 py-24 px-6 md:px-12 bg-secondary/25 backdrop-blur-sm border-y border-border/50 scroll-mt-24"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.18 }}
+        transition={{ duration: 0.55 }}
+      >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
               Your prep stack, <span className="text-primary">reimagined.</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              AI-generated visuals below represent core StudyShare workflows while we finalize live feature screenshots.
+              Core StudyShare workflows designed for revision speed, peer collaboration, and exam planning.
             </p>
           </div>
 
@@ -247,12 +303,21 @@ const Index = () => {
                 key={feature.title}
                 initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={shouldReduceMotion ? undefined : { rotateX: 7, rotateY: -6, y: -8 }}
                 viewport={{ once: true, amount: 0.35 }}
                 transition={{ duration: shouldReduceMotion ? 0.2 : 0.48, delay: index * 0.08 }}
-                className="rounded-2xl border border-border/70 bg-card/75 overflow-hidden shadow-[0_18px_44px_rgba(0,0,0,0.24)]"
+                className="rounded-2xl border border-border/70 bg-card/75 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.24)]"
+                style={{ transformStyle: "preserve-3d" }}
               >
-                <img src={feature.image} alt={feature.title} className="w-full h-56 object-cover" loading="lazy" />
-                <div className="p-6">
+                <div className="h-44 p-6 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(167,139,250,0.2),transparent_48%),linear-gradient(135deg,rgba(15,23,42,0.84),rgba(30,41,59,0.88))]">
+                  <div className="h-11 w-11 rounded-xl border border-primary/40 bg-background/30 flex items-center justify-center">
+                    <feature.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="mt-4 inline-flex rounded-full border border-primary/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                    {feature.badge}
+                  </p>
+                </div>
+                <div className="p-6 pt-5">
                   <h3 className="text-2xl font-semibold">{feature.title}</h3>
                   <p className="text-muted-foreground mt-3">{feature.description}</p>
                 </div>
@@ -260,9 +325,17 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="relative z-10 py-20 px-6 md:px-12 max-w-7xl mx-auto w-full">
+      <LogoWheelTransition label="Search intent and campus life" />
+
+      <motion.section
+        className="relative z-10 py-20 px-6 md:px-12 max-w-7xl mx-auto w-full"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 20 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="flex items-center justify-center gap-2 text-primary text-sm font-semibold uppercase tracking-[0.14em]">
           <Search className="w-4 h-4" />
           Popular student searches
@@ -285,16 +358,31 @@ const Index = () => {
             </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section id="community" className="relative z-10 py-24 px-6 md:px-12 max-w-7xl mx-auto min-h-[45vh] flex flex-col items-center justify-center text-center scroll-mt-24">
+      <motion.section
+        id="community"
+        className="relative z-10 py-24 px-6 md:px-12 max-w-7xl mx-auto min-h-[45vh] flex flex-col items-center justify-center text-center scroll-mt-24"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 18 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ duration: 0.5 }}
+      >
         <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-6">Join thousands of students.</h2>
         <p className="text-xl text-muted-foreground max-w-2xl mb-10">
           We strictly verify student emails to ensure zero spam and 100% relevant academic collaboration.
         </p>
-      </section>
+      </motion.section>
 
-      <section className="relative z-10 py-24 px-6 md:px-12 bg-secondary/20 border-y border-border/50">
+      <LogoWheelTransition label="Plans and updates" />
+
+      <motion.section
+        className="relative z-10 py-24 px-6 md:px-12 bg-secondary/20 border-y border-border/50"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.16 }}
+        transition={{ duration: 0.55 }}
+      >
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">Pricing</p>
@@ -340,9 +428,16 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section id="blog" className="relative z-10 py-24 px-6 md:px-12 bg-secondary/30 border-y border-border/50 scroll-mt-24">
+      <motion.section
+        id="blog"
+        className="relative z-10 py-24 px-6 md:px-12 bg-secondary/30 border-y border-border/50 scroll-mt-24"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 22 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.16 }}
+        transition={{ duration: 0.55 }}
+      >
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
@@ -371,9 +466,15 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="relative z-10 py-20 px-6 md:px-12 max-w-5xl mx-auto w-full">
+      <motion.section
+        className="relative z-10 py-20 px-6 md:px-12 max-w-5xl mx-auto w-full"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 20 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.18 }}
+        transition={{ duration: 0.5 }}
+      >
         <h2 className="text-3xl md:text-4xl font-bold text-center tracking-tight">Frequently asked questions</h2>
         <div className="grid grid-cols-1 gap-4 mt-10">
           {faqItems.map((item) => (
@@ -383,9 +484,16 @@ const Index = () => {
             </div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section id="download" className="relative z-10 py-24 px-6 md:px-12 bg-primary text-primary-foreground border-y border-border/50 scroll-mt-24">
+      <motion.section
+        id="download"
+        className="relative z-10 py-24 px-6 md:px-12 bg-primary text-primary-foreground border-y border-border/50 scroll-mt-24"
+        initial={shouldReduceMotion ? undefined : { opacity: 0, y: 22 }}
+        whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 text-primary-foreground drop-shadow-md">
             Study seamlessly on the go.
@@ -402,7 +510,7 @@ const Index = () => {
             Download Android APK
           </a>
         </div>
-      </section>
+      </motion.section>
 
       <footer className="relative z-10 py-8 text-center text-sm text-muted-foreground bg-background">
         <p>&copy; {new Date().getFullYear()} StudyShare. All rights reserved.</p>
