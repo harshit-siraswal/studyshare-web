@@ -1,7 +1,8 @@
 import { useMemo, useRef } from "react";
 import { Color, ShaderMaterial, type Mesh } from "three";
 import { useFrame } from "@react-three/fiber";
-import { Icosahedron, Line, Trail } from "@react-three/drei";
+import { Icosahedron, Line } from "@react-three/drei";
+import { LANDING_PALETTE } from "../config";
 import type { PerformanceTier } from "../types";
 
 interface NeuralCoreProps {
@@ -20,8 +21,9 @@ export function NeuralCore({ pointerX, pointerY, tier }: NeuralCoreProps) {
         transparent: true,
         uniforms: {
           uTime: { value: 0 },
-          uPrimary: { value: new Color("hsl(174, 72%, 56%)") },
-          uAccent: { value: new Color("hsl(262, 83%, 68%)") },
+          uPrimary: { value: new Color(LANDING_PALETTE.primary) },
+          uAccent: { value: new Color(LANDING_PALETTE.secondary) },
+          uWarm: { value: new Color(LANDING_PALETTE.accent) },
         },
         vertexShader: `
           varying vec3 vNormal;
@@ -36,15 +38,16 @@ export function NeuralCore({ pointerX, pointerY, tier }: NeuralCoreProps) {
           uniform float uTime;
           uniform vec3 uPrimary;
           uniform vec3 uAccent;
+          uniform vec3 uWarm;
           varying vec3 vNormal;
           varying vec3 vPosition;
 
           void main() {
-            float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.3);
-            float pulse = 0.58 + 0.42 * sin(uTime * 1.7 + vPosition.y * 3.2);
-            vec3 color = mix(uPrimary, uAccent, 0.5 + 0.5 * sin(uTime * 0.7 + vPosition.x * 2.1));
-            color += fresnel * 0.35;
-            gl_FragColor = vec4(color * pulse, 0.85);
+            float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.1);
+            float wave = 0.5 + 0.5 * sin(uTime * 1.45 + vPosition.y * 2.3);
+            vec3 cool = mix(uPrimary, uAccent, 0.5 + 0.5 * sin(uTime * 0.75 + vPosition.x * 1.8));
+            vec3 finalColor = mix(cool, uWarm, fresnel * 0.3);
+            gl_FragColor = vec4(finalColor * (0.64 + wave * 0.36), 0.88);
           }
         `,
       }),
@@ -53,63 +56,54 @@ export function NeuralCore({ pointerX, pointerY, tier }: NeuralCoreProps) {
 
   useFrame((_, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.22;
-      meshRef.current.rotation.x = pointerY * 0.16;
-      meshRef.current.rotation.z = pointerX * 0.14;
+      meshRef.current.rotation.y += delta * 0.2;
+      meshRef.current.rotation.x = pointerY * 0.12;
+      meshRef.current.rotation.z = pointerX * 0.09;
     }
     if (ringRef.current) {
-      ringRef.current.rotation.z += delta * 0.3;
-      ringRef.current.rotation.y -= delta * 0.22;
+      ringRef.current.rotation.z += delta * 0.22;
+      ringRef.current.rotation.y -= delta * 0.16;
     }
     material.uniforms.uTime.value += delta;
   });
 
-  const detailLevel = tier === "high" ? 9 : tier === "medium" ? 8 : 7;
+  const detailLevel = tier === "high" ? 8 : tier === "medium" ? 7 : 6;
 
   return (
     <group position={[0, 0.8, 0]}>
       <mesh ref={meshRef}>
-        <icosahedronGeometry args={[1.65, detailLevel]} />
+        <icosahedronGeometry args={[1.52, detailLevel]} />
         <primitive object={material} attach="material" />
       </mesh>
 
-      <mesh ref={ringRef} rotation={[Math.PI / 2.4, 0, 0]}>
-        <torusGeometry args={[2.4, 0.03, 24, 160]} />
-        <meshBasicMaterial color={"hsl(174, 72%, 56%)"} transparent opacity={0.65} />
+      <mesh ref={ringRef} rotation={[Math.PI / 2.6, 0, 0]}>
+        <torusGeometry args={[2.3, 0.035, 18, 120]} />
+        <meshBasicMaterial color={LANDING_PALETTE.primary} transparent opacity={0.6} />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2.4, 0.4, 0.8]}>
-        <torusGeometry args={[2.75, 0.02, 24, 150]} />
-        <meshBasicMaterial color={"hsl(262, 83%, 68%)"} transparent opacity={0.38} />
+      <mesh rotation={[Math.PI / 2.2, 0.45, 0.7]}>
+        <torusGeometry args={[2.72, 0.018, 14, 90]} />
+        <meshBasicMaterial color={LANDING_PALETTE.secondary} transparent opacity={0.34} />
       </mesh>
-
-      <Trail
-        width={1.2}
-        length={8}
-        color={"hsl(174, 72%, 56%)"}
-        attenuation={(trailWidth) => trailWidth}
-        decay={2.5}
-      >
-        <mesh position={[2.2, 0.4, 0]}>
-          <sphereGeometry args={[0.08, 12, 12]} />
-          <meshBasicMaterial color={"hsl(174, 72%, 56%)"} />
-        </mesh>
-      </Trail>
 
       <Line
         points={[
-          [-1.8, -0.6, 0.3],
-          [0.1, 1.9, -0.4],
-          [1.6, -0.5, 0.2],
+          [-1.65, -0.48, 0.26],
+          [0.12, 1.72, -0.35],
+          [1.52, -0.42, 0.21],
         ]}
-        color={"hsl(262, 83%, 68%)"}
+        color={LANDING_PALETTE.accent}
         lineWidth={1}
         transparent
-        opacity={0.4}
+        opacity={0.35}
       />
 
-      <Icosahedron args={[0.07, 1]} position={[1.3, 1.1, 0.9]}>
-        <meshStandardMaterial color={"hsl(174, 72%, 56%)"} emissive={"hsl(174, 72%, 56%)"} emissiveIntensity={0.5} />
+      <Icosahedron args={[0.075, 1]} position={[1.2, 1.02, 0.85]}>
+        <meshStandardMaterial
+          color={LANDING_PALETTE.primary}
+          emissive={LANDING_PALETTE.primary}
+          emissiveIntensity={0.42}
+        />
       </Icosahedron>
     </group>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Vector3, type PerspectiveCamera } from "three";
+import { CatmullRomCurve3, Vector3, type PerspectiveCamera } from "three";
 import { CAMERA_KEYFRAMES, CHAPTER_PROGRESS, chapterFromProgress } from "../config";
 import { trackLandingEvent } from "../analytics";
 import { RenderInvalidationCoordinator } from "../RenderInvalidationCoordinator";
@@ -57,74 +57,54 @@ export function useCameraTimeline({
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const progressRef = useRef(0);
   const isProgrammaticFly = useRef(false);
+  const activeChapterRef = useRef<LandingChapterId>("home");
   const focusRef = useRef<FocusTarget>({
     point: new Vector3(0, 0, 0),
     mix: 0,
   });
-  const activeChapterRef = useRef<LandingChapterId>("home");
+
+  const cameraCurve = useMemo(
+    () => new CatmullRomCurve3(CAMERA_KEYFRAMES.map((frame) => new Vector3(...frame.position)), false, "catmullrom", 0.45),
+    [],
+  );
+  const targetCurve = useMemo(
+    () => new CatmullRomCurve3(CAMERA_KEYFRAMES.map((frame) => new Vector3(...frame.target)), false, "catmullrom", 0.45),
+    [],
+  );
 
   const applyCameraFromProgress = useCallback(
     (progress: number) => {
-      progressRef.current = progress;
-      const { from, to, alpha } = findFrameWindow(progress);
+      const clamped = Math.max(0, Math.min(1, progress));
+      progressRef.current = clamped;
 
-      const px = lerpNumber(from.position[0], to.position[0], alpha);
-      const py = lerpNumber(from.position[1], to.position[1], alpha);
-      const pz = lerpNumber(from.position[2], to.position[2], alpha);
-
-      const tx = lerpNumber(from.target[0], to.target[0], alpha);
-      const ty = lerpNumber(from.target[1], to.target[1], alpha);
-      const tz = lerpNumber(from.target[2], to.target[2], alpha);
+      const basePosition = cameraCurve.getPoint(clamped);
+      const baseTarget = targetCurve.getPoint(clamped);
+      const tangent = cameraCurve.getTangent(Math.max(0.001, Math.min(0.999, clamped)));
+      const side = new Vector3(-tangent.z, 0, tangent.x).normalize();
+      const drift = side.multiplyScalar(Math.sin(clamped * Math.PI * 4.8) * 0.12);
+      const position = basePosition.clone().add(drift);
 
       const focusMix = focusRef.current.mix;
-      const targetX = lerpNumber(tx, focusRef.current.point.x, focusMix);
-      const targetY = lerpNumber(ty, focusRef.current.point.y, focusMix);
-      const targetZ = lerpNumber(tz, focusRef.current.point.z, focusMix);
+      const targetX = lerpNumber(baseTarget.x, focusRef.current.point.x, focusMix);
+      const targetY = lerpNumber(baseTarget.y, focusRef.current.point.y, focusMix);
+      const targetZ = lerpNumber(baseTarget.z, focusRef.current.point.z, focusMix);
 
-      camera.position.set(px, py, pz);
+      const { from, to, alpha } = findFrameWindow(clamped);
+      camera.position.copy(position);
       camera.lookAt(targetX, targetY, targetZ);
       camera.fov = lerpNumber(from.fov, to.fov, alpha);
       camera.updateProjectionMatrix();
 
-      const chapter = chapterFromProgress(progress);
-      if (chapter !== activeChapterRef.current) {
-        activeChapterRef.current = chapter;
-        trackLandingEvent("landing_chapter_view", { chapter });
-      }
-
-      onProgress(progress);
+      onProgress(clamped);
       coordinator.pulse("camera-progress", 120);
     },
-    [camera, coordinator, onProgress],
+    [camera, cameraCurve, coordinator, onProgress, targetCurve],
   );
 
-  useEffect(() => {
-    const trigger = ScrollTrigger.create({
-      trigger: scrollElement,
-      start: "top top",
-      end: "bottom bottom",
-      scrub: 1,
-      onUpdate: (self) => {
-        if (isProgrammaticFly.current) return;
-        onNavStateChange("SCROLL_SCRUB");
-        applyCameraFromProgress(self.progress);
-      },
-    });
-
-    scrollTriggerRef.current = trigger;
-    applyCameraFromProgress(0);
-    trackLandingEvent("landing_chapter_view", { chapter: "home" });
-
-    return () => {
-      trigger.kill(false, false);
-      scrollTriggerRef.current = null;
-    };
-  }, [applyCameraFromProgress, onNavStateChange, scrollElement]);
-
-  const jumpToChapter = useCallback(
-    (id: LandingChapterId) => {
+  const flyToChapter = useCallback(
+    (id: LandingChapterId, source: "scroll" | "jump") => {
       const trigger = scrollTriggerRef.current;
-      if (!trigger) return;
+      if (!trigger || isProgrammaticFly.current) return;
 
       const targetProgress = CHAPTER_PROGRESS[id];
       if (Math.abs(targetProgress - progressRef.current) < 0.001) return;
@@ -137,27 +117,65 @@ export function useCameraTimeline({
       const progressState = { value: progressRef.current };
       gsap.to(progressState, {
         value: targetProgress,
-        duration: 0.7,
-        ease: "power3.out",
+        duration: source === "jump" ? 0.88 : 0.72,
+        ease: source === "jump" ? "power3.inOut" : "power2.out",
         onUpdate: () => {
           applyCameraFromProgress(progressState.value);
         },
         onComplete: () => {
+          activeChapterRef.current = id;
+          trackLandingEvent("landing_chapter_view", { chapter: id });
+
           const start = trigger.start;
           const end = trigger.end;
           const nextScroll = start + (end - start) * targetProgress;
           window.scrollTo({ top: nextScroll, behavior: "auto" });
 
-          trigger.enable(false);
-          isProgrammaticFly.current = false;
-          onNavStateChange("SCROLL_SCRUB");
-          coordinator.deactivate("programmatic-fly");
+          window.setTimeout(() => {
+            trigger.enable(false);
+            isProgrammaticFly.current = false;
+            onNavStateChange("SCROLL_SCRUB");
+            coordinator.deactivate("programmatic-fly");
+          }, 90);
         },
       });
 
-      trackLandingEvent("landing_portal_click", { chapter: id });
+      if (source === "jump") {
+        trackLandingEvent("landing_portal_click", { chapter: id });
+      }
     },
     [applyCameraFromProgress, coordinator, onNavStateChange],
+  );
+
+  useEffect(() => {
+    const trigger = ScrollTrigger.create({
+      trigger: scrollElement,
+      start: "top top",
+      end: "bottom bottom",
+      scrub: false,
+      onUpdate: (self) => {
+        if (isProgrammaticFly.current) return;
+        const chapter = chapterFromProgress(self.progress);
+        if (chapter === activeChapterRef.current) return;
+        flyToChapter(chapter, "scroll");
+      },
+    });
+
+    scrollTriggerRef.current = trigger;
+    applyCameraFromProgress(0);
+    trackLandingEvent("landing_chapter_view", { chapter: "home" });
+
+    return () => {
+      trigger.kill(false, false);
+      scrollTriggerRef.current = null;
+    };
+  }, [applyCameraFromProgress, flyToChapter, scrollElement]);
+
+  const jumpToChapter = useCallback(
+    (id: LandingChapterId) => {
+      flyToChapter(id, "jump");
+    },
+    [flyToChapter],
   );
 
   const setFocusTarget = useMemo(
@@ -166,7 +184,7 @@ export function useCameraTimeline({
         focusRef.current.point.copy(point);
         coordinator.activate("focus-target");
         gsap.to(focusRef.current, {
-          mix: 0.35,
+          mix: 0.32,
           duration: 0.22,
           ease: "power2.out",
           onUpdate: () => applyCameraFromProgress(progressRef.current),
@@ -178,7 +196,7 @@ export function useCameraTimeline({
       leave: () => {
         gsap.to(focusRef.current, {
           mix: 0,
-          duration: 0.24,
+          duration: 0.22,
           ease: "power2.out",
           onUpdate: () => applyCameraFromProgress(progressRef.current),
           onComplete: () => coordinator.deactivate("focus-target"),

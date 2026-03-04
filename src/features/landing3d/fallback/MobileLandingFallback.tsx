@@ -125,7 +125,7 @@ export function MobileLandingFallback({ onContinue, onDownload }: SpatialLanding
           <Link to="/blog" className="text-primary hover:text-primary/80">
             Read blog
           </Link>
-          <span className="mx-2">•</span>
+          <span className="mx-2">|</span>
           <a href={ANDROID_APK_PATH} download className="text-primary hover:text-primary/80">
             Android download
           </a>
@@ -134,3 +134,4 @@ export function MobileLandingFallback({ onContinue, onDownload }: SpatialLanding
     </div>
   );
 }
+

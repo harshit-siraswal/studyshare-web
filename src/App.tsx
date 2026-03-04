@@ -9,7 +9,6 @@ import { MobileBottomNav } from "@/components/mobile";
 import { Analytics } from "@vercel/analytics/react";
 import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import CursorFollowSplineRobot from "@/components/CursorFollowSplineRobot";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Lazy load all pages for code splitting
@@ -88,12 +87,6 @@ const AnimatedAppRoutes = () => {
   );
 };
 
-const GlobalCursorRobot = () => {
-  const location = useLocation();
-  if (location.pathname.startsWith("/auth") || location.pathname === "/") return null;
-  return <CursorFollowSplineRobot />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -107,8 +100,6 @@ const App = () => (
             <AnimatedAppRoutes />
           </Suspense>
         </div>
-
-        <GlobalCursorRobot />
 
         {/* Mobile bottom navigation - visible only on mobile (md:hidden in component) */}
         <MobileBottomNav />

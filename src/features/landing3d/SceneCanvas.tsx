@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import { Vector2, type Group, type PerspectiveCamera } from "three";
 import { useCameraTimeline } from "./camera/useCameraTimeline";
 import { PERFORMANCE_TIER_CONFIG } from "./config";
@@ -57,8 +56,8 @@ function SceneRoot({ tier, reducedMotion, scrollElement, coordinator, onSceneRea
 
   useEffect(() => {
     coordinator.setInvalidator(invalidate);
-    if (tier === "high") coordinator.activate("ambient-motion");
-    else coordinator.pulse("scene-boot", 450);
+    if (tier === "low") coordinator.pulse("scene-boot", 500);
+    else coordinator.activate("ambient-motion");
 
     if (!sceneReadyRef.current) {
       sceneReadyRef.current = true;
@@ -148,16 +147,6 @@ function SceneRoot({ tier, reducedMotion, scrollElement, coordinator, onSceneRea
         onBlurChapter={() => setFocusTarget.leave()}
       />
       <FloatingCards activeChapter={activeChapter} enabled={PERFORMANCE_TIER_CONFIG[tier].physicsEnabled} />
-
-      {tier === "high" && (
-        <OrbitControls
-          enablePan={false}
-          enableZoom={false}
-          enabled={false}
-          minPolarAngle={Math.PI / 2.8}
-          maxPolarAngle={Math.PI / 1.7}
-        />
-      )}
     </group>
   );
 }
@@ -189,7 +178,16 @@ export function SceneCanvas({ tier, reducedMotion, scrollRef, onSceneReady, debu
           frameloop="demand"
           dpr={[dprConfig.dprMin, dprConfig.dprMax]}
           camera={{ position: [0, 1.8, 8], fov: 48, near: 0.1, far: 250 }}
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+          gl={{
+            antialias: false,
+            alpha: true,
+            powerPreference: tier === "high" ? "high-performance" : "default",
+            depth: true,
+            stencil: false,
+          }}
+          onCreated={({ gl }) => {
+            gl.setClearAlpha(1);
+          }}
         >
           <SceneRoot
             tier={tier}

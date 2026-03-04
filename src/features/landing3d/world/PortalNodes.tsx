@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Sphere, Text } from "@react-three/drei";
 import { Vector3 } from "three";
-import { PORTAL_NODES } from "../config";
+import { LANDING_PALETTE, PORTAL_NODES } from "../config";
 import type { LandingChapterId } from "../types";
 
 interface PortalNodesProps {
@@ -33,7 +33,7 @@ export function PortalNodes({
         return (
           <group key={node.id} position={node.position}>
             <Sphere
-              args={[0.74, 24, 24]}
+              args={[0.68, 18, 18]}
               onPointerEnter={() => {
                 if (disabled) return;
                 setHoveredChapter(node.id);
@@ -50,18 +50,18 @@ export function PortalNodes({
               }}
             >
               <meshStandardMaterial
-                color={isActive ? "hsl(174, 72%, 56%)" : "hsl(222, 47%, 18%)"}
-                emissive={isActive ? "hsl(174, 72%, 56%)" : "hsl(262, 83%, 68%)"}
+                color={isActive ? LANDING_PALETTE.primary : LANDING_PALETTE.backgroundMid}
+                emissive={isActive ? LANDING_PALETTE.secondary : LANDING_PALETTE.accent}
                 emissiveIntensity={emissiveIntensity}
-                roughness={0.3}
-                metalness={0.6}
+                roughness={0.36}
+                metalness={0.52}
               />
             </Sphere>
 
             <Text
               position={[0, -1.18, 0]}
               fontSize={0.35}
-              color={isActive ? "hsl(174, 72%, 56%)" : "hsl(210, 40%, 98%)"}
+              color={isActive ? LANDING_PALETTE.primary : LANDING_PALETTE.textSoft}
               anchorX="center"
               anchorY="middle"
             >

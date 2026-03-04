@@ -30,7 +30,7 @@ function SpatialLandingShell({ onContinue, onDownload, sceneReady, setSceneReady
   }
 
   return (
-    <div className="relative min-h-[500svh] bg-background text-foreground">
+    <div className="relative min-h-[500svh] bg-[radial-gradient(circle_at_20%_10%,hsl(218,58%,16%),transparent_42%),radial-gradient(circle_at_80%_80%,hsl(27,65%,18%),transparent_36%),hsl(224,52%,8%)] text-foreground">
       {showScene && (
         <SceneCanvas
           tier={tier}

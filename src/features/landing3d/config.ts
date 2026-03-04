@@ -6,6 +6,15 @@ import type {
   PerformanceTier,
 } from "./types";
 
+export const LANDING_PALETTE = {
+  backgroundDeep: "hsl(224, 52%, 8%)",
+  backgroundMid: "hsl(217, 49%, 14%)",
+  primary: "hsl(197, 92%, 57%)",
+  secondary: "hsl(231, 88%, 67%)",
+  accent: "hsl(26, 88%, 62%)",
+  textSoft: "hsl(213, 47%, 90%)",
+};
+
 export const CHAPTER_ORDER: LandingChapterId[] = ["home", "features", "community", "pricing", "download"];
 
 export const CAMERA_KEYFRAMES: CameraKeyframe[] = [
@@ -74,9 +83,9 @@ export const CHAPTER_PROGRESS: Record<LandingChapterId, number> = CAMERA_KEYFRAM
 );
 
 export const PERFORMANCE_TIER_CONFIG: Record<PerformanceTier, PerformanceTierConfig> = {
-  high: { tier: "high", physicsEnabled: true, postFxEnabled: true, dprMin: 1, dprMax: 1.8 },
-  medium: { tier: "medium", physicsEnabled: false, postFxEnabled: true, dprMin: 0.9, dprMax: 1.4 },
-  low: { tier: "low", physicsEnabled: false, postFxEnabled: false, dprMin: 0.75, dprMax: 1.1 },
+  high: { tier: "high", physicsEnabled: true, postFxEnabled: true, dprMin: 0.9, dprMax: 1.35 },
+  medium: { tier: "medium", physicsEnabled: false, postFxEnabled: true, dprMin: 0.85, dprMax: 1.1 },
+  low: { tier: "low", physicsEnabled: false, postFxEnabled: false, dprMin: 0.75, dprMax: 1 },
   fallback: { tier: "fallback", physicsEnabled: false, postFxEnabled: false, dprMin: 1, dprMax: 1 },
 };
 

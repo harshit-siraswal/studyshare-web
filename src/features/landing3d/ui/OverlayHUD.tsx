@@ -123,14 +123,15 @@ export function OverlayHUD({
           </div>
 
           <p className="mt-4 text-xs uppercase tracking-[0.13em] text-muted-foreground">
-            {sceneReady ? `Scene ready • ${navState.replace("_", " ")}` : "Initializing spatial scene..."}
+            {sceneReady ? `Scene ready | ${navState.replace("_", " ")}` : "Initializing spatial scene..."}
           </p>
         </div>
       </div>
 
       <div className="pointer-events-none mx-auto mb-6 w-full max-w-7xl px-5 text-right text-xs uppercase tracking-[0.13em] text-muted-foreground md:px-8">
-        Scroll to move camera • drag to orbit • click nodes to jump
+        Scroll to move chapters | drag to orbit | click nodes to jump
       </div>
     </div>
   );
 }
+
