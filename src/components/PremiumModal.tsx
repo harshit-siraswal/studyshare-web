@@ -24,9 +24,6 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
         setLoading(true);
         try {
             await SubscriptionService.initiatePayment(planId, user.email || '', user.uid);
-            // Note: Payment handler is async in the window callback, so we might stop loading here or let the handler manage it.
-            // For UX, we set loading to false after a timeout if the popup doesn't appear or if the user cancels.
-            // But Razorpay interactions are tricky to track perfectly without webhooks.
             setLoading(false);
             onClose();
         } catch (error) {
@@ -56,12 +53,12 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
                     {PLANS.map((plan) => (
                         <div
                             key={plan.id}
-                            className={`relative border rounded-xl p-6 flex flex-col ${plan.duration === 'yearly'
-                                    ? 'border-amber-500 bg-amber-500/5 shadow-lg scale-105'
-                                    : 'border-border bg-card'
+                            className={`relative border rounded-xl p-6 flex flex-col ${plan.duration === "quarterly"
+                                ? "border-amber-500 bg-amber-500/5 shadow-lg scale-105"
+                                : "border-border bg-card"
                                 }`}
                         >
-                            {plan.duration === 'yearly' && (
+                            {plan.duration === "quarterly" && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
                                     Best Value
                                 </div>
@@ -71,8 +68,11 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
                                 <h3 className="text-xl font-bold">{plan.name}</h3>
                                 <div className="flex items-baseline gap-1 mt-2">
                                     <span className="text-3xl font-bold">₹{plan.price}</span>
-                                    <span className="text-muted-foreground">/{plan.duration === 'monthly' ? 'mo' : 'yr'}</span>
+                                    <span className="text-muted-foreground">/{plan.duration === "monthly" ? "mo" : "3mo"}</span>
                                 </div>
+                                {plan.duration === "quarterly" && (
+                                    <p className="text-xs text-muted-foreground mt-1">90-day access with best value pricing</p>
+                                )}
                             </div>
 
                             <ul className="space-y-3 flex-1 mb-6">
@@ -88,11 +88,11 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
 
                             <Button
                                 size="lg"
-                                className={plan.duration === 'yearly' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+                                className={plan.duration === "quarterly" ? "bg-amber-500 hover:bg-amber-600" : ""}
                                 onClick={() => handleUpgrade(plan.id)}
                                 disabled={loading}
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Get Started'}
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get Started"}
                             </Button>
                         </div>
                     ))}

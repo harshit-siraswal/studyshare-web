@@ -1,10 +1,37 @@
 import { toast } from 'sonner';
 import { createPaymentOrder, verifyPayment } from './api';
 
+interface RazorpayPaymentSuccessPayload {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+}
+
+interface RazorpayCheckoutOptions {
+    key: string;
+    amount: number;
+    currency: 'INR';
+    name: string;
+    description: string;
+    image: string;
+    order_id: string;
+    handler: (response: RazorpayPaymentSuccessPayload) => Promise<void>;
+    prefill: {
+        email: string;
+    };
+    theme: {
+        color: string;
+    };
+}
+
+interface RazorpayInstance {
+    open: () => void;
+}
+
 // Define Razorpay window interface
 declare global {
     interface Window {
-        Razorpay: any;
+        Razorpay: new (options: RazorpayCheckoutOptions) => RazorpayInstance;
     }
 }
 
@@ -16,7 +43,7 @@ export interface PremiumPlan {
     id: string;
     name: string;
     price: number;
-    duration: 'monthly' | 'yearly';
+    duration: 'monthly' | 'quarterly';
     features: string[];
 }
 
@@ -27,21 +54,20 @@ export const PLANS: PremiumPlan[] = [
         price: 49,
         duration: 'monthly',
         features: [
-            'Offline Storage (App)',
-            'Create up to 12 Rooms',
+            'Offline PDF downloads',
             '1 Year Room Expiry',
-            'Priority Support'
+            'Premium profile badge'
         ]
     },
     {
-        id: 'premium_yearly',
-        name: 'Premium Yearly',
-        price: 499, // Discounted
-        duration: 'yearly',
+        id: 'premium_quarterly',
+        name: 'Premium Quarterly',
+        price: 149,
+        duration: 'quarterly',
         features: [
-            'All Monthly Features',
-            '2 Months Free',
-            'Exclusive Badge'
+            'Offline PDF downloads',
+            '1 Year Room Expiry',
+            'Premium profile badge'
         ]
     }
 ];
@@ -98,7 +124,7 @@ export class SubscriptionService {
         const plan = PLANS.find(p => p.id === planId);
         if (!plan) throw new Error('Invalid plan selected');
 
-        const backendPlanId = plan.duration === 'yearly' ? 'max' : 'pro';
+        const backendPlanId = plan.duration === 'quarterly' ? 'quarterly' : 'monthly';
         const order = await createPaymentOrder(plan.price * 100, backendPlanId) as Record<string, unknown>;
         const keyId = SubscriptionService.resolveRazorpayKey(order);
 
@@ -122,7 +148,7 @@ export class SubscriptionService {
             description: `Upgrade to ${plan.name}`,
             image: '/icons/icon-192.png', // Ensure this exists or use a remote URL
             order_id: order.id,
-            handler: async function (response: any) {
+            handler: async function (response: RazorpayPaymentSuccessPayload) {
                 try {
                     await verifyPayment(
                         response.razorpay_order_id,
