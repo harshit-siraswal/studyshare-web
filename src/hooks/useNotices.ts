@@ -20,7 +20,41 @@ export interface Notice {
     college_id?: string;
 }
 
-async function fetchNotices(collegeId: string): Promise<Notice[]> {
+function buildCollegeScopes(
+    collegeId?: string | null,
+    collegeDomain?: string | null,
+    collegeSlug?: string | null
+): string[] {
+    const scopes = new Set<string>();
+
+    const addScope = (value?: string | null) => {
+        const trimmed = (value || '').trim();
+        if (!trimmed) return;
+        scopes.add(trimmed);
+
+        const lower = trimmed.toLowerCase();
+        if (lower !== trimmed) scopes.add(lower);
+    };
+
+    addScope(collegeId);
+    addScope(collegeDomain);
+    addScope(collegeSlug);
+
+    const normalizedDomain = (collegeDomain || '').trim().toLowerCase();
+    if (normalizedDomain) {
+        if (normalizedDomain.startsWith('www.')) {
+            addScope(normalizedDomain.slice(4));
+        }
+
+        const parts = normalizedDomain.split('.').filter(Boolean);
+        if (parts.length > 0) addScope(parts[0]); // e.g. kiet from kiet.edu
+        if (parts.length > 2) addScope(parts.slice(1).join('.')); // e.g. du.ac.in from students.du.ac.in
+    }
+
+    return Array.from(scopes);
+}
+
+async function fetchNotices(scopes: string[]): Promise<Notice[]> {
     const normalize = (rows: any[]): Notice[] => {
         return (rows || []).map((n) => {
             const commentCount = n.comments ?? n.comments_count ?? 0;
@@ -33,20 +67,31 @@ async function fetchNotices(collegeId: string): Promise<Notice[]> {
         });
     };
 
-    const queryByScope = async (scope: string) => {
-        return supabase
-            .from('notices')
-            .select('*')
-            .eq('is_active', true)
-            .eq('college_id', scope)
-            .order('created_at', { ascending: false });
-    };
+    if (scopes.length === 0) return [];
 
-    // Primary scope: selected college ID
-    const primaryResult = await queryByScope(collegeId);
-    if (primaryResult.error) throw primaryResult.error;
+    const scopedResult = await supabase
+        .from('notices')
+        .select('*')
+        .eq('is_active', true)
+        .in('college_id', scopes)
+        .order('created_at', { ascending: false });
 
-    return normalize(primaryResult.data || []);
+    if (scopedResult.error) throw scopedResult.error;
+
+    const scopedRows = scopedResult.data || [];
+    if (scopedRows.length > 0) return normalize(scopedRows);
+
+    // Backward compatibility: show legacy global notices with null college_id.
+    const globalResult = await supabase
+        .from('notices')
+        .select('*')
+        .eq('is_active', true)
+        .is('college_id', null)
+        .order('created_at', { ascending: false });
+
+    if (globalResult.error) return [];
+
+    return normalize(globalResult.data || []);
 }
 
 /**
@@ -56,68 +101,22 @@ async function fetchNotices(collegeId: string): Promise<Notice[]> {
 export function useNotices() {
     const { selectedCollegeId, selectedCollege } = useCollege();
     const queryClient = useQueryClient();
-    const collegeId = selectedCollegeId;
-    const collegeDomain = selectedCollege?.domain || null;
-    const collegeScope = collegeId || collegeDomain || 'none';
+    const collegeScopes = buildCollegeScopes(
+        selectedCollegeId,
+        selectedCollege?.domain || null,
+        selectedCollege?.id || null
+    );
+    const collegeScopeKey = collegeScopes.length > 0 ? collegeScopes.join('|') : 'none';
 
     const query = useQuery({
-        queryKey: ['notices', collegeScope],
-        queryFn: async () => {
-            if (collegeId) {
-                const scoped = await fetchNotices(collegeId);
-                if (scoped.length > 0 || !collegeDomain || collegeDomain === collegeId) {
-                    return scoped;
-                }
-
-                // Backward compatibility: some notice rows may still store college domain.
-                const legacyScoped = await supabase
-                    .from('notices')
-                    .select('*')
-                    .eq('is_active', true)
-                    .eq('college_id', collegeDomain)
-                    .order('created_at', { ascending: false });
-
-                if (legacyScoped.error) {
-                    return scoped;
-                }
-
-                return (legacyScoped.data || []).map((n) => {
-                    const commentCount = n.comments ?? n.comments_count ?? 0;
-                    return {
-                        ...n,
-                        likes: n.likes || 0,
-                        comments: commentCount,
-                        comments_count: commentCount,
-                    };
-                });
-            }
-
-            if (!collegeDomain) return [];
-            const legacyScoped = await supabase
-                .from('notices')
-                .select('*')
-                .eq('is_active', true)
-                .eq('college_id', collegeDomain)
-                .order('created_at', { ascending: false });
-
-            if (legacyScoped.error) throw legacyScoped.error;
-
-            return (legacyScoped.data || []).map((n) => {
-                const commentCount = n.comments ?? n.comments_count ?? 0;
-                return {
-                    ...n,
-                    likes: n.likes || 0,
-                    comments: commentCount,
-                    comments_count: commentCount,
-                };
-            });
-        },
-        enabled: !!collegeId || !!collegeDomain,
+        queryKey: ['notices', collegeScopeKey],
+        queryFn: () => fetchNotices(collegeScopes),
+        enabled: collegeScopes.length > 0,
     });
 
     // Manual refresh function
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['notices', collegeScope] });
+        queryClient.invalidateQueries({ queryKey: ['notices', collegeScopeKey] });
     };
 
     return {

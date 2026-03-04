@@ -1017,7 +1017,7 @@ const Chatroom = () => {
                             className="w-6 h-6 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`);
+                              navigate(`/profile/${encodeURIComponent(message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, ''))}`);
                             }}
                           >
                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
@@ -1028,7 +1028,7 @@ const Chatroom = () => {
                             className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/profile/${message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, '')}`);
+                              navigate(`/profile/${encodeURIComponent(message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, ''))}`);
                             }}
                           >
                             {message.author_name}
@@ -1176,7 +1176,7 @@ const Chatroom = () => {
             </div>
             <button
               className="font-medium text-foreground hover:text-primary transition-colors"
-              onClick={() => navigate(`/profile/${currentRoom?.created_by?.split('@')[0]}`)}
+              onClick={() => navigate(`/profile/${encodeURIComponent(currentRoom?.created_by?.split('@')[0] || 'unknown')}`)}
             >
               {currentRoom?.created_by?.split('@')[0] || 'Unknown'}
             </button>

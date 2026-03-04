@@ -166,7 +166,7 @@ Create/update `.env.production` in your project root:
 ```env
 VITE_API_URL=https://api.mystudyspace.me
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
 ```
 
 ### Step 6.2: Update Backend CORS

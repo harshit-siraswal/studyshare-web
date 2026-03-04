@@ -216,7 +216,7 @@ const Explore = () => {
                                 <div className="flex items-center gap-2 sm:gap-4">
                                     <Avatar
                                         className="w-12 h-12 cursor-pointer"
-                                        onClick={() => navigate(`/profile/${user.username}`)}
+                                        onClick={() => navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`)}
                                     >
                                         <AvatarImage src={user.profile_photo_url || undefined} />
                                         <AvatarFallback className="bg-primary/10 text-primary">
@@ -226,7 +226,7 @@ const Explore = () => {
 
                                     <div
                                         className="flex-1 min-w-0 cursor-pointer"
-                                        onClick={() => navigate(`/profile/${user.username}`)}
+                                        onClick={() => navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`)}
                                     >
                                         <h3 className="font-semibold text-foreground truncate">
                                             {user.display_name || user.email?.split('@')[0] || 'User'}

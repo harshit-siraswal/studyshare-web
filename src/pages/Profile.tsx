@@ -103,9 +103,33 @@ interface AiTokenUsage {
   remaining: number;
   }
 
-function toSafeNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+const DEFAULT_AI_TOKEN_BUDGET = (() => {
+  const raw = Number(import.meta.env.VITE_AI_TOKEN_BUDGET ?? 10000);
+  if (!Number.isFinite(raw) || raw <= 0) return 10000;
+  return Math.round(raw);
+})();
+
+function toOptionalNumber(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const direct = Number(trimmed);
+    if (Number.isFinite(direct)) return direct;
+
+    const commaNormalized = trimmed.replace(/,/g, "");
+    const commaParsed = Number(commaNormalized);
+    if (Number.isFinite(commaParsed)) return commaParsed;
+
+    const match = commaNormalized.match(/-?\d+(?:\.\d+)?/);
+    if (!match) return undefined;
+    const fromSubstring = Number(match[0]);
+    return Number.isFinite(fromSubstring) ? fromSubstring : undefined;
+  }
+  return undefined;
 }
 
 const mockContributions: Contribution[] = [
@@ -355,21 +379,50 @@ const Profile = () => {
       if (!authUser || isViewingOther) return;
 
       try {
-        const result = await api.getMyProfile();
-        const profile = result.profile;
-        const budget = toSafeNumber(profile.ai_token_budget);
-        const used = toSafeNumber(profile.ai_token_used);
-        const remaining = toSafeNumber(
-          profile.ai_token_remaining ?? (budget > 0 ? budget - used : 0)
+        const balance = await api.getAiTokenBalance();
+        const budgetRaw = toOptionalNumber(balance.budget);
+        const usedRaw = toOptionalNumber(balance.used);
+        const remainingRaw = toOptionalNumber(balance.remaining);
+        const hasTokenData = [budgetRaw, usedRaw, remainingRaw].some((value) => value !== undefined);
+
+        if (!hasTokenData) {
+          setAiTokenUsage({
+            budget: DEFAULT_AI_TOKEN_BUDGET,
+            used: 0,
+            remaining: DEFAULT_AI_TOKEN_BUDGET,
+          });
+          return;
+        }
+
+        const budget = Math.max(
+          0,
+          budgetRaw ?? (
+            usedRaw !== undefined || remainingRaw !== undefined
+              ? (usedRaw ?? 0) + (remainingRaw ?? 0)
+              : DEFAULT_AI_TOKEN_BUDGET
+          )
+        );
+        const used = Math.max(
+          0,
+          usedRaw ?? (budget > 0 && remainingRaw !== undefined ? budget - remainingRaw : 0)
+        );
+        const remaining = Math.max(
+          0,
+          remainingRaw ?? (budget > 0 ? budget - used : 0)
         );
 
         setAiTokenUsage({
           budget,
           used: budget > 0 ? Math.min(used, budget) : used,
-          remaining: budget > 0 ? Math.max(0, Math.min(remaining, budget)) : remaining,
+          remaining: budget > 0 ? Math.min(remaining, budget) : remaining,
         });
       } catch (error) {
         console.error('Failed to fetch AI token usage:', error);
+        setAiTokenUsage({
+          budget: DEFAULT_AI_TOKEN_BUDGET,
+          used: 0,
+          remaining: DEFAULT_AI_TOKEN_BUDGET,
+        });
       }
     };
 

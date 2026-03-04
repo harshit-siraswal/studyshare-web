@@ -19,7 +19,7 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, title }: ImageViewerProps) => 
   const handleRotate = () => setRotation(prev => (prev + 90) % 360);
   
   const handleDownload = () => {
-    window.open(imageUrl, '_blank');
+    window.open(imageUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleClose = () => {

@@ -125,7 +125,6 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
                 ...savedCollege,
                 collegeId: collegeIdMap[domain] || savedCollege.collegeId || null,
             });
-            console.log(`[CollegeContext] Using selected college: ${savedCollege.name} (from localStorage)`);
             return;
         }
 
@@ -145,7 +144,6 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
                 setSelectedCollege(hydratedCollege);
                 // Also save to localStorage so it persists
                 localStorage.setItem('selectedCollege', JSON.stringify(hydratedCollege));
-                console.log(`[CollegeContext] No selection found, defaulting to email domain: ${matchedCollege.name}`);
                 return;
             }
         }
@@ -156,7 +154,6 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
             collegeId: collegeIdMap[normalizeDomain(COLLEGES[0].domain)] || null,
         };
         setSelectedCollege(defaultCollege);
-        console.log(`[CollegeContext] No selection found, defaulting to: ${COLLEGES[0].name}`);
     }, [user, collegeIdMap]);
 
     // Set college by ID (for manual selection by readonly users)

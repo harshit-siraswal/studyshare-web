@@ -10,7 +10,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { CollegeProvider } from "./context/CollegeContext";
 import { TimerProvider } from "./context/TimerContext";
 
-const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
+const recaptchaSiteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY || '').trim();
 
 // Performance optimization: Configure React Query cache
 // staleTime: Data considered fresh for 5 minutes (won't refetch)
@@ -34,13 +34,23 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <BrowserRouter>
-          <GoogleReCaptchaProvider
-            reCaptchaKey={recaptchaSiteKey}
-            scriptProps={{
-              async: true,
-              defer: true,
-            }}
-          >
+          {recaptchaSiteKey ? (
+            <GoogleReCaptchaProvider
+              reCaptchaKey={recaptchaSiteKey}
+              scriptProps={{
+                async: true,
+                defer: true,
+              }}
+            >
+              <AuthProvider>
+                <CollegeProvider>
+                  <TimerProvider>
+                    <App />
+                  </TimerProvider>
+                </CollegeProvider>
+              </AuthProvider>
+            </GoogleReCaptchaProvider>
+          ) : (
             <AuthProvider>
               <CollegeProvider>
                 <TimerProvider>
@@ -48,7 +58,7 @@ createRoot(document.getElementById("root")!).render(
                 </TimerProvider>
               </CollegeProvider>
             </AuthProvider>
-          </GoogleReCaptchaProvider>
+          )}
         </BrowserRouter>
       </HelmetProvider>
     </QueryClientProvider>

@@ -1,68 +1,74 @@
 /**
- * Upload image to Cloudinary for chat rooms
- * Optimized for images only, with compression
+ * Secure chat image upload using backend-issued presigned URLs.
+ * This avoids public unsigned third-party upload presets on the client.
  */
 
-import { CLOUDINARY_CONFIG } from './cloudinary';
+import { getResourceUploadUrl } from "./api";
+
+const MAX_CHAT_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/");
+}
+
+function sanitizeFilename(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
 
 export const uploadChatImage = async (
-    file: File,
-    onProgress?: (progress: number) => void
+  file: File,
+  onProgress?: (progress: number) => void
 ): Promise<string> => {
-    if (!CLOUDINARY_CONFIG.cloudName || !CLOUDINARY_CONFIG.uploadPreset) {
-        throw new Error('Cloudinary is not configured. Please check your environment variables.');
-    }
+  if (!isImageFile(file)) {
+    throw new Error("Only image files are allowed");
+  }
 
-    // Validate file is an image
-    if (!file.type.startsWith('image/')) {
-        throw new Error('Only image files are allowed');
-    }
+  if (file.size > MAX_CHAT_IMAGE_SIZE_BYTES) {
+    throw new Error("Image must be less than 5MB");
+  }
 
-    // Check file size (max 5MB for chat images)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-        throw new Error('Image must be less than 5MB');
-    }
+  const baseName = sanitizeFilename(file.name || "chat-image");
+  const uploadName = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${baseName}`;
+  const { uploadUrl, publicUrl } = await getResourceUploadUrl(uploadName);
 
-    return new Promise((resolve, reject) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+  if (import.meta.env.PROD && /^http:\/\//i.test(publicUrl)) {
+    throw new Error("Insecure image URL returned from upload service");
+  }
 
-        const xhr = new XMLHttpRequest();
-        const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-        xhr.open('POST', uploadUrl, true);
-
-        // Track upload progress
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable && onProgress) {
-                const progress = Math.round((e.loaded / e.total) * 100);
-                onProgress(progress);
-            }
-        });
-
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    resolve(response.secure_url);
-                } catch (error) {
-                    reject(new Error('Failed to parse upload response'));
-                }
-            } else {
-                reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
-        });
-
-        xhr.addEventListener('error', () => {
-            reject(new Error('Network error during upload'));
-        });
-
-        xhr.addEventListener('abort', () => {
-            reject(new Error('Upload cancelled'));
-        });
-
-        xhr.send(formData);
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable || !onProgress) return;
+      const progress = Math.round((event.loaded / event.total) * 100);
+      onProgress(progress);
     });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(publicUrl);
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error during upload"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload cancelled"));
+    });
+
+    xhr.open("PUT", uploadUrl, true);
+    xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+    xhr.setRequestHeader("Cache-Control", "max-age=31536000");
+    xhr.send(file);
+  });
 };
+

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search, Moon, Sun, X, ChevronDown, ChevronUp, FileText, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { getApiBaseUrl } from "@/lib/runtimeConfig";
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import DOMPurify from "dompurify";
@@ -20,10 +21,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const WEBODF_SCRIPT_URL = "/vendor/webodf.js";
 let webOdfScriptPromise: Promise<void> | null = null;
-const API_BASE = (
-    import.meta.env.VITE_API_URL ||
-    (import.meta.env.DEV ? "http://localhost:3001" : "https://api.studyshare.in")
-).replace(/\/+$/, "");
+const API_BASE = getApiBaseUrl();
 
 const ensureWebOdf = () => {
     if (typeof window === 'undefined') {

@@ -34,6 +34,36 @@ const DEPARTMENTS: DepartmentMeta[] = [
     { value: 'it', label: 'Information Technology', icon: Globe },
 ];
 
+const buildCollegeScopes = (
+    collegeId?: string | null,
+    collegeDomain?: string | null,
+    collegeSlug?: string | null
+) => {
+    const scopes = new Set<string>();
+
+    const addScope = (value?: string | null) => {
+        const trimmed = (value || '').trim();
+        if (!trimmed) return;
+        scopes.add(trimmed);
+        const lower = trimmed.toLowerCase();
+        if (lower !== trimmed) scopes.add(lower);
+    };
+
+    addScope(collegeId);
+    addScope(collegeDomain);
+    addScope(collegeSlug);
+
+    const normalizedDomain = (collegeDomain || '').trim().toLowerCase();
+    if (normalizedDomain) {
+        if (normalizedDomain.startsWith('www.')) addScope(normalizedDomain.slice(4));
+        const parts = normalizedDomain.split('.').filter(Boolean);
+        if (parts.length > 0) addScope(parts[0]);
+        if (parts.length > 2) addScope(parts.slice(1).join('.'));
+    }
+
+    return Array.from(scopes);
+};
+
 interface Notice {
     id: string;
     title: string;
@@ -55,8 +85,13 @@ const DepartmentProfile = () => {
     const navigate = useNavigate();
     const { deptId } = useParams<{ deptId: string }>();
     const { user } = useAuth();
-    const { selectedCollegeId } = useCollege();
+    const { selectedCollegeId, selectedCollege } = useCollege();
     const collegeId = selectedCollegeId;
+    const collegeScopes = buildCollegeScopes(
+        selectedCollegeId,
+        selectedCollege?.domain || null,
+        selectedCollege?.id || null
+    );
 
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,12 +120,12 @@ const DepartmentProfile = () => {
     const DeptIcon = (department?.icon || Building2) as ElementType;
 
     useEffect(() => {
-        if (deptId && collegeId) {
+        if (deptId && collegeScopes.length > 0) {
             fetchNotices();
             checkFollowingStatus();
             fetchFollowerCount();
         }
-    }, [deptId, user, collegeId]);
+    }, [deptId, user, collegeId, collegeScopes.join('|')]);
 
     const fetchNotices = async () => {
         try {
@@ -100,12 +135,26 @@ const DepartmentProfile = () => {
                 .select('*')
                 .eq('department', deptId)
                 .eq('is_active', true)
-                .eq('college_id', collegeId)
+                .in('college_id', collegeScopes)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const activeNotices = (data || [])
+            let noticeRows = data || [];
+            if (noticeRows.length === 0) {
+                const { data: globalRows, error: globalError } = await supabase
+                    .from('notices')
+                    .select('*')
+                    .eq('department', deptId)
+                    .eq('is_active', true)
+                    .is('college_id', null)
+                    .order('created_at', { ascending: false });
+                if (!globalError) {
+                    noticeRows = globalRows || [];
+                }
+            }
+
+            const activeNotices = noticeRows
                 .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
                 .map(notice => ({
                     ...notice,
@@ -577,7 +626,7 @@ const DepartmentProfile = () => {
                                                         <FileText className="w-8 h-8 text-primary" />
                                                         <span className="font-medium">PDF Attachment</span>
                                                     </div>
-                                                    <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank')}>
+                                                    <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank', 'noopener,noreferrer')}>
                                                         View PDF
                                                     </Button>
                                                 </div>

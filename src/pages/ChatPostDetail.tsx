@@ -375,7 +375,7 @@ const ChatPostDetail = () => {
                   className="w-6 h-6 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                   onClick={() =>
                     navigate(
-                      `/profile/${post.author_email?.split("@")[0] || post.author_name.toLowerCase().replace(/\s+/g, "")}`
+                      `/profile/${encodeURIComponent(post.author_email?.split("@")[0] || post.author_name.toLowerCase().replace(/\s+/g, ""))}`
                     )
                   }
                 >
@@ -387,7 +387,7 @@ const ChatPostDetail = () => {
                   className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
                   onClick={() =>
                     navigate(
-                      `/profile/${post.author_email?.split("@")[0] || post.author_name.toLowerCase().replace(/\s+/g, "")}`
+                      `/profile/${encodeURIComponent(post.author_email?.split("@")[0] || post.author_name.toLowerCase().replace(/\s+/g, ""))}`
                     )
                   }
                 >

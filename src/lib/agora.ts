@@ -1,9 +1,10 @@
 import AgoraRTC from 'agora-rtc-sdk-ng';
 
 // Agora Configuration
+const AGORA_APP_ID = (import.meta.env.VITE_AGORA_APP_ID || '').trim();
+
 export const AGORA_CONFIG = {
-  appId: 'c09c0ffe323241adb34572cd0b83c1ef',
-  primaryCertificate: '8bca4a44ed894bf5a40e8a0339e1d3f2',
+  appId: AGORA_APP_ID,
   projectName: 'StudyShare',
 };
 
@@ -38,6 +39,10 @@ export const joinChannel = async (
   const client = getRTCClient();
   
   try {
+    if (!AGORA_CONFIG.appId) {
+      throw new Error('Missing VITE_AGORA_APP_ID. Configure it in your environment variables.');
+    }
+
     await client.join(
       AGORA_CONFIG.appId,
       channelName,

@@ -1,13 +1,13 @@
-# StudySpace (Explanify) — Comprehensive Product Document
+# StudyShare— Comprehensive Product Document
 
 **Version:** 2.0  
-**Product:** StudySpace Enterprise & Explanify Student Portal  
+**Product:** StudyShare  
 
 ---
 
 ## 1. Executive Summary
 
-**StudySpace** (featuring the student-facing portal **Explanify**) is a comprehensive, centralized educational web platform engineered for both college students and administrators. The product resolves the chronic fragmentation of college communication by unifying syllabus management, academic resource sharing, sophisticated AI study tools, social networking, and peer-to-peer discourse into a single, cohesive application.
+**StudyShare**  is a comprehensive, centralized educational web platform engineered for both college students and administrators. The product resolves the chronic fragmentation of college communication by unifying syllabus management, academic resource sharing, sophisticated AI study tools, social networking, and peer-to-peer discourse into a single, cohesive application.
 
 The core pain point solved is the reliance on scattered platforms for academic coordination. By bringing everything under one roof within a premium, "glassmorphism" UI, StudySpace improves collaboration, accelerates learning via AI, and organizes the academic journey.
 
@@ -17,15 +17,14 @@ The core pain point solved is the reliance on scattered platforms for academic c
 
 The product ecosystem is bifurcated into two specialized interfaces:
 
-### 2.1 Explanify (Student Portal)
+### 2.1 studyshare(Student Portal)
 A modern, mobile-responsive web application designed for students to access everything they need for their academic life. It is highly interactive, featuring real-time updates and AI-driven study acceleration.
 
-### 2.2 StudySpace Admin Dashboard
-A robust, secure administration interface designed for college staff, teachers, and system administrators. It provides granular role-based access control (RBAC) to moderate content, publish notices, and manage user behavior.
+
 
 ---
 
-## 3. Core Features: Student Experience (Explanify)
+## 3. Core Features: Student Experience (studyshare)
 
 ### 3.1 AI-Powered Study Studio (New)
 The platform features an advanced AI suite specifically tailored for students:
@@ -58,7 +57,7 @@ A freemium model powered by Razorpay:
 
 ---
 
-## 4. Core Features: Admin Experience (StudySpace Dashboard)
+## 4. Core Features: Admin Experience (StudyShare Dashboard)
 
 1. **Granular Role-Based Access Control (RBAC):**
    - Super Admin, College Admin, Department Admin, and Teacher roles with strict data isolation.

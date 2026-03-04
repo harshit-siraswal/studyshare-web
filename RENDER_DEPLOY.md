@@ -53,7 +53,7 @@ Add these variables (click "Add Environment Variable" for each):
 | `FIREBASE_PRIVATE_KEY` | *(paste the entire private key including -----BEGIN/END-----)* |
 | `SUPABASE_URL` | `https://iayuwsvguwfqjgjsvjiy.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | *(your service role key)* |
-| `RECAPTCHA_SECRET_KEY` | `6Ld7RUAsAAAAAH78xQGrBIodjtGBwLq1HfjYpJYo` |
+| `RECAPTCHA_SECRET_KEY` | *(your reCAPTCHA secret key from Google Cloud Console)* |
 
 > ⚠️ For `FIREBASE_PRIVATE_KEY`, paste the key exactly as-is with `\n` characters.
 

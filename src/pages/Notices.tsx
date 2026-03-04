@@ -51,7 +51,7 @@ const Notices = () => {
   const { user } = useAuth();
 
   // React Query: Fetch notices with caching
-  const { notices, isLoading: loading } = useNotices();
+  const { notices, isLoading: loading, isError, error, refresh } = useNotices();
   const { selectedCollegeId } = useCollege();
   const collegeId = selectedCollegeId;
 
@@ -374,6 +374,18 @@ const Notices = () => {
                   <NoticeSkeleton key={`notice-skeleton-${i}`} />
                 ))}
               </div>
+            ) : isError ? (
+              <div className="p-8 text-center">
+                <div className="max-w-md mx-auto rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                  <h3 className="text-lg font-bold mb-2 text-destructive">Could not load notices</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {error instanceof Error ? error.message : "Please try again."}
+                  </p>
+                  <Button onClick={refresh} variant="outline" className="rounded-full">
+                    Retry
+                  </Button>
+                </div>
+              </div>
             ) : displayedNotices.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <div className="flex flex-col items-center gap-3">
@@ -448,7 +460,7 @@ const Notices = () => {
                                 <span className="text-sm font-medium flex-1 truncate">View PDF Attachment</span>
                                 <Button variant="outline" size="sm" onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(notice.file_url!, '_blank');
+                                  window.open(notice.file_url!, '_blank', 'noopener,noreferrer');
                                 }}>Open</Button>
                               </div>
                             )}
@@ -638,7 +650,7 @@ const Notices = () => {
                           <div className="p-4 bg-secondary/20 flex items-center gap-3">
                             <FileText className="w-8 h-8 text-primary" />
                             <span className="text-sm font-medium flex-1 truncate">PDF Attachment</span>
-                            <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank')}>Open</Button>
+                            <Button variant="outline" size="sm" onClick={() => window.open(selectedNotice.file_url!, '_blank', 'noopener,noreferrer')}>Open</Button>
                           </div>
                         )}
                         {selectedNotice.file_type === 'video' && (

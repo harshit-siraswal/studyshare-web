@@ -137,7 +137,7 @@ const Messages = () => {
             {filteredChats.map((chat) => (
               <button
                 key={chat.id}
-                onClick={() => navigate(`/messages/${chat.username}`)}
+                onClick={() => navigate(`/messages/${encodeURIComponent(chat.username)}`)}
                 className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
               >
                 <div className="relative">
@@ -185,7 +185,11 @@ const Messages = () => {
           </Button>
           <div 
             className="flex items-center gap-3 flex-1 cursor-pointer"
-            onClick={() => navigate(`/profile/${username}`)}
+            onClick={() => {
+              if (username) {
+                navigate(`/profile/${encodeURIComponent(username)}`);
+              }
+            }}
           >
             <div className="relative">
               <Avatar className="w-10 h-10">

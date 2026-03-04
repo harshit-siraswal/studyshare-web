@@ -6,13 +6,10 @@
  */
 
 import { auth } from '../firebase';
+import { getApiBaseUrl } from './runtimeConfig';
 
 // Backend URL
-// Production defaults to api.studyshare.in when VITE_API_URL is not set.
-const API_BASE = (
-    import.meta.env.VITE_API_URL ||
-    (import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.studyshare.in')
-);
+const API_BASE = getApiBaseUrl();
 
 export class ApiError extends Error {
     status: number;
@@ -882,79 +879,237 @@ export interface UserProfile {
     ai_budget_inr?: number;
 }
 
-function toOptionalNumber(value: unknown): number | undefined {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
+export interface AiTokenBalance {
+    budget?: number;
+    used?: number;
+    remaining?: number;
 }
 
-function pickFirstNumber(...values: unknown[]): number | undefined {
-    for (const value of values) {
-        const parsed = toOptionalNumber(value);
-        if (parsed !== undefined) return parsed;
+function toOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : undefined;
+    }
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) return undefined;
+
+        const direct = Number(trimmed);
+        if (Number.isFinite(direct)) return direct;
+
+        const commaNormalized = trimmed.replace(/,/g, '');
+        const commaParsed = Number(commaNormalized);
+        if (Number.isFinite(commaParsed)) return commaParsed;
+
+        const match = commaNormalized.match(/-?\d+(?:\.\d+)?/);
+        if (!match) return undefined;
+        const fromSubstring = Number(match[0]);
+        return Number.isFinite(fromSubstring) ? fromSubstring : undefined;
     }
     return undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, any> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeKey(key: string): string {
+    return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function pickFirstTextFromSources(
+    sources: Record<string, any>[],
+    keys: string[]
+): string | undefined {
+    for (const source of sources) {
+        for (const key of keys) {
+            const rawValue = source?.[key];
+            if (rawValue === undefined || rawValue === null) continue;
+            const text = typeof rawValue === 'string' ? rawValue.trim() : String(rawValue).trim();
+            if (text.length > 0) return text;
+        }
+    }
+    return undefined;
+}
+
+function pickFirstNumberFromSources(
+    sources: Record<string, any>[],
+    keys: string[]
+): number | undefined {
+    for (const source of sources) {
+        for (const key of keys) {
+            const parsed = toOptionalNumber(source?.[key]);
+            if (parsed !== undefined) return parsed;
+        }
+    }
+    return undefined;
+}
+
+function collectProfileSources(raw: unknown): Record<string, any>[] {
+    const sources: Record<string, any>[] = [];
+    const queue: unknown[] = [raw];
+    const seen = new Set<object>();
+    const wrapperKeys = [
+        'profile',
+        'user',
+        'me',
+        'account',
+        'data',
+        'result',
+        'payload',
+        'balance',
+        'ai_balance',
+        'aiBalance',
+        'token_balance',
+        'tokenBalance',
+        'usage',
+        'quota',
+        'limits',
+    ];
+
+    while (queue.length > 0 && sources.length < 80) {
+        const current = queue.shift();
+        if (!isRecord(current)) continue;
+        if (seen.has(current)) continue;
+        seen.add(current);
+        sources.push(current);
+
+        for (const key of wrapperKeys) {
+            if (key in current) {
+                queue.push(current[key]);
+            }
+        }
+    }
+
+    return sources;
+}
+
+function findNestedNumberByKeys(raw: unknown, keys: string[]): number | undefined {
+    const normalizedKeys = new Set(keys.map(normalizeKey));
+    const queue: unknown[] = [raw];
+    const seen = new Set<object>();
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        if (!isRecord(current)) continue;
+        if (seen.has(current)) continue;
+        seen.add(current);
+
+        for (const [key, value] of Object.entries(current)) {
+            if (normalizedKeys.has(normalizeKey(key))) {
+                const parsed = toOptionalNumber(value);
+                if (parsed !== undefined) return parsed;
+            }
+            if (isRecord(value)) {
+                queue.push(value);
+                continue;
+            }
+            if (Array.isArray(value)) {
+                for (const item of value) queue.push(item);
+            }
+        }
+    }
+
+    return undefined;
+}
+
 function normalizeUserProfile(raw: any): UserProfile {
-    const balance = raw?.balance || raw?.ai_balance || raw?.token_balance || {};
+    const sources = collectProfileSources(raw);
+    const balanceSources = sources.filter((source) =>
+        ['balance', 'ai_balance', 'aiBalance', 'token_balance', 'tokenBalance'].some((key) => isRecord(source?.[key]))
+    ).flatMap((source) => [
+        source.balance,
+        source.ai_balance,
+        source.aiBalance,
+        source.token_balance,
+        source.tokenBalance,
+    ]).filter(isRecord);
+
+    const tokenSources = [...sources, ...balanceSources];
+
+    const budgetKeys = [
+        'ai_token_budget',
+        'aiTokenBudget',
+        'budget_tokens',
+        'budgetTokens',
+        'token_budget',
+        'tokenBudget',
+        'total_tokens',
+        'totalTokens',
+        'tokens_total',
+        'tokensTotal',
+        'token_limit',
+        'tokenLimit',
+        'quota_tokens',
+        'quotaTokens',
+        'daily_token_budget',
+        'dailyTokenBudget',
+        'max_tokens',
+        'maxTokens',
+    ];
+    const usedKeys = [
+        'ai_token_used',
+        'aiTokenUsed',
+        'used_tokens',
+        'usedTokens',
+        'token_used',
+        'tokenUsed',
+        'consumed_tokens',
+        'consumedTokens',
+        'tokens_used',
+        'tokensUsed',
+        'spent_tokens',
+        'spentTokens',
+    ];
+    const remainingKeys = [
+        'ai_token_remaining',
+        'aiTokenRemaining',
+        'remaining_tokens',
+        'remainingTokens',
+        'token_remaining',
+        'tokenRemaining',
+        'available_tokens',
+        'availableTokens',
+        'tokens_remaining',
+        'tokensRemaining',
+        'left_tokens',
+        'leftTokens',
+    ];
+    const budgetInrKeys = [
+        'ai_budget_inr',
+        'aiBudgetInr',
+        'budget_inr',
+        'budgetInr',
+        'daily_budget_inr',
+        'dailyBudgetInr',
+        'inr_budget',
+        'inrBudget',
+        'max_budget_inr',
+        'maxBudgetInr',
+    ];
+
+    const email = pickFirstTextFromSources(sources, ['email', 'user_email', 'userEmail']) || '';
+    const displayName = pickFirstTextFromSources(sources, ['display_name', 'displayName', 'name'])
+        || (email ? email.split('@')[0] : 'User');
 
     return {
-        id: raw?.id || raw?.user_id || raw?.uid || raw?.email || '',
-        email: raw?.email || raw?.user_email || '',
-        display_name: raw?.display_name || raw?.displayName || raw?.name || raw?.email?.split('@')[0] || 'User',
-        username: raw?.username,
-        bio: raw?.bio,
-        profile_photo_url: raw?.profile_photo_url || raw?.avatar_url || raw?.photo_url,
-        college: raw?.college,
-        branch: raw?.branch,
-        semester: raw?.semester,
-        subject: raw?.subject,
-        ai_token_budget: pickFirstNumber(
-            raw?.ai_token_budget,
-            raw?.aiTokenBudget,
-            raw?.budget_tokens,
-            raw?.budgetTokens,
-            raw?.token_budget,
-            raw?.tokenBudget,
-            balance?.ai_token_budget,
-            balance?.aiTokenBudget,
-            balance?.budget_tokens,
-            balance?.budgetTokens
-        ),
-        ai_token_used: pickFirstNumber(
-            raw?.ai_token_used,
-            raw?.aiTokenUsed,
-            raw?.used_tokens,
-            raw?.usedTokens,
-            raw?.token_used,
-            raw?.tokenUsed,
-            balance?.ai_token_used,
-            balance?.aiTokenUsed,
-            balance?.used_tokens,
-            balance?.usedTokens
-        ),
-        ai_token_remaining: pickFirstNumber(
-            raw?.ai_token_remaining,
-            raw?.aiTokenRemaining,
-            raw?.remaining_tokens,
-            raw?.remainingTokens,
-            raw?.token_remaining,
-            raw?.tokenRemaining,
-            balance?.ai_token_remaining,
-            balance?.aiTokenRemaining,
-            balance?.remaining_tokens,
-            balance?.remainingTokens
-        ),
-        ai_budget_inr: pickFirstNumber(
-            raw?.ai_budget_inr,
-            raw?.aiBudgetInr,
-            raw?.budget_inr,
-            raw?.budgetInr,
-            balance?.ai_budget_inr,
-            balance?.aiBudgetInr,
-            balance?.budget_inr,
-            balance?.budgetInr
-        ),
+        id: pickFirstTextFromSources(sources, ['id', 'user_id', 'uid']) || email,
+        email,
+        display_name: displayName,
+        username: pickFirstTextFromSources(sources, ['username']),
+        bio: pickFirstTextFromSources(sources, ['bio']),
+        profile_photo_url: pickFirstTextFromSources(sources, ['profile_photo_url', 'avatar_url', 'photo_url', 'avatarUrl', 'photoURL']),
+        college: pickFirstTextFromSources(sources, ['college']),
+        branch: pickFirstTextFromSources(sources, ['branch']),
+        semester: pickFirstTextFromSources(sources, ['semester']),
+        subject: pickFirstTextFromSources(sources, ['subject']),
+        ai_token_budget: pickFirstNumberFromSources(tokenSources, budgetKeys)
+            ?? findNestedNumberByKeys(raw, budgetKeys),
+        ai_token_used: pickFirstNumberFromSources(tokenSources, usedKeys)
+            ?? findNestedNumberByKeys(raw, usedKeys),
+        ai_token_remaining: pickFirstNumberFromSources(tokenSources, remainingKeys)
+            ?? findNestedNumberByKeys(raw, remainingKeys),
+        ai_budget_inr: pickFirstNumberFromSources(tokenSources, budgetInrKeys)
+            ?? findNestedNumberByKeys(raw, budgetInrKeys),
     };
 }
 
@@ -968,6 +1123,46 @@ export async function getMyProfile(): Promise<{ profile: UserProfile }> {
         : data;
     const profile = normalizeUserProfile(profilePayload);
     return { ...data, profile };
+}
+
+function normalizeAiTokenBalance(raw: any): AiTokenBalance {
+    const profile = normalizeUserProfile(raw);
+    return {
+        budget: toOptionalNumber(profile.ai_token_budget),
+        used: toOptionalNumber(profile.ai_token_used),
+        remaining: toOptionalNumber(profile.ai_token_remaining),
+    };
+}
+
+/**
+ * Get current user's AI token balance.
+ * Tries dedicated AI endpoints first, then falls back to profile.
+ */
+export async function getAiTokenBalance(): Promise<AiTokenBalance> {
+    const candidateEndpoints = [
+        '/api/ai/balance',
+        '/api/ai/quota',
+        '/api/users/ai-balance',
+        '/api/users/token-balance',
+    ];
+
+    for (const endpoint of candidateEndpoints) {
+        try {
+            const data = await apiRequest<any>(endpoint);
+            const balance = normalizeAiTokenBalance(data);
+            if (balance.budget !== undefined || balance.used !== undefined || balance.remaining !== undefined) {
+                return balance;
+            }
+        } catch (error) {
+            if (error instanceof ApiError && [404, 405].includes(error.status)) {
+                continue;
+            }
+            // Ignore unsupported endpoints or transient failures and continue.
+        }
+    }
+
+    const profileResult = await getMyProfile();
+    return normalizeAiTokenBalance(profileResult);
 }
 
 /**
