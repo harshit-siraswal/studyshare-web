@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +10,7 @@ import { Analytics } from "@vercel/analytics/react";
 import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CursorFollowSplineRobot from "@/components/CursorFollowSplineRobot";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -90,46 +90,8 @@ const AnimatedAppRoutes = () => {
 
 const GlobalCursorRobot = () => {
   const location = useLocation();
-  if (location.pathname.startsWith("/auth")) return null;
+  if (location.pathname.startsWith("/auth") || location.pathname === "/") return null;
   return <CursorFollowSplineRobot />;
-};
-
-const RouteWheelTransition = () => {
-  const location = useLocation();
-  const shouldReduceMotion = useReducedMotion();
-  const shouldAnimateRef = useRef(false);
-  const [sequence, setSequence] = useState(0);
-
-  useEffect(() => {
-    if (!shouldAnimateRef.current) {
-      shouldAnimateRef.current = true;
-      return;
-    }
-    setSequence((value) => value + 1);
-  }, [location.pathname]);
-
-  return (
-    <AnimatePresence>
-      {sequence > 0 && !shouldReduceMotion && (
-        <motion.div
-          key={`${location.pathname}-${sequence}`}
-          className="pointer-events-none fixed inset-0 z-[65] overflow-hidden"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 0 }}
-          transition={{ duration: 0.72, ease: "easeOut" }}
-        >
-          <motion.img
-            src="/brand/app-icon.png"
-            alt=""
-            className="absolute top-16 h-14 w-14 rounded-full border border-primary/40 shadow-[0_16px_35px_hsl(var(--primary)/0.4)]"
-            initial={{ x: "-15vw", rotate: -120, scale: 0.84 }}
-            animate={{ x: "112vw", rotate: 900, scale: 1 }}
-            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
 };
 
 const App = () => (
@@ -146,7 +108,6 @@ const App = () => (
           </Suspense>
         </div>
 
-        <RouteWheelTransition />
         <GlobalCursorRobot />
 
         {/* Mobile bottom navigation - visible only on mobile (md:hidden in component) */}
