@@ -21,7 +21,7 @@ function Hero() {
 
   return (
     <div className="w-full flex justify-start">
-      <div className="flex flex-col gap-8 py-20 lg:py-28 items-start justify-center max-w-2xl">
+      <div className="flex flex-col gap-8 py-8 lg:py-0 items-start justify-center max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -30,7 +30,7 @@ function Hero() {
           <Button
             variant="secondary"
             size="sm"
-            className="gap-2 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-300/20 rounded-full cursor-default"
+            className="gap-2 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 rounded-full cursor-default"
           >
             <Sparkles className="w-4 h-4" /> AI-powered campus workspace
           </Button>
@@ -48,7 +48,7 @@ function Hero() {
               <AnimatePresence mode="wait">
                 <motion.span
                   key={titleNumber}
-                  className="absolute text-primary drop-shadow-[0_0_18px_rgba(22,163,74,0.28)]"
+                  className="absolute text-primary drop-shadow-[0_0_20px_hsl(var(--primary)/0.32)]"
                   initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 54 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -40 }}
@@ -79,7 +79,7 @@ function Hero() {
         >
           <Button
             size="lg"
-            className="gap-3 bg-primary hover:bg-primary/90 text-primary-foreground border-0 shadow-[0_0_30px_rgba(22,163,74,0.35)] rounded-full px-8 text-base h-12 transition-all"
+            className="gap-3 bg-primary hover:bg-primary/90 text-primary-foreground border-0 shadow-[0_0_32px_hsl(var(--primary)/0.36)] rounded-full px-8 text-base h-12 transition-all"
             onClick={() => navigate("/select-college")}
           >
             Continue <ArrowRight className="w-5 h-5" />
@@ -102,15 +102,15 @@ function Hero() {
           transition={{ duration: shouldReduceMotion ? 0.2 : 0.45, delay: 0.24 }}
         >
           <div className="rounded-xl border border-border/70 bg-card/55 backdrop-blur-sm px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.13em] text-emerald-300/80">AI Quiz</p>
+            <p className="text-xs uppercase tracking-[0.13em] text-primary/85">AI Quiz</p>
             <p className="text-sm font-medium mt-1">Revision questions from your PDFs</p>
           </div>
           <div className="rounded-xl border border-border/70 bg-card/55 backdrop-blur-sm px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.13em] text-emerald-300/80">Campus Feed</p>
+            <p className="text-xs uppercase tracking-[0.13em] text-primary/85">Campus Feed</p>
             <p className="text-sm font-medium mt-1">Department notices with deadline focus</p>
           </div>
           <div className="rounded-xl border border-border/70 bg-card/55 backdrop-blur-sm px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.13em] text-emerald-300/80">Study Rooms</p>
+            <p className="text-xs uppercase tracking-[0.13em] text-primary/85">Study Rooms</p>
             <p className="text-sm font-medium mt-1 flex items-center gap-2">
               Peer doubt-solving <Zap className="w-3.5 h-3.5 text-amber-300" />
             </p>

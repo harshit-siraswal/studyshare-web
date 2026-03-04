@@ -1,14 +1,16 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { MobileBottomNav } from "@/components/mobile";
 import { Analytics } from "@vercel/analytics/react";
 import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import CursorFollowSplineRobot from "@/components/CursorFollowSplineRobot";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -47,6 +49,89 @@ const PageLoader = () => (
   </div>
 );
 
+const AnimatedAppRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 12, scale: 0.995 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -12, scale: 0.995 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Index />} />
+          <Route path="/select-college" element={<SelectCollege />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
+          <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+          <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+          <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
+          <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+          <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+          <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+          <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
+          <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const GlobalCursorRobot = () => {
+  const location = useLocation();
+  if (location.pathname.startsWith("/auth")) return null;
+  return <CursorFollowSplineRobot />;
+};
+
+const RouteWheelTransition = () => {
+  const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
+  const shouldAnimateRef = useRef(false);
+  const [sequence, setSequence] = useState(0);
+
+  useEffect(() => {
+    if (!shouldAnimateRef.current) {
+      shouldAnimateRef.current = true;
+      return;
+    }
+    setSequence((value) => value + 1);
+  }, [location.pathname]);
+
+  return (
+    <AnimatePresence>
+      {sequence > 0 && !shouldReduceMotion && (
+        <motion.div
+          key={`${location.pathname}-${sequence}`}
+          className="pointer-events-none fixed inset-0 z-[65] overflow-hidden"
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.72, ease: "easeOut" }}
+        >
+          <motion.img
+            src="/brand/app-icon.png"
+            alt=""
+            className="absolute top-16 h-14 w-14 rounded-full border border-primary/40 shadow-[0_16px_35px_hsl(var(--primary)/0.4)]"
+            initial={{ x: "-15vw", rotate: -120, scale: 0.84 }}
+            animate={{ x: "112vw", rotate: 900, scale: 1 }}
+            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -57,30 +142,12 @@ const App = () => (
         {/* Main content with bottom padding for mobile nav */}
         <div className="pb-16 md:pb-0">
           <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/select-college" element={<SelectCollege />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:slug" element={<BlogPost />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
-              <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-              <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-              <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
-              <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-              <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-              <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
-              <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
-              <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
-              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-              <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AnimatedAppRoutes />
           </Suspense>
         </div>
+
+        <RouteWheelTransition />
+        <GlobalCursorRobot />
 
         {/* Mobile bottom navigation - visible only on mobile (md:hidden in component) */}
         <MobileBottomNav />
