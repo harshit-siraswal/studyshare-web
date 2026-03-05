@@ -9,6 +9,7 @@ import { LandingSceneProvider, useLandingSceneStore } from "./state/LandingScene
 import { trackLandingEvent } from "./analytics";
 import type { SpatialLandingProps } from "./types";
 import { openAndroidApkDownload } from "@/lib/apk";
+import { toast } from "sonner";
 
 interface SpatialLandingShellProps extends SpatialLandingProps {
   sceneReady: boolean;
@@ -63,9 +64,12 @@ export function SpatialLanding() {
     navigate("/select-college");
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     trackLandingEvent("landing_download_click", { chapter: "global" });
-    openAndroidApkDownload();
+    const opened = await openAndroidApkDownload();
+    if (!opened) {
+      toast.error("APK download is temporarily unavailable. Please try again later.");
+    }
   };
 
   return (

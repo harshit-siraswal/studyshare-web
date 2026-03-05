@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../firebase';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { getApiBaseUrl } from './runtimeConfig';
 
 // Backend URL
@@ -80,16 +81,67 @@ function getSelectedCollegeHint(): string {
 /**
  * Get current user's Firebase ID token
  */
-async function getAuthToken(): Promise<string | null> {
-    const user = auth.currentUser;
+async function waitForAuthUser(timeoutMs = 2000): Promise<FirebaseUser | null> {
+    if (auth.currentUser) return auth.currentUser;
+
+    return new Promise((resolve) => {
+        let settled = false;
+        let unsubscribe = () => {};
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const settle = (user: FirebaseUser | null) => {
+            if (settled) return;
+            settled = true;
+            if (timer) clearTimeout(timer);
+            unsubscribe();
+            resolve(user);
+        };
+
+        unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                settle(user);
+            }
+        });
+
+        timer = setTimeout(() => {
+            settle(auth.currentUser ?? null);
+        }, timeoutMs);
+    });
+}
+
+async function getAuthToken(forceRefresh = false): Promise<string | null> {
+    const user = auth.currentUser ?? await waitForAuthUser();
     if (!user) return null;
 
     try {
-        return await user.getIdToken();
+        return await user.getIdToken(forceRefresh);
     } catch (error) {
         console.error('[API] Failed to get token:', error);
         return null;
     }
+}
+
+async function parseResponsePayload(response: Response): Promise<any> {
+    const raw = await response.text();
+    if (!raw) return {};
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return {
+            message: raw.trim() || response.statusText || 'API request failed',
+            raw,
+        };
+    }
+}
+
+function getErrorMessage(payload: any, fallback = 'API request failed'): string {
+    if (payload && typeof payload === 'object') {
+        const directMessage = typeof payload.message === 'string' ? payload.message.trim() : '';
+        if (directMessage) return directMessage;
+        const errorMessage = typeof payload.error === 'string' ? payload.error.trim() : '';
+        if (errorMessage) return errorMessage;
+    }
+    return fallback;
 }
 
 /**
@@ -99,34 +151,50 @@ async function apiRequest<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const token = await getAuthToken();
+    const selectedCollegeHint = getSelectedCollegeHint();
+    const createHeaders = (token: string | null) => {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(options.headers as Record<string, string>),
+        };
 
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(options.headers as Record<string, string>),
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        if (selectedCollegeHint) {
+            headers['X-College-Id'] = selectedCollegeHint;
+        }
+        return headers;
     };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    const send = async (token: string | null) => {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers: createHeaders(token),
+        });
+        const payload = await parseResponsePayload(response);
+        return { response, payload };
+    };
+
+    let token = await getAuthToken();
+    let { response, payload } = await send(token);
+
+    if ([401, 403].includes(response.status)) {
+        const refreshedToken = await getAuthToken(true);
+        const shouldRetry = refreshedToken && refreshedToken !== token;
+        if (shouldRetry) {
+            token = refreshedToken;
+            const retryResult = await send(token);
+            response = retryResult.response;
+            payload = retryResult.payload;
+        }
     }
-
-    const selectedCollegeHint = getSelectedCollegeHint();
-    if (selectedCollegeHint) {
-        headers['X-College-Id'] = selectedCollegeHint;
-    }
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-    });
-
-    const data = await response.json();
 
     if (!response.ok) {
-        throw new ApiError(data.message || 'API request failed', response.status, data);
+        throw new ApiError(getErrorMessage(payload), response.status, payload);
     }
 
-    return data;
+    return payload as T;
 }
 
 // ============================================
@@ -876,6 +944,14 @@ export interface UserProfile {
     ai_token_budget?: number;
     ai_token_used?: number;
     ai_token_remaining?: number;
+    ai_token_base_budget?: number;
+    ai_token_budget_multiplier?: number;
+    ai_token_premium_multiplier?: number;
+    ai_token_cycle_days?: number;
+    ai_token_cycle_started_at?: string;
+    ai_token_cycle_ends_at?: string;
+    subscription_tier?: string;
+    subscription_end_date?: string;
     ai_budget_inr?: number;
 }
 
@@ -1086,6 +1162,64 @@ function normalizeUserProfile(raw: any): UserProfile {
         'max_budget_inr',
         'maxBudgetInr',
     ];
+    const baseBudgetKeys = [
+        'ai_token_base_budget',
+        'aiTokenBaseBudget',
+        'token_base_budget',
+        'tokenBaseBudget',
+        'base_budget_tokens',
+        'baseBudgetTokens',
+    ];
+    const budgetMultiplierKeys = [
+        'ai_token_budget_multiplier',
+        'aiTokenBudgetMultiplier',
+        'token_budget_multiplier',
+        'tokenBudgetMultiplier',
+        'budget_multiplier',
+        'budgetMultiplier',
+    ];
+    const premiumMultiplierKeys = [
+        'ai_token_premium_multiplier',
+        'aiTokenPremiumMultiplier',
+        'token_premium_multiplier',
+        'tokenPremiumMultiplier',
+        'premium_multiplier',
+        'premiumMultiplier',
+    ];
+    const cycleDaysKeys = [
+        'ai_token_cycle_days',
+        'aiTokenCycleDays',
+        'token_cycle_days',
+        'tokenCycleDays',
+        'cycle_days',
+        'cycleDays',
+    ];
+    const cycleStartedAtKeys = [
+        'ai_token_cycle_started_at',
+        'aiTokenCycleStartedAt',
+        'token_cycle_started_at',
+        'tokenCycleStartedAt',
+        'cycle_started_at',
+        'cycleStartedAt',
+    ];
+    const cycleEndsAtKeys = [
+        'ai_token_cycle_ends_at',
+        'aiTokenCycleEndsAt',
+        'token_cycle_ends_at',
+        'tokenCycleEndsAt',
+        'cycle_ends_at',
+        'cycleEndsAt',
+    ];
+    const subscriptionTierKeys = [
+        'subscription_tier',
+        'subscriptionTier',
+    ];
+    const subscriptionEndDateKeys = [
+        'subscription_end_date',
+        'subscriptionEndDate',
+        'subscription_expires_at',
+        'subscriptionExpiresAt',
+    ];
 
     const email = pickFirstTextFromSources(sources, ['email', 'user_email', 'userEmail']) || '';
     const displayName = pickFirstTextFromSources(sources, ['display_name', 'displayName', 'name'])
@@ -1108,6 +1242,18 @@ function normalizeUserProfile(raw: any): UserProfile {
             ?? findNestedNumberByKeys(raw, usedKeys),
         ai_token_remaining: pickFirstNumberFromSources(tokenSources, remainingKeys)
             ?? findNestedNumberByKeys(raw, remainingKeys),
+        ai_token_base_budget: pickFirstNumberFromSources(tokenSources, baseBudgetKeys)
+            ?? findNestedNumberByKeys(raw, baseBudgetKeys),
+        ai_token_budget_multiplier: pickFirstNumberFromSources(tokenSources, budgetMultiplierKeys)
+            ?? findNestedNumberByKeys(raw, budgetMultiplierKeys),
+        ai_token_premium_multiplier: pickFirstNumberFromSources(tokenSources, premiumMultiplierKeys)
+            ?? findNestedNumberByKeys(raw, premiumMultiplierKeys),
+        ai_token_cycle_days: pickFirstNumberFromSources(tokenSources, cycleDaysKeys)
+            ?? findNestedNumberByKeys(raw, cycleDaysKeys),
+        ai_token_cycle_started_at: pickFirstTextFromSources(tokenSources, cycleStartedAtKeys),
+        ai_token_cycle_ends_at: pickFirstTextFromSources(tokenSources, cycleEndsAtKeys),
+        subscription_tier: pickFirstTextFromSources(sources, subscriptionTierKeys),
+        subscription_end_date: pickFirstTextFromSources(sources, subscriptionEndDateKeys),
         ai_budget_inr: pickFirstNumberFromSources(tokenSources, budgetInrKeys)
             ?? findNestedNumberByKeys(raw, budgetInrKeys),
     };
@@ -1205,13 +1351,13 @@ export interface HealthStatus {
       source?: {
           type?: 'primary' | 'ocr' | 'transcript';
           text?: string;
-          ocrProvider?: 'google' | 'sarvam' | null;
+          ocrProvider?: 'google' | 'google_vision' | 'sarvam' | null;
       };
   }
 
 export async function getAiSummary(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<string>> {
     return apiRequest('/api/ai/summary', {
         method: 'POST',
@@ -1230,7 +1376,7 @@ export async function getAiSummary(
 
 export async function getAiQuiz(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/quiz', {
         method: 'POST',
@@ -1249,7 +1395,7 @@ export async function getAiQuiz(
 
 export async function getAiFlashcards(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/flashcards', {
         method: 'POST',
@@ -1337,6 +1483,7 @@ export async function queryRag(
         allowWeb?: boolean;
         filters?: RagFilters;
         history?: RagConversationTurn[];
+        videoUrl?: string;
     }
 ): Promise<RagResponse> {
     return apiRequest('/api/rag/query', {
@@ -1349,6 +1496,7 @@ export async function queryRag(
             allow_web: options?.allowWeb,
             filters: options?.filters,
             history: options?.history,
+            video_url: options?.videoUrl,
         }),
     });
 }

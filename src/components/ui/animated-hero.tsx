@@ -3,8 +3,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowRight, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
-const ANDROID_APK_PATH = "/downloads/studyshare-android.apk";
+import { openAndroidApkDownload } from "@/lib/apk";
+import { toast } from "sonner";
 
 function Hero() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -18,6 +18,13 @@ function Hero() {
     }, 2400);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles.length]);
+
+  const handleDownloadApk = async () => {
+    const opened = await openAndroidApkDownload();
+    if (!opened) {
+      toast.error("APK download is temporarily unavailable. Please try again later.");
+    }
+  };
 
   return (
     <div className="w-full flex justify-start">
@@ -84,15 +91,14 @@ function Hero() {
           >
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
-          <a href={ANDROID_APK_PATH} download>
-            <Button
-              size="lg"
-              variant="outline"
-              className="gap-3 rounded-full px-8 text-base h-12 bg-background/70 border-border text-foreground shadow-sm"
-            >
-              Download Android APK
-            </Button>
-          </a>
+          <Button
+            size="lg"
+            variant="outline"
+            className="gap-3 rounded-full px-8 text-base h-12 bg-background/70 border-border text-foreground shadow-sm"
+            onClick={handleDownloadApk}
+          >
+            Download Android APK
+          </Button>
         </motion.div>
 
         <motion.div

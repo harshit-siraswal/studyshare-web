@@ -94,6 +94,14 @@ interface UserProfile {
   ai_token_budget?: number;
   ai_token_used?: number;
   ai_token_remaining?: number;
+  ai_token_base_budget?: number;
+  ai_token_budget_multiplier?: number;
+  ai_token_premium_multiplier?: number;
+  ai_token_cycle_days?: number;
+  ai_token_cycle_started_at?: string;
+  ai_token_cycle_ends_at?: string;
+  subscription_tier?: string;
+  subscription_end_date?: string;
   ai_budget_inr?: number;
 }
 
@@ -101,13 +109,38 @@ interface AiTokenUsage {
   budget: number;
   used: number;
   remaining: number;
-  }
+  baseBudget: number;
+  budgetMultiplier: number;
+  premiumMultiplier: number;
+  cycleDays: number;
+  cycleStartedAt: string | null;
+  cycleEndsAt: string | null;
+}
+
+const DEFAULT_AI_TOKEN_BASE_BUDGET = 40160;
 
 const DEFAULT_AI_TOKEN_BUDGET = (() => {
   const raw = Number(import.meta.env.VITE_AI_TOKEN_BUDGET ?? 10000);
   if (!Number.isFinite(raw) || raw <= 0) return 10000;
   return Math.round(raw);
 })();
+
+function toSafeInt(value: unknown): number {
+  const parsed = toOptionalNumber(value);
+  if (parsed === undefined || !Number.isFinite(parsed)) return 0;
+  return Math.round(parsed);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatCycleDate(value: string | null): string {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
 
 function toOptionalNumber(value: unknown): number | undefined {
   if (typeof value === "number") {
@@ -379,42 +412,68 @@ const Profile = () => {
       if (!authUser || isViewingOther) return;
 
       try {
+        const profileResult = await api.getMyProfile();
+        const profile = profileResult?.profile || {};
         const balance = await api.getAiTokenBalance();
-        const budgetRaw = toOptionalNumber(balance.budget);
-        const usedRaw = toOptionalNumber(balance.used);
-        const remainingRaw = toOptionalNumber(balance.remaining);
-        const hasTokenData = [budgetRaw, usedRaw, remainingRaw].some((value) => value !== undefined);
+        const budgetFromApi = toSafeInt(balance.budget ?? profile.ai_token_budget);
+        const usedFromApi = toSafeInt(balance.used ?? profile.ai_token_used);
+        const remainingFromApi = toSafeInt(balance.remaining ?? profile.ai_token_remaining);
+        const baseBudgetFromApi = toSafeInt(profile.ai_token_base_budget);
+        const premiumMultiplierFromApi = Math.max(1, toSafeInt(profile.ai_token_premium_multiplier));
+        const currentMultiplier = Math.max(1, toSafeInt(profile.ai_token_budget_multiplier));
+        const tier = String(profile.subscription_tier || "").toLowerCase();
+        const subscriptionEnd = profile.subscription_end_date
+          ? new Date(profile.subscription_end_date)
+          : null;
+        const isPremiumActive =
+          (tier === "pro" || tier === "max") &&
+          !!subscriptionEnd &&
+          !Number.isNaN(subscriptionEnd.getTime()) &&
+          subscriptionEnd.getTime() > Date.now();
 
-        if (!hasTokenData) {
-          setAiTokenUsage({
-            budget: DEFAULT_AI_TOKEN_BUDGET,
-            used: 0,
-            remaining: DEFAULT_AI_TOKEN_BUDGET,
-          });
-          return;
+        const safeBaseBudget = baseBudgetFromApi > 0
+          ? baseBudgetFromApi
+          : (budgetFromApi > 0 && currentMultiplier > 1
+            ? Math.round(budgetFromApi / currentMultiplier)
+            : (budgetFromApi > 0 ? budgetFromApi : DEFAULT_AI_TOKEN_BASE_BUDGET));
+        const resolvedMultiplier = currentMultiplier > 1
+          ? currentMultiplier
+          : (isPremiumActive ? premiumMultiplierFromApi : 1);
+
+        const budget = budgetFromApi > 0
+          ? budgetFromApi
+          : safeBaseBudget * resolvedMultiplier;
+        const used = clamp(usedFromApi, 0, Math.max(budget, 0));
+        let remaining = budget > 0
+          ? clamp(remainingFromApi, 0, budget)
+          : 0;
+        if (budget > 0 && remaining === 0 && used < budget) {
+          remaining = clamp(budget - used, 0, budget);
         }
 
-        const budget = Math.max(
-          0,
-          budgetRaw ?? (
-            usedRaw !== undefined || remainingRaw !== undefined
-              ? (usedRaw ?? 0) + (remainingRaw ?? 0)
-              : DEFAULT_AI_TOKEN_BUDGET
-          )
-        );
-        const used = Math.max(
-          0,
-          usedRaw ?? (budget > 0 && remainingRaw !== undefined ? budget - remainingRaw : 0)
-        );
-        const remaining = Math.max(
-          0,
-          remainingRaw ?? (budget > 0 ? budget - used : 0)
-        );
+        const cycleDaysRaw = toSafeInt(profile.ai_token_cycle_days);
+        const cycleDays = cycleDaysRaw > 0 ? cycleDaysRaw : 30;
+        const cycleStartedAt = profile.ai_token_cycle_started_at
+          ? new Date(profile.ai_token_cycle_started_at)
+          : null;
+        const cycleEndsAt = profile.ai_token_cycle_ends_at
+          ? new Date(profile.ai_token_cycle_ends_at)
+          : null;
 
         setAiTokenUsage({
           budget,
-          used: budget > 0 ? Math.min(used, budget) : used,
-          remaining: budget > 0 ? Math.min(remaining, budget) : remaining,
+          used,
+          remaining,
+          baseBudget: safeBaseBudget > 0 ? safeBaseBudget : DEFAULT_AI_TOKEN_BASE_BUDGET,
+          budgetMultiplier: resolvedMultiplier,
+          premiumMultiplier: premiumMultiplierFromApi,
+          cycleDays,
+          cycleStartedAt: cycleStartedAt && !Number.isNaN(cycleStartedAt.getTime())
+            ? cycleStartedAt.toISOString()
+            : null,
+          cycleEndsAt: cycleEndsAt && !Number.isNaN(cycleEndsAt.getTime())
+            ? cycleEndsAt.toISOString()
+            : null,
         });
       } catch (error) {
         console.error('Failed to fetch AI token usage:', error);
@@ -422,6 +481,12 @@ const Profile = () => {
           budget: DEFAULT_AI_TOKEN_BUDGET,
           used: 0,
           remaining: DEFAULT_AI_TOKEN_BUDGET,
+          baseBudget: DEFAULT_AI_TOKEN_BASE_BUDGET,
+          budgetMultiplier: 1,
+          premiumMultiplier: 1,
+          cycleDays: 30,
+          cycleStartedAt: null,
+          cycleEndsAt: null,
         });
       }
     };
@@ -1079,15 +1144,15 @@ const Profile = () => {
                 <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                      AI Token Budget
+                      Monthly AI Tokens
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Remaining {aiTokenUsage.remaining} / {aiTokenUsage.budget} tokens
+                      Remaining {aiTokenUsage.remaining.toLocaleString()} / {aiTokenUsage.budget.toLocaleString()}
                     </p>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full bg-primary transition-all"
+                      className={`h-full transition-all ${aiTokenUsage.remaining <= 0 ? "bg-red-500" : "bg-primary"}`}
                       style={{
                         width: `${
                           aiTokenUsage.budget > 0
@@ -1097,9 +1162,28 @@ const Profile = () => {
                       }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Used {aiTokenUsage.used} tokens
-                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
+                      <p className="text-[11px] text-muted-foreground">Remaining</p>
+                      <p className="font-semibold text-foreground">{aiTokenUsage.remaining.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
+                      <p className="text-[11px] text-muted-foreground">Used</p>
+                      <p className="font-semibold text-foreground">{aiTokenUsage.used.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
+                      <p className="text-[11px] text-muted-foreground">Total</p>
+                      <p className="font-semibold text-foreground">{aiTokenUsage.budget.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-[11px] text-muted-foreground">
+                    <p>Cycle: {aiTokenUsage.cycleDays} days • Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}</p>
+                    <p>Base budget: {aiTokenUsage.baseBudget.toLocaleString()} tokens</p>
+                    <p>
+                      Multiplier: {aiTokenUsage.budgetMultiplier}x (Premium {aiTokenUsage.premiumMultiplier}x)
+                    </p>
+                    <p>Consumption = input tokens + weighted output tokens.</p>
+                  </div>
                 </div>
               )}
             </div>

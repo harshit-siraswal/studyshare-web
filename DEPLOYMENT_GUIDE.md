@@ -167,12 +167,31 @@ Create/update `.env.production` in your project root:
 VITE_API_URL=https://api.mystudyspace.me
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+VITE_ANDROID_APK_URL=https://cdn.mystudyspace.me/studyshare-android.apk
+
+#### Hosting and Configuring the APK
+You can host your APK using one of the following options:
+
+- **Vercel**: Upload the APK to a public `/downloads` folder in your project and deploy. Set the URL to `https://mystudyspace.me/downloads/studyshare-android.apk`.
+- **Cloudflare R2**: Upload to an R2 bucket, set public access, and bind a custom domain (e.g., `cdn.mystudyspace.me`).
+- **AWS S3 + CloudFront**: Upload to S3, set public read, and use CloudFront for CDN and custom domain.
+
+For each option, upload the APK, ensure public access, and set the correct URL in your environment config.
 ```
 
-### Step 6.2: Update Backend CORS
-Your backend already supports `www.mystudyspace.me` from previous work.
+### Step 6.2: Vercel APK + Git LFS Check
+If your APK is tracked with Git LFS, enable **Git LFS support** in Vercel Project Settings; otherwise your site may serve a tiny pointer file instead of the real APK. See Vercel's Git LFS docs: https://vercel.com/docs/git/large-files
 
-### Step 6.3: Redeploy
+### Step 6.3: Update Backend CORS
+### Step 6.3: Update Backend CORS
+Verify your backend CORS settings include the domain `www.mystudyspace.me`.
+
+**How to check/add:**
+- Inspect your server or web framework's CORS configuration.
+- Add `https://www.mystudyspace.me` to the list of allowed origins.
+- If CORS is not yet configured, enable it and add the origin, or refer to your framework's documentation for CORS setup.
+
+### Step 6.4: Redeploy
 ```powershell
 git add .
 git commit -m "Update production URLs"

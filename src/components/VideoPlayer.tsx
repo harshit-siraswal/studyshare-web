@@ -18,6 +18,7 @@ interface VideoPlayerProps {
 
 const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlayerProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showAiStudio, setShowAiStudio] = useState(Boolean(resourceId));
   const dialogRef = useRef<HTMLDivElement>(null);
   const isStacked = useMediaQuery("(max-width: 1024px)");
 
@@ -28,6 +29,12 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
       });
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowAiStudio(Boolean(resourceId));
+    }
+  }, [isOpen, resourceId]);
 
   const youtubeEmbedUrl = getYouTubeEmbedUrl(videoUrl, { autoplay: true, muted: true });
   const isLikelyYouTube = /(?:youtu\.be|youtube\.com|youtube-nocookie\.com)/i.test(videoUrl);
@@ -69,15 +76,28 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
         <h3 className="font-medium text-foreground truncate">
           {title || "Video Player"}
         </h3>
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {resourceId && (
+            <button
+              type="button"
+              onClick={() => setShowAiStudio((prev) => !prev)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              title={showAiStudio ? "Hide AI Studio" : "Show AI Studio"}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {showAiStudio ? "Hide AI" : "Show AI"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
       
       <div className="flex-1 bg-black">
@@ -126,7 +146,7 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
         ref={dialogRef}
         className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-6xl h-[85vh] w-[94vw] sm:rounded-2xl'} p-0 bg-background overflow-hidden transition-all`}
       >
-        {resourceId ? (
+        {resourceId && showAiStudio ? (
           <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
             <ResizablePanel
               defaultSize={isStacked ? 58 : 60}

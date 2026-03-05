@@ -16,6 +16,7 @@ import {
   Download,
   Settings2,
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,13 +39,15 @@ import {
   getAiQuiz,
   getAiSummary,
   isAiTokenQuotaExceededPayload,
+  queryRag,
 } from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
 import AIRagChat from "@/components/ai/AIRagChat";
+import { extractYouTubeId } from "@/lib/youtube";
 
 type OutputType = "summary" | "quiz" | "flashcards" | "chat";
 
-type OcrProvider = "google" | "sarvam";
+type OcrProvider = "google_vision" | "sarvam";
 type AiOptions = {
   useOcr?: boolean;
   forceOcr?: boolean;
@@ -73,6 +76,20 @@ interface AIStudyToolsProps {
   videoUrl?: string;
 }
 
+type SummaryBlockKind = "heading" | "bullet" | "paragraph";
+
+interface SummaryBlock {
+  kind: SummaryBlockKind;
+  text: string;
+}
+
+interface ParsedSummary {
+  blocks: SummaryBlock[];
+  bullets: string[];
+  paragraphs: string[];
+  plainText: string;
+}
+
 const OUTPUT_META: Record<OutputType, { label: string; helper: string; icon: typeof Sparkles }> = {
   summary: {
     label: "Summary",
@@ -96,27 +113,115 @@ const OUTPUT_META: Record<OutputType, { label: string; helper: string; icon: typ
   },
 };
 
-function parseSummary(summary: string) {
-  const lines = summary
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+function normalizeOcrProvider(provider: unknown): OcrProvider | null {
+  if (provider === "sarvam") return "sarvam";
+  if (provider === "google_vision" || provider === "google") return "google_vision";
+  return null;
+}
 
-  const bullets = lines
-    .filter((line) => /^[-*]\s+/.test(line) || /^\d+[\).]\s+/.test(line) || /^\u2022\s+/.test(line))
-    .map((line) => line.replace(/^[-*]\s+/, "").replace(/^\d+[\).]\s+/, "").replace(/^\u2022\s+/, ""))
-    .filter(Boolean);
+function getOcrProviderLabel(provider: OcrProvider | null): string {
+  if (provider === "sarvam") return "Sarvam";
+  if (provider === "google_vision") return "Google Vision";
+  return "";
+}
 
-  if (bullets.length >= 3) {
-    return { bullets, paragraphs: [] as string[] };
+function normalizeVideoSummaryUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  const youtubeId = extractYouTubeId(trimmed);
+  if (youtubeId) {
+    return `https://www.youtube.com/watch?v=${youtubeId}`;
+  }
+  return trimmed;
+}
+
+function shouldFallbackToRagSummary(summaryText: string): boolean {
+  const normalized = summaryText.trim();
+  if (!normalized) return true;
+
+  const lowercase = normalized.toLowerCase();
+  const noContentPatterns = [
+    "can't directly access your local files",
+    "cannot directly access your local files",
+    "access your local files",
+    "no local match",
+    "no answer returned",
+    "ai request failed",
+    "failed to get ai response",
+  ];
+  if (noContentPatterns.some((pattern) => lowercase.includes(pattern))) return true;
+
+  if ((normalized.startsWith("{") && normalized.endsWith("}")) || (normalized.startsWith("[") && normalized.endsWith("]"))) {
+    return true;
   }
 
-  const paragraphs = summary
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  return normalized.split(/\s+/).filter(Boolean).length < 24;
+}
 
-  return { bullets: [] as string[], paragraphs };
+const SUMMARY_BULLET_PREFIX_RE = /^([-*\u2022]|\d+[.)])\s+/;
+
+function summaryPlain(input: string): string {
+  return input
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/^\s*>+\s?/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseSummary(summary: string): ParsedSummary {
+  const lines = summary.replace(/\r/g, "").split("\n");
+  const blocks: SummaryBlock[] = [];
+
+  for (const rawLine of lines) {
+    const trimmedRaw = rawLine.trim();
+    if (!trimmedRaw) continue;
+
+    const isBullet = SUMMARY_BULLET_PREFIX_RE.test(trimmedRaw);
+    const line = summaryPlain(
+      trimmedRaw
+        .replace(/^#+\s*/, "")
+        .replace(SUMMARY_BULLET_PREFIX_RE, "")
+    );
+    if (!line) continue;
+
+    const headingCandidate = line.replace(/[:\-\s]+$/, "").trim();
+    const headingWords = headingCandidate.split(/\s+/).filter(Boolean).length;
+    const looksLikeHeading =
+      trimmedRaw.startsWith("#") ||
+      (!isBullet && trimmedRaw.endsWith(":")) ||
+      (!isBullet && headingWords > 0 && headingWords <= 7 && /^[A-Z]/.test(headingCandidate));
+
+    if (looksLikeHeading && headingCandidate) {
+      blocks.push({ kind: "heading", text: headingCandidate });
+    } else if (isBullet) {
+      blocks.push({ kind: "bullet", text: line });
+    } else {
+      blocks.push({ kind: "paragraph", text: line });
+    }
+  }
+
+  if (!blocks.length) {
+    const fallback = summaryPlain(summary.replace(/^[*-]\s*/gm, ""));
+    if (fallback) {
+      blocks.push({ kind: "paragraph", text: fallback });
+    }
+  }
+
+  const bullets = blocks.filter((block) => block.kind === "bullet").map((block) => block.text);
+  const paragraphs = blocks
+    .filter((block) => block.kind === "paragraph")
+    .map((block) => block.text);
+
+  return {
+    blocks,
+    bullets,
+    paragraphs,
+    plainText: blocks.map((block) => block.text).join("\n").trim(),
+  };
 }
 
 function getCorrectIndex(question: QuizQuestion) {
@@ -132,9 +237,12 @@ function getCorrectIndex(question: QuizQuestion) {
   return idx ?? -1;
 }
 
-function extractSummaryThemes(parsed: ReturnType<typeof parseSummary> | null) {
+function extractSummaryThemes(parsed: ParsedSummary | null) {
   if (!parsed) return [] as string[];
-  const blocks = (parsed.bullets.length ? parsed.bullets : parsed.paragraphs).filter(Boolean);
+  const sourceBlocks = parsed.blocks
+    .filter((block) => block.kind !== "heading")
+    .map((block) => block.text);
+  const blocks = (sourceBlocks.length ? sourceBlocks : parsed.blocks.map((block) => block.text)).filter(Boolean);
   const themes: string[] = [];
   const seen = new Set<string>();
 
@@ -186,9 +294,9 @@ const AIStudyTools = ({
   const [summary, setSummary] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[] | null>(null);
-  const [useOcr, setUseOcr] = useState(false);
+  const [useOcr, setUseOcr] = useState(true);
   const [forceOcr, setForceOcr] = useState(false);
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("google");
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("google_vision");
   const [freshRun, setFreshRun] = useState(true);
   const [showAnswers, setShowAnswers] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
@@ -208,9 +316,13 @@ const AIStudyTools = ({
 
   const summaryParsed = useMemo(() => (summary ? parseSummary(summary) : null), [summary]);
   const summaryThemes = useMemo(() => extractSummaryThemes(summaryParsed), [summaryParsed]);
+  const summaryPlainText = useMemo(
+    () => summaryParsed?.plainText || (summary ? summaryPlain(summary) : ""),
+    [summaryParsed, summary]
+  );
   const summaryWordCount = useMemo(
-    () => (summary ? summary.split(/\s+/).filter(Boolean).length : 0),
-    [summary]
+    () => (summaryPlainText ? summaryPlainText.split(/\s+/).filter(Boolean).length : 0),
+    [summaryPlainText]
   );
 
   const handleGenerate = async (type: OutputType, override?: AiOptions) => {
@@ -235,25 +347,72 @@ const AIStudyTools = ({
 
     try {
       const collegeId = selectedCollegeId || undefined;
+      const resolvedVideoUrl = normalizeVideoSummaryUrl(override?.videoUrl ?? videoUrl);
+      const hasVideoUrl = Boolean(resolvedVideoUrl && resolvedVideoUrl.trim().length > 0);
+      const shouldUseVideoTranscript = usesTranscript && hasVideoUrl;
       const options = {
         collegeId,
-        useOcr: override?.useOcr ?? (supportsOcr ? (useOcr || forceOcr) : shouldUseTranscript),
+        useOcr: override?.useOcr ?? (supportsOcr ? (useOcr || forceOcr) : false),
         forceOcr: override?.forceOcr ?? (supportsOcr ? forceOcr : false),
-        ocrProvider: override?.ocrProvider ?? ocrProvider,
+        ocrProvider: supportsOcr ? (override?.ocrProvider ?? ocrProvider) : undefined,
         force: override?.force ?? freshRun,
-        includeSource: override?.includeSource ?? (shouldUseTranscript ? true : false),
-        videoUrl: override?.videoUrl ?? (shouldUseTranscript ? videoUrl : undefined),
+        includeSource: override?.includeSource ?? false,
+        videoUrl: shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
       };
       const usedOcr = supportsOcr ? Boolean(options.useOcr || options.forceOcr) : false;
       const usedProvider = usedOcr && supportsOcr ? (options.ocrProvider ?? null) : null;
 
       if (type === "summary") {
         const result = await getAiSummary(resourceId, options);
-        setSummary(typeof result.data === "string" ? result.data : JSON.stringify(result.data));
-        if (result.source?.text) {
+        let summaryText =
+          typeof result.data === "string" ? result.data : JSON.stringify(result.data);
+        let sourceTextValue = result.source?.text ?? null;
+        let sourceTypeValue = result.source?.type ?? "ocr";
+        let sourceProviderValue = normalizeOcrProvider(result.source?.ocrProvider);
+        let showSourceValue = Boolean(result.source?.text);
+
+        if (shouldUseVideoTranscript && shouldFallbackToRagSummary(summaryText)) {
+          const ragFallback = await queryRag(
+            [
+              "Generate clean, exam-ready study notes from this YouTube video.",
+              "Return concise headings and bullet points only.",
+              `Video URL: ${resolvedVideoUrl}`,
+            ].join("\n"),
+            {
+              collegeId,
+              allowWeb: true,
+              filters: { source_type: "youtube" },
+              videoUrl: resolvedVideoUrl,
+            }
+          );
+          if (ragFallback?.answer?.trim()) {
+            summaryText = ragFallback.answer.trim();
+            if (ragFallback.sources?.length) {
+              showSourceValue = true;
+              sourceTypeValue = "transcript";
+              sourceProviderValue = null;
+              sourceTextValue = ragFallback.sources
+                .map((source) => source.title)
+                .filter(Boolean)
+                .join("\n");
+            }
+          }
+        }
+
+        setSummary(summaryText);
+        if (showSourceValue && sourceTextValue) {
+          setSourceText(sourceTextValue);
+          setSourceType(sourceTypeValue);
+          setSourceProvider(sourceProviderValue);
+          setShowSource(true);
+        } else if (shouldUseVideoTranscript && shouldFallbackToRagSummary(summaryText)) {
+          setError(
+            "Unable to extract enough transcript context for this video. Try Fresh run or use a different YouTube link."
+          );
+        } else if (result.source?.text) {
           setSourceText(result.source.text);
           setSourceType(result.source.type ?? "ocr");
-          setSourceProvider(result.source.ocrProvider ?? null);
+          setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
         setCachedMap((prev) => ({ ...prev, summary: !!result.cached }));
@@ -264,7 +423,7 @@ const AIStudyTools = ({
         if (result.source?.text) {
           setSourceText(result.source.text);
           setSourceType(result.source.type ?? "ocr");
-          setSourceProvider(result.source.ocrProvider ?? null);
+          setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
         setSelectedAnswers({});
@@ -277,7 +436,7 @@ const AIStudyTools = ({
         if (result.source?.text) {
           setSourceText(result.source.text);
           setSourceType(result.source.type ?? "ocr");
-          setSourceProvider(result.source.ocrProvider ?? null);
+          setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
         setActiveCardIndex(0);
@@ -305,9 +464,9 @@ const AIStudyTools = ({
   };
 
   const handleCopySummary = async () => {
-    if (!summary) return;
+    if (!summaryPlainText) return;
     try {
-      await navigator.clipboard.writeText(summary);
+      await navigator.clipboard.writeText(summaryPlainText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -316,22 +475,130 @@ const AIStudyTools = ({
   };
 
   const handleExportSummary = () => {
-    if (!summary) return;
+    if (!summaryParsed?.blocks.length) return;
 
     try {
+      const parsedBlocks = summaryParsed.blocks;
+      const firstHeadingIndex = parsedBlocks.findIndex((block) => block.kind === "heading");
+      const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 48;
+      const contentWidth = pageWidth - marginX * 2;
+      const footerY = pageHeight - 22;
+      const generatedAt = new Date().toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const renderHeader = () => {
+        doc.setFillColor(13, 148, 136);
+        doc.roundedRect(28, 24, pageWidth - 56, 96, 14, 14, "F");
+        doc.setFillColor(15, 118, 110);
+        doc.roundedRect(pageWidth - 168, 24, 140, 96, 14, 14, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.text("StudyShare AI Summary", marginX, 56);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10.5);
+        doc.text(resourceTitle ? `From ${resourceTitle}` : "From selected learning resource", marginX, 78, {
+          maxWidth: contentWidth - 28,
+        });
+        doc.setFontSize(9.5);
+        doc.text(`Generated ${generatedAt}`, marginX, 96);
+      };
+      const addFooter = () => {
+        const totalPages = doc.getNumberOfPages();
+        for (let page = 1; page <= totalPages; page += 1) {
+          doc.setPage(page);
+          doc.setDrawColor(226, 232, 240);
+          doc.line(marginX, pageHeight - 32, pageWidth - marginX, pageHeight - 32);
+          doc.setTextColor(100, 116, 139);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.text("studyshare.in", marginX, footerY);
+          doc.text(`Page ${page} of ${totalPages}`, pageWidth - marginX, footerY, { align: "right" });
+        }
+      };
+
+      renderHeader();
+      let y = 154;
+      const ensureSpace = (neededHeight: number) => {
+        if (y + neededHeight <= pageHeight - 48) return;
+        doc.addPage();
+        renderHeader();
+        y = 154;
+      };
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Key Points", marginX, y);
+      y += 20;
+
+      parsedBlocks.forEach((block, index) => {
+        if (block.kind === "heading") {
+          const lines = doc.splitTextToSize(block.text, contentWidth);
+          const isMainHeading = firstHeadingIndex === index;
+          const fontSize = isMainHeading ? 15 : 12.5;
+          const lineHeight = isMainHeading ? 19 : 16;
+          ensureSpace(lines.length * lineHeight + 12);
+          doc.setTextColor(15, 118, 110);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(fontSize);
+          doc.text(lines, marginX, y);
+          y += lines.length * lineHeight + 6;
+          return;
+        }
+
+        if (block.kind === "bullet") {
+          const indent = 14;
+          const lines = doc.splitTextToSize(block.text, contentWidth - indent);
+          const lineHeight = 15;
+          ensureSpace(lines.length * lineHeight + 10);
+          doc.setFillColor(20, 184, 166);
+          doc.circle(marginX + 3, y - 5, 2.2, "F");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(51, 65, 85);
+          doc.text(lines, marginX + indent, y);
+          y += lines.length * lineHeight + 4;
+          return;
+        }
+
+        const lines = doc.splitTextToSize(block.text, contentWidth);
+        const lineHeight = 15;
+        ensureSpace(lines.length * lineHeight + 10);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(51, 65, 85);
+        doc.text(lines, marginX, y);
+        y += lines.length * lineHeight + 4;
+      });
+
+      if (summaryThemes.length) {
+        ensureSpace(54);
+        y += 8;
+        doc.setDrawColor(226, 232, 240);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 18;
+        doc.setTextColor(15, 23, 42);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("Main Themes", marginX, y);
+        y += 14;
+        doc.setTextColor(71, 85, 105);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10.5);
+        doc.text(doc.splitTextToSize(summaryThemes.join(" | "), contentWidth), marginX, y);
+      }
+
+      addFooter();
       const fileSafeTitle = (resourceTitle || "ai-summary")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
-      const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = `${fileSafeTitle || "ai-summary"}-summary.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+      doc.save(`${fileSafeTitle || "ai-summary"}-summary.pdf`);
     } catch {
       toast.error("Failed to export summary");
     }
@@ -372,7 +639,7 @@ const AIStudyTools = ({
 
   const meta = OUTPUT_META[active];
   const canRetrySarvam = (type: OutputType) =>
-    supportsOcr && runMeta[type]?.usedOcr && runMeta[type]?.provider === "google";
+    supportsOcr && runMeta[type]?.usedOcr && runMeta[type]?.provider === "google_vision";
   const isLoadingSummary = loading && loadingType === "summary";
   const isLoadingQuiz = loading && loadingType === "quiz";
   const isLoadingFlashcards = loading && loadingType === "flashcards";
@@ -467,7 +734,7 @@ const AIStudyTools = ({
                         <SelectValue placeholder="OCR provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="google">Google Vision</SelectItem>
+                        <SelectItem value="google_vision">Google Vision</SelectItem>
                         <SelectItem value="sarvam">Sarvam OCR</SelectItem>
                       </SelectContent>
                     </Select>
@@ -529,24 +796,42 @@ const AIStudyTools = ({
 
                   <div className="space-y-3">
                     <div className="text-base font-semibold text-foreground">Key Points</div>
-                    {summaryParsed?.bullets?.length ? (
-                      <ul className="space-y-2.5">
-                        {summaryParsed.bullets.map((item, idx) => (
-                          <li key={`${idx}-${item}`} className="flex gap-3">
-                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/80" />
-                            <span className="text-sm text-foreground/90">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="space-y-3">
-                        {(summaryParsed?.paragraphs || [summary]).map((block, idx) => (
-                          <p key={`${idx}-${block}`} className="text-sm text-foreground/90">
-                            {block}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <div className="space-y-2.5">
+                      {(summaryParsed?.blocks || [{ kind: "paragraph" as const, text: summaryPlain(summary) }]).map(
+                        (block, idx) => {
+
+                          if (block.kind === "heading") {
+                            return (
+                              <p
+                                key={idx}
+                                className={cn(
+                                  "font-semibold text-foreground",
+                                  idx === 0 ? "text-base" : "pt-1 text-sm"
+                                )}
+                              >
+                                {block.text}
+                              </p>
+                            );
+                          }
+
+
+                          if (block.kind === "bullet") {
+                            return (
+                              <div key={idx} className="flex gap-3">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/80" />
+                                <span className="text-sm text-foreground/90">{block.text}</span>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <p key={idx} className="text-sm text-foreground/90">
+                              {block.text}
+                            </p>
+                          );
+                        }
+                      )}
+                    </div>
                   </div>
 
                   {summaryThemes.length > 0 && (
@@ -573,7 +858,7 @@ const AIStudyTools = ({
                       </span>
                       <span>
                         <span className="font-semibold text-foreground">Blocks:</span>{" "}
-                        {summaryParsed?.bullets?.length || summaryParsed?.paragraphs?.length || 1}
+                        {summaryParsed?.blocks.length || 1}
                       </span>
                       {cachedMap.summary && <span className="text-xs">Cached result</span>}
                     </div>
@@ -618,7 +903,7 @@ const AIStudyTools = ({
                       className="h-10 w-full rounded-md"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      <span className="ml-2">Export Summary</span>
+                      <span className="ml-2">Export PDF</span>
                     </Button>
                   </div>
                 </div>
@@ -911,7 +1196,7 @@ const AIStudyTools = ({
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   {sourceType === "transcript" ? "Transcript" : "OCR Output"}
-                  {sourceProvider ? ` (${sourceProvider})` : ""}
+                  {sourceProvider ? ` (${getOcrProviderLabel(sourceProvider)})` : ""}
                 </div>
                 <Button
                   size="sm"
@@ -951,4 +1236,3 @@ const AIStudyTools = ({
 };
 
 export default AIStudyTools;
-

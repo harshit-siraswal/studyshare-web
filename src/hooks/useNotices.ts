@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { useCollege } from '@/context/CollegeContext';
+import { collectCollegeIdScopes } from '@/lib/collegeIds';
 
 export interface Notice {
     id: string;
@@ -18,40 +19,6 @@ export interface Notice {
     comments: number;
     comments_count?: number;
     college_id?: string;
-}
-
-function buildCollegeScopes(
-    collegeId?: string | null,
-    collegeDomain?: string | null,
-    collegeSlug?: string | null
-): string[] {
-    const scopes = new Set<string>();
-
-    const addScope = (value?: string | null) => {
-        const trimmed = (value || '').trim();
-        if (!trimmed) return;
-        scopes.add(trimmed);
-
-        const lower = trimmed.toLowerCase();
-        if (lower !== trimmed) scopes.add(lower);
-    };
-
-    addScope(collegeId);
-    addScope(collegeDomain);
-    addScope(collegeSlug);
-
-    const normalizedDomain = (collegeDomain || '').trim().toLowerCase();
-    if (normalizedDomain) {
-        if (normalizedDomain.startsWith('www.')) {
-            addScope(normalizedDomain.slice(4));
-        }
-
-        const parts = normalizedDomain.split('.').filter(Boolean);
-        if (parts.length > 0) addScope(parts[0]); // e.g. kiet from kiet.edu
-        if (parts.length > 2) addScope(parts.slice(1).join('.')); // e.g. du.ac.in from students.du.ac.in
-    }
-
-    return Array.from(scopes);
 }
 
 async function fetchNotices(scopes: string[]): Promise<Notice[]> {
@@ -101,10 +68,9 @@ async function fetchNotices(scopes: string[]): Promise<Notice[]> {
 export function useNotices() {
     const { selectedCollegeId, selectedCollege } = useCollege();
     const queryClient = useQueryClient();
-    const collegeScopes = buildCollegeScopes(
+    const collegeScopes = collectCollegeIdScopes(
         selectedCollegeId,
-        selectedCollege?.domain || null,
-        selectedCollege?.id || null
+        selectedCollege?.collegeId || null
     );
     const collegeScopeKey = collegeScopes.length > 0 ? collegeScopes.join('|') : 'none';
 

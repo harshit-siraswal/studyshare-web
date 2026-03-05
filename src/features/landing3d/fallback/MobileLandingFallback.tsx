@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { LANDING_FAQ, LANDING_FEATURES, STUDENT_SEARCH_INTENTS } from "../content";
 import type { SpatialLandingProps } from "../types";
 import { PLANS } from "@/lib/subscription";
-import { ANDROID_APK_URL } from "@/lib/apk";
 
 export function MobileLandingFallback({ onContinue, onDownload }: SpatialLandingProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -171,9 +170,13 @@ export function MobileLandingFallback({ onContinue, onDownload }: SpatialLanding
             Read blog
           </Link>
           <span className="mx-2">|</span>
-          <a href={ANDROID_APK_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+          <button
+            type="button"
+            onClick={onDownload}
+            className="text-primary hover:text-primary/80"
+          >
             Android download
-          </a>
+          </button>
         </p>
       </footer>
     </div>

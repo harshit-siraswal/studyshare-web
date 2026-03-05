@@ -19,6 +19,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useCollege } from "@/context/CollegeContext";
+import { collectCollegeIdScopes } from "@/lib/collegeIds";
 
 type DepartmentMeta = { value: string; label: string; icon: ElementType };
 
@@ -33,36 +34,6 @@ const DEPARTMENTS: DepartmentMeta[] = [
     { value: 'ds', label: 'Data Science', icon: Database },
     { value: 'it', label: 'Information Technology', icon: Globe },
 ];
-
-const buildCollegeScopes = (
-    collegeId?: string | null,
-    collegeDomain?: string | null,
-    collegeSlug?: string | null
-) => {
-    const scopes = new Set<string>();
-
-    const addScope = (value?: string | null) => {
-        const trimmed = (value || '').trim();
-        if (!trimmed) return;
-        scopes.add(trimmed);
-        const lower = trimmed.toLowerCase();
-        if (lower !== trimmed) scopes.add(lower);
-    };
-
-    addScope(collegeId);
-    addScope(collegeDomain);
-    addScope(collegeSlug);
-
-    const normalizedDomain = (collegeDomain || '').trim().toLowerCase();
-    if (normalizedDomain) {
-        if (normalizedDomain.startsWith('www.')) addScope(normalizedDomain.slice(4));
-        const parts = normalizedDomain.split('.').filter(Boolean);
-        if (parts.length > 0) addScope(parts[0]);
-        if (parts.length > 2) addScope(parts.slice(1).join('.'));
-    }
-
-    return Array.from(scopes);
-};
 
 interface Notice {
     id: string;
@@ -87,10 +58,9 @@ const DepartmentProfile = () => {
     const { user } = useAuth();
     const { selectedCollegeId, selectedCollege } = useCollege();
     const collegeId = selectedCollegeId;
-    const collegeScopes = buildCollegeScopes(
+    const collegeScopes = collectCollegeIdScopes(
         selectedCollegeId,
-        selectedCollege?.domain || null,
-        selectedCollege?.id || null
+        selectedCollege?.collegeId || null
     );
 
     const [notices, setNotices] = useState<Notice[]>([]);

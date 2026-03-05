@@ -10,6 +10,7 @@ import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
 import { openAndroidApkDownload } from "@/lib/apk";
+import { toast } from "sonner";
 
 // All active colleges with online-verified institutional/student domains
 const initialColleges = [
@@ -76,8 +77,11 @@ const SelectCollege = () => {
         navigate("/auth");
     };
 
-    const handleDownloadApk = () => {
-        openAndroidApkDownload();
+    const handleDownloadApk = async () => {
+        const opened = await openAndroidApkDownload();
+        if (!opened) {
+            toast.error("APK download is temporarily unavailable. Please contact support.");
+        }
     };
 
     return (

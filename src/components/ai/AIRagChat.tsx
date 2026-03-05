@@ -1,12 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { BookOpen, Filter, GraduationCap, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  Copy,
+  Filter,
+  GraduationCap,
+  Loader2,
+  MessageSquare,
+  RefreshCcw,
+  Send,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
+import { toast } from "sonner";
 import {
   ApiError,
   formatAiTokenQuotaMessage,
@@ -59,6 +71,9 @@ const AIRagChat = ({
   const [filters, setFilters] = useState<RagFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [regeneratingMessageIndex, setRegeneratingMessageIndex] = useState<number | null>(null);
+  const [copiedConversation, setCopiedConversation] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -68,8 +83,8 @@ const AIRagChat = ({
     }
   }, [messages, loading]);
 
-  const getHistoryForRequest = () => {
-    return messages.slice(-10).map((msg) => ({
+  const getHistoryForRequest = (historyMessages: ChatMessage[] = messages) => {
+    return historyMessages.slice(-10).map((msg) => ({
       role: msg.role,
       content: msg.content,
     }));
@@ -186,6 +201,123 @@ const AIRagChat = ({
   const handleSuggestion = (text: string) => {
     setQuestion(text);
     requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const latestAssistantIndex = (() => {
+    for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+      if (messages[idx].role === "assistant") return idx;
+    }
+    return -1;
+  })();
+
+  const handleCopyMessage = async (messageId: string, content: string) => {
+    const value = content.trim();
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedMessageId(messageId);
+      window.setTimeout(() => {
+        setCopiedMessageId((prev) => (prev === messageId ? null : prev));
+      }, 1600);
+    } catch {
+      toast.error("Failed to copy message");
+    }
+  };
+
+  const handleRegenerate = async (assistantIndex: number) => {
+    if (loading) return;
+    if (assistantIndex !== latestAssistantIndex) {
+      toast.error("Only the latest AI message can be regenerated.");
+      return;
+    }
+
+    let userIndex = -1;
+    for (let idx = assistantIndex - 1; idx >= 0; idx -= 1) {
+      if (messages[idx].role === "user") {
+        userIndex = idx;
+        break;
+      }
+    }
+
+    if (userIndex < 0) {
+      toast.error("No user prompt found for regeneration.");
+      return;
+    }
+
+    const originalQuestion = messages[userIndex]?.content?.trim();
+    if (!originalQuestion) {
+      toast.error("Cannot regenerate an empty question.");
+      return;
+    }
+
+    const truncatedMessages = messages.slice(0, assistantIndex);
+    setRegeneratingMessageIndex(assistantIndex);
+    setMessages(truncatedMessages);
+    setLoading(true);
+
+    try {
+      const response = await queryRag(originalQuestion, {
+        collegeId: selectedCollegeId || undefined,
+        allowWeb: true,
+        filters,
+        history: getHistoryForRequest(truncatedMessages),
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: response.answer || "No answer returned.",
+          sources: response.sources || [],
+          followUps: response.follow_ups || [],
+          cached: response.cached,
+          noLocal: response.no_local,
+        },
+      ]);
+    } catch (error: unknown) {
+      let message = error instanceof Error ? error.message : "Failed to regenerate AI response.";
+      if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
+        message = `${formatAiTokenQuotaMessage(error.payload)} Check your profile for token balance.`;
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: message,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setRegeneratingMessageIndex(null);
+    }
+  };
+
+  const handleCopyConversation = async () => {
+    if (!messages.length) {
+      toast.error("No chat messages to copy yet.");
+      return;
+    }
+
+    const transcript = messages
+      .map((msg) => {
+        const roleLabel = msg.role === "user" ? "You" : "StudyShare AI";
+        const value = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+        return `${roleLabel}:\n${value.trim()}`;
+      })
+      .join("\n\n");
+
+    if (!transcript.trim()) {
+      toast.error("No chat messages to copy yet.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(transcript);
+      setCopiedConversation(true);
+      window.setTimeout(() => setCopiedConversation(false), 1800);
+    } catch {
+      toast.error("Failed to copy conversation");
+    }
   };
 
   const activeFilterParts = [
@@ -415,6 +547,9 @@ const AIRagChat = ({
             {messages.map((msg, idx) => {
               const isUser = msg.role === "user";
               const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+              const messageId = `${msg.role}-${idx}`;
+              const canRegenerate = msg.role === "assistant" && idx === latestAssistantIndex;
+              const isRegenerating = regeneratingMessageIndex === idx;
               return (
                 <div key={`${msg.role}-${idx}`} className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
                   <div
@@ -462,6 +597,40 @@ const AIRagChat = ({
                     )}
 
                     {renderMessageContent(displayContent)}
+
+                    <div className={cn("mt-3 flex flex-wrap items-center gap-2", isUser && "justify-end")}>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyMessage(messageId, displayContent)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition",
+                          copiedMessageId === messageId
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                        )}
+                      >
+                        {copiedMessageId === messageId ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copiedMessageId === messageId ? "Copied" : "Copy"}
+                      </button>
+                      {canRegenerate && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRegenerate(idx)}
+                          disabled={loading}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary",
+                            loading && "cursor-not-allowed opacity-60"
+                          )}
+                        >
+                          {isRegenerating ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCcw className="h-3 w-3" />
+                          )}
+                          {isRegenerating ? "Regenerating..." : "Regenerate"}
+                        </button>
+                      )}
+                    </div>
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div
@@ -683,6 +852,23 @@ const AIRagChat = ({
                   Clear filters
                 </button>
               </div>
+            </div>
+          )}
+          {messages.length > 0 && (
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => void handleCopyConversation()}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition",
+                  copiedConversation
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                )}
+              >
+                {copiedConversation ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copiedConversation ? "Copied All" : "Copy Full Chat"}
+              </button>
             </div>
           )}
           <div className="flex items-end gap-2">
