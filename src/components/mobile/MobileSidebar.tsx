@@ -59,7 +59,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     .from('users')
                     .select('*')
                     .eq('id', user.uid)
-                    .single();
+                    .maybeSingle();
 
                 if (data) {
                     setUserProfile(data);

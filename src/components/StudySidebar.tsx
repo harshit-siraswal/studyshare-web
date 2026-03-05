@@ -67,7 +67,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
           .from('users')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
         if (data) {
           setUserProfile(data);
