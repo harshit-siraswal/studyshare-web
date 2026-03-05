@@ -288,9 +288,9 @@ const Profile = () => {
           .from('users')
           .select('*')
           .eq('id', authUser.uid)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code === 'PGRST116') {
+        if (!data) {
           // Profile doesn't exist, create it
           const emailUsername = authUser.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
 
@@ -608,7 +608,7 @@ const Profile = () => {
         .from('users')
         .select('*')
         .eq('username', viewingUsername)
-        .single();
+        .maybeSingle();
 
       if (otherProfile) {
         console.log('✅ Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
@@ -885,7 +885,7 @@ const Profile = () => {
           .from('users')
           .select('id')
           .eq('username', editForm.username)
-          .single();
+          .maybeSingle();
 
         if (existingUser && existingUser.id !== authUser.uid) {
           toast.error('Username already taken');
