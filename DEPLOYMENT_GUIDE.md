@@ -167,7 +167,8 @@ Create/update `.env.production` in your project root:
 VITE_API_URL=https://api.mystudyspace.me
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
-VITE_ANDROID_APK_URL=https://cdn.mystudyspace.me/studyshare-android.apk
+VITE_ANDROID_APK_URL=https://mystudyspace.me/downloads/studyshare-android.apk
+```
 
 #### Hosting and Configuring the APK
 You can host your APK using one of the following options:
@@ -177,12 +178,11 @@ You can host your APK using one of the following options:
 - **AWS S3 + CloudFront**: Upload to S3, set public read, and use CloudFront for CDN and custom domain.
 
 For each option, upload the APK, ensure public access, and set the correct URL in your environment config.
-```
 
 ### Step 6.2: Vercel APK + Git LFS Check
 If your APK is tracked with Git LFS, enable **Git LFS support** in Vercel Project Settings; otherwise your site may serve a tiny pointer file instead of the real APK. See Vercel's Git LFS docs: https://vercel.com/docs/git/large-files
 
-### Step 6.3: Update Backend CORS
+
 ### Step 6.3: Update Backend CORS
 Verify your backend CORS settings include the domain `www.mystudyspace.me`.
 
@@ -190,6 +190,43 @@ Verify your backend CORS settings include the domain `www.mystudyspace.me`.
 - Inspect your server or web framework's CORS configuration.
 - Add `https://www.mystudyspace.me` to the list of allowed origins.
 - If CORS is not yet configured, enable it and add the origin, or refer to your framework's documentation for CORS setup.
+
+<details>
+<summary>Framework-specific examples</summary>
+
+**Express.js**
+```js
+const cors = require('cors');
+app.use(cors({ origin: ['https://mystudyspace.me', 'https://www.mystudyspace.me'] }));
+```
+
+**Django**
+```python
+CORS_ALLOWED_ORIGINS = [
+    "https://mystudyspace.me",
+    "https://www.mystudyspace.me",
+]
+```
+
+**Flask**
+```python
+from flask_cors import CORS
+CORS(app, origins=["https://mystudyspace.me", "https://www.mystudyspace.me"])
+```
+
+**FastAPI**
+```python
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://mystudyspace.me", "https://www.mystudyspace.me"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+```
+
+</details>
 
 ### Step 6.4: Redeploy
 ```powershell
