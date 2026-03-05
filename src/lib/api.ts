@@ -144,6 +144,12 @@ function getErrorMessage(payload: any, fallback = 'API request failed'): string 
     return fallback;
 }
 
+const API_REQUEST_TIMEOUT_MS = 20000;
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError';
+}
+
 /**
  * Make authenticated API request
  */
@@ -168,12 +174,37 @@ async function apiRequest<T>(
     };
 
     const send = async (token: string | null) => {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers: createHeaders(token),
-        });
-        const payload = await parseResponsePayload(response);
-        return { response, payload };
+        const controller = options.signal ? null : new AbortController();
+        const timeoutId = controller
+            ? window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS)
+            : null;
+
+        try {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers: createHeaders(token),
+                signal: options.signal ?? controller?.signal,
+            });
+            const payload = await parseResponsePayload(response);
+            return { response, payload };
+        } catch (error) {
+            if (isAbortError(error)) {
+                throw new ApiError('Request timed out. Please retry.', 0, {
+                    error: 'network_timeout',
+                    endpoint,
+                });
+            }
+
+            throw new ApiError('Failed to reach server. Please check your connection and retry.', 0, {
+                error: 'network_error',
+                endpoint,
+                detail: error instanceof Error ? error.message : String(error),
+            });
+        } finally {
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+            }
+        }
     };
 
     let token = await getAuthToken();

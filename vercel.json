@@ -1,6 +1,6 @@
 {
     "env": {
-        "VITE_API_URL": "https://api.studyshare.in",
+        "VITE_API_URL": "/backend",
         "VITE_SITE_URL": "https://studyshare.in"
     },
     "headers": [
@@ -27,6 +27,10 @@
         }
     ],
     "rewrites": [
+        {
+            "source": "/backend/:path*",
+            "destination": "https://api.studyshare.in/:path*"
+        },
         {
             "source": "/((?!.*\\.).*)",
             "destination": "/index.html"

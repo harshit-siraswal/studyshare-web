@@ -1,11 +1,13 @@
 const DEFAULT_DEV_API_BASE = "http://localhost:3001";
-const DEFAULT_PROD_API_BASE = "https://api.studyshare.in";
+const DEFAULT_PROD_API_BASE = "/backend";
 
 const LOCALHOST_API_REGEX = /^https?:\/\/(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)(?::\d+)?(?:\/|$)/i;
 const HTTP_URL_REGEX = /^https?:\/\//i;
+const RELATIVE_PATH_REGEX = /^\/[^\s]*$/;
 
 function trimTrailingSlash(url: string): string {
-  return url.replace(/\/+$/, "");
+  const trimmed = url.replace(/\/+$/, "");
+  return trimmed.length > 0 ? trimmed : "/";
 }
 
 export function getApiBaseUrl(): string {
@@ -14,6 +16,10 @@ export function getApiBaseUrl(): string {
 
   if (!envValue) {
     return fallback;
+  }
+
+  if (RELATIVE_PATH_REGEX.test(envValue)) {
+    return trimTrailingSlash(envValue);
   }
 
   if (!HTTP_URL_REGEX.test(envValue)) {
@@ -30,4 +36,3 @@ export function getApiBaseUrl(): string {
 
   return trimTrailingSlash(envValue);
 }
-

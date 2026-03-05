@@ -116,7 +116,7 @@ const ChatPostDetail = () => {
           .select("*")
           .eq("id", postId)
           .eq("room_id", roomId)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
           toast.error("Post not found");
