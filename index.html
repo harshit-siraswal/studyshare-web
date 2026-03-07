@@ -4,18 +4,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudyShare - Community Learning Platform</title>
+  <title>StudyShare | AI Study Platform for College Notes, PYQs and Notices</title>
+  <meta name="application-name" content="StudyShare" />
   <meta name="description"
-    content="Join your college community. Access curated study materials, videos, notes, and previous year questions. Study smarter with your peers." />
+    content="StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities. Find semester-wise resources, ask AI questions, and study faster." />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://www.google.com https://checkout.razorpay.com; worker-src 'self' blob:; media-src 'self' blob: https:; upgrade-insecure-requests" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
   <meta name="author" content="StudyShare" />
   <meta name="keywords"
-    content="study, college, university, notes, videos, previous year questions, community learning" />
+    content="StudyShare, StudyShare AI, college notes, PYQs, notices, syllabus, AI study platform, semester wise resources, campus learning" />
   <link rel="canonical" href="https://studyshare.in/" />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#16a34a">
+  <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,25 +30,45 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="StudyShare" />
-  <meta property="og:title" content="StudyShare - A community based resource sharing platform" />
-  <meta property="og:description" content="A Community platform for all your study and before exam needs." />
+  <meta property="og:title" content="StudyShare | AI Study Platform for College Notes, PYQs and Notices" />
+  <meta property="og:description" content="AI-powered campus learning with notes, PYQs, notices, syllabi, and peer communities." />
   <meta property="og:image" content="https://studyshare.in/brand/logo-mark.png" />
   <meta property="og:url" content="https://studyshare.in/" />
   <meta property="og:image:alt" content="StudyShare logo" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://studyshare.in/" />
-  <meta name="twitter:title" content="StudyShare - A community based resource sharing platform" />
-  <meta name="twitter:description" content="A community platform for study resources, notices, chatrooms, and AI learning support." />
+  <meta name="twitter:title" content="StudyShare | AI Study Platform for College Notes, PYQs and Notices" />
+  <meta name="twitter:description" content="AI-powered campus learning with notes, PYQs, notices, syllabi, and peer communities." />
   <meta name="twitter:image" content="https://studyshare.in/brand/logo-mark.png" />
 
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "StudyShare",
-      "url": "https://studyshare.in",
-      "logo": "https://studyshare.in/brand/logo-mark.png",
-      "description": "College learning community with resources, notices, chatrooms, and AI tools."
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "StudyShare",
+          "alternateName": ["StudyShare AI", "StudyShare.in"],
+          "url": "https://studyshare.in/",
+          "logo": "https://studyshare.in/brand/logo-mark.png",
+          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities."
+        },
+        {
+          "@type": "WebSite",
+          "name": "StudyShare",
+          "alternateName": ["StudyShare AI", "StudyShare.in"],
+          "url": "https://studyshare.in/",
+          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities."
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "StudyShare",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web, Android",
+          "url": "https://studyshare.in/",
+          "description": "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices."
+        }
+      ]
     }
   </script>
 
@@ -61,8 +86,6 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <!-- reCAPTCHA script is injected by GoogleReCaptchaProvider using VITE_RECAPTCHA_SITE_KEY -->
-  <!-- Razorpay Checkout Script -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 
 </html>

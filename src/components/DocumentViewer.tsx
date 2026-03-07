@@ -87,6 +87,71 @@ const EXTENSION_TO_FILE_TYPE: Record<string, DetectedFileType> = {
 };
 
 const FILE_EXTENSION_PATTERN = /\.(pdf|docx|pptx|odt|odp|ods|odf|ppt|doc)(?=$|[?#&"'])/i;
+const OFFICE_SANDBOX = "";
+const OFFICE_SRC_DOC_CSP =
+    "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; media-src data: blob:;";
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function buildOfficeSrcDoc({
+    title,
+    headHtml = "",
+    bodyHtml,
+    darkMode,
+}: {
+    title: string;
+    headHtml?: string;
+    bodyHtml: string;
+    darkMode: boolean;
+}): string {
+    const shellStyles = `
+      :root {
+        color-scheme: ${darkMode ? "dark" : "light"};
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: ${darkMode ? "#0f172a" : "#f8fafc"};
+        color: ${darkMode ? "#e2e8f0" : "#0f172a"};
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        padding: 24px;
+      }
+      img, svg, canvas, iframe, object, embed {
+        max-width: 100%;
+      }
+      .studyshare-office-frame {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      .studyshare-office-frame > * {
+        max-width: 100%;
+      }
+    `;
+
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="${OFFICE_SRC_DOC_CSP}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <style>${shellStyles}</style>
+    ${headHtml}
+  </head>
+  <body>
+    <div class="studyshare-office-frame">${bodyHtml}</div>
+  </body>
+</html>`;
+}
 
 function inferFileTypeFromValue(value?: string | null): DetectedFileType | null {
     if (!value) return null;
@@ -254,13 +319,11 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- DOCX State ---
-    const [hasDocxContent, setHasDocxContent] = useState(false);
     const [loadingDocx, setLoadingDocx] = useState(false);
-    const [pptxSlides, setPptxSlides] = useState<string[] | null>(null);
     const [loadingPptx, setLoadingPptx] = useState(false);
     const [loadingOdf, setLoadingOdf] = useState(false);
+    const [officePreviewSrcDoc, setOfficePreviewSrcDoc] = useState<string | null>(null);
 
-    const docxContainerRef = useRef<HTMLDivElement>(null);
     const odfContainerRef = useRef<HTMLDivElement>(null);
     const odfCanvasRef = useRef<any>(null);
 
@@ -270,7 +333,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
         setLoadingDocx(true);
         setError(null);
-        setHasDocxContent(false);
+        setOfficePreviewSrcDoc(null);
         try {
             const response = await fetch(proxiedDocumentUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch document: ${response.statusText}`);
@@ -278,14 +341,12 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
             if (signal?.aborted) return;
 
-            const docxContainer = docxContainerRef.current;
-            if (!docxContainer) {
-                throw new Error("DOCX renderer is not ready");
-            }
-
-            docxContainer.innerHTML = "";
             const { renderAsync } = await import("docx-preview");
-            await renderAsync(arrayBuffer, docxContainer, undefined, {
+            const officeDocument = document.implementation.createHTMLDocument("StudyShare DOCX Preview");
+            const docxMount = officeDocument.createElement("div");
+            officeDocument.body.appendChild(docxMount);
+
+            await renderAsync(arrayBuffer, docxMount, officeDocument.head, {
                 className: "docx-preview",
                 inWrapper: true,
                 ignoreWidth: false,
@@ -294,19 +355,36 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
             });
 
             if (!signal?.aborted) {
-                setHasDocxContent(true);
+                const sanitizedHead = DOMPurify.sanitize(officeDocument.head.innerHTML, {
+                    ALLOWED_TAGS: ['style', 'meta'],
+                    ALLOWED_ATTR: ['charset', 'name', 'content'],
+                    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'link'],
+                });
+                const sanitizedBody = DOMPurify.sanitize(docxMount.innerHTML, {
+                    USE_PROFILES: { html: true, svg: true, svgFilters: true },
+                    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form'],
+                    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onmouseenter', 'srcdoc'],
+                });
+                setOfficePreviewSrcDoc(
+                    buildOfficeSrcDoc({
+                        title: title || "StudyShare DOCX Preview",
+                        headHtml: sanitizedHead,
+                        bodyHtml: sanitizedBody,
+                        darkMode: isDarkMode,
+                    })
+                );
             }
         } catch (err: unknown) {
             if (signal?.aborted || (err as Error).name === 'AbortError') return;
             console.error("DOCX load error:", err);
             setError(err instanceof Error ? err.message : "Failed to load DOCX file");
-            setHasDocxContent(false);
+            setOfficePreviewSrcDoc(null);
         } finally {
             if (!signal?.aborted) {
                 setLoadingDocx(false);
             }
         }
-    }, [proxiedDocumentUrl, fileType]);
+    }, [proxiedDocumentUrl, fileType, title, isDarkMode]);
 
     useEffect(() => {
         if (fileType === 'docx') {
@@ -322,6 +400,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
         setLoadingPptx(true);
         setError(null);
+        setOfficePreviewSrcDoc(null);
         try {
             const response = await fetch(proxiedDocumentUrl, { signal });
             if (!response.ok) throw new Error(`Failed to fetch presentation: ${response.statusText}`);
@@ -342,21 +421,35 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                     DOMPurify.sanitize(slide, {
                         USE_PROFILES: { html: true, svg: true, svgFilters: true },
                         FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
-                        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onmouseenter'],
+                        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onmouseenter', 'srcdoc'],
                     })
                 );
-                setPptxSlides(sanitizedSlides);
+                const slideHtml = sanitizedSlides
+                    .map(
+                        (slide) =>
+                            `<section style="margin:0 auto 24px;max-width:960px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 18px 42px rgba(15,23,42,0.16);">${slide}</section>`
+                    )
+                    .join("");
+
+                setOfficePreviewSrcDoc(
+                    buildOfficeSrcDoc({
+                        title: title || "StudyShare PPTX Preview",
+                        bodyHtml: slideHtml,
+                        darkMode: isDarkMode,
+                    })
+                );
             }
         } catch (err: unknown) {
             if (signal?.aborted || (err as Error).name === 'AbortError') return;
             console.error("PPTX load error:", err);
             setError(err instanceof Error ? err.message : "Failed to load PPTX file");
+            setOfficePreviewSrcDoc(null);
         } finally {
             if (!signal?.aborted) {
                 setLoadingPptx(false);
             }
         }
-    }, [proxiedDocumentUrl, fileType]);
+    }, [proxiedDocumentUrl, fileType, title, isDarkMode]);
 
     useEffect(() => {
         if (fileType === 'pptx') {
@@ -425,11 +518,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
         setPdfData(null);
         setPdfRetryKey(0);
         setError(null);
-        setHasDocxContent(false);
-        if (docxContainerRef.current) {
-            docxContainerRef.current.innerHTML = "";
-        }
-        setPptxSlides(null);
+        setOfficePreviewSrcDoc(null);
         setRichDocScale(1.0);
     }, [normalizedUrl, proxiedDocumentUrl, fileType]);
 
@@ -1030,13 +1119,18 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                 <p className="text-sm text-muted-foreground">Rendering PPTX...</p>
                             </div>
                         ) : (
-                            <div className="space-y-6 origin-top transition-[zoom] duration-200" style={{ zoom: richDocScale }}>
-                                {pptxSlides && pptxSlides.length > 0 ? (
-                                    pptxSlides.map((slide, index) => (
-                                        <div key={index} className="mx-auto w-[960px] max-w-full bg-white shadow-md overflow-hidden rounded-xl border border-black/5">
-                                            <div dangerouslySetInnerHTML={{ __html: slide }} />
-                                        </div>
-                                    ))
+                            <div className="origin-top transition-[zoom] duration-200" style={{ zoom: richDocScale }}>
+                                {officePreviewSrcDoc ? (
+                                    <iframe
+                                        title={title || "StudyShare PPTX Preview"}
+                                        sandbox={OFFICE_SANDBOX}
+                                        referrerPolicy="no-referrer"
+                                        srcDoc={officePreviewSrcDoc}
+                                        className={cn(
+                                            "w-full min-h-[820px] rounded-xl border border-black/5 bg-white shadow-md",
+                                            isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                                        )}
+                                    />
                                 ) : (
                                     <div className="text-center text-muted-foreground">
                                         No slides to display
@@ -1077,18 +1171,22 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                     <p className="text-sm text-muted-foreground">Converting DOCX...</p>
                                 </div>
                             )}
-                            <div
-                                ref={docxContainerRef}
-                                className={cn(
-                                    "docx-viewer-content",
-                                    isDarkMode ? "invert-[1] hue-rotate-180" : ""
-                                )}
-                            />
-                            {!loadingDocx && !hasDocxContent && !error && (
+                            {officePreviewSrcDoc ? (
+                                <iframe
+                                    title={title || "StudyShare DOCX Preview"}
+                                    sandbox={OFFICE_SANDBOX}
+                                    referrerPolicy="no-referrer"
+                                    srcDoc={officePreviewSrcDoc}
+                                    className={cn(
+                                        "w-full min-h-[1100px] rounded-xl border border-black/5 bg-white shadow-sm",
+                                        isDarkMode ? "invert-[1] hue-rotate-180" : ""
+                                    )}
+                                />
+                            ) : !loadingDocx && !error ? (
                                 <div className="text-center text-muted-foreground">
                                     No content to display
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 )}

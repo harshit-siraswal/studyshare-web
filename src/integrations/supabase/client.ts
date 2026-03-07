@@ -33,8 +33,10 @@ if (missingSupabaseVars.length > 0) {
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
+    // StudyShare uses Firebase Auth for browser sessions. Keep the Supabase client stateless
+    // so it never persists tokens into localStorage where an XSS issue could exfiltrate them.
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
 });

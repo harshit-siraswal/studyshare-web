@@ -15,6 +15,8 @@ interface SEOProps {
 
 const BRAND_NAME = 'StudyShare';
 const DEFAULT_SITE_URL = 'https://studyshare.in';
+const DEFAULT_DESCRIPTION =
+    'StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities.';
 
 const getSiteUrl = () => {
     const envUrl = import.meta.env.VITE_SITE_URL as string | undefined;
@@ -33,7 +35,7 @@ const toAbsoluteUrl = (value: string, siteUrl: string) => {
 
 export const SEO = ({
     title,
-    description = "Community Learning Platform - Access study materials, notes, and connect with your college community.",
+    description = DEFAULT_DESCRIPTION,
     image = "/favicon.png",
     url,
     canonical,

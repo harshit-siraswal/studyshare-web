@@ -13,13 +13,13 @@ const BrandMark = ({ size = 40, className, alt = "StudyShare logo" }: BrandMarkP
       alt={alt}
       width={size}
       height={size}
-      className={cn("object-contain dark:invert dark:brightness-200", className)}
+      className={cn("object-contain", className)}
       loading="lazy"
       decoding="async"
       onError={(e) => {
         const target = e.currentTarget;
         if (target.src.includes("logo-mark.png")) {
-          target.src = "/brand/app-icon.png";
+          target.src = "/favicon.png";
         }
       }}
     />

@@ -12,6 +12,35 @@ import { useTheme } from "@/hooks/useTheme";
 import { openAndroidApkDownload } from "@/lib/apk";
 import { toast } from "sonner";
 
+const homeStructuredData = [
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "StudyShare",
+        alternateName: ["StudyShare AI", "StudyShare.in"],
+        url: "https://studyshare.in/",
+        description: "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+    },
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "StudyShare",
+        alternateName: ["StudyShare AI", "StudyShare.in"],
+        url: "https://studyshare.in/",
+        logo: "https://studyshare.in/brand/logo-mark.png",
+        description: "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+    },
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "StudyShare",
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web, Android",
+        url: "https://studyshare.in/",
+        description: "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices.",
+    },
+];
+
 // All active colleges with online-verified institutional/student domains
 const initialColleges = [
     { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
@@ -87,8 +116,21 @@ const SelectCollege = () => {
     return (
         <div className="min-h-screen bg-gradient-hero text-foreground font-ai overflow-x-hidden">
             <SEO
-                title="Select Your College"
-                description="Join your college community on StudyShare. Access curated study materials, notes, videos, and connect with peers."
+                title="StudyShare | AI Study Platform for College Notes, PYQs and Notices"
+                description="StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities. Join your college, find semester-wise resources, and study faster."
+                canonical="https://studyshare.in/"
+                keywords={[
+                    "StudyShare",
+                    "StudyShare AI",
+                    "college notes",
+                    "PYQs",
+                    "college notices",
+                    "syllabus",
+                    "AI study platform",
+                    "semester wise resources",
+                    "campus learning platform",
+                ]}
+                structuredData={homeStructuredData}
             />
             {/* Background decorations */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -133,7 +175,7 @@ const SelectCollege = () => {
                         </h1>
                     </div>
                     <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
-                        Join your college community. Access curated study materials, connect with peers, and ace your exams together.
+                        AI-powered college learning for notes, PYQs, notices, and campus communities. Join your college, find semester-wise resources, and study faster.
                     </p>
                 </header>
 
