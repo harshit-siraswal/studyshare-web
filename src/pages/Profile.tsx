@@ -155,6 +155,22 @@ function formatVisibleCreditCount(rawValue: number): string {
   return formatVisibleAiTokens(rawValue);
 }
 
+function getContributionDescription(description?: string): string | null {
+  if (!description) return null;
+  const normalized = description.trim();
+  if (!normalized) return null;
+
+  if (
+    /fallback classification used/i.test(normalized) ||
+    /llm_disabled/i.test(normalized) ||
+    /resource_create_failed/i.test(normalized)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function toOptionalNumber(value: unknown): number | undefined {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : undefined;
@@ -1235,6 +1251,7 @@ const Profile = () => {
 
                   return filteredContributions.map((contribution) => {
                     const Icon = typeIcons[contribution.type as keyof typeof typeIcons];
+                    const contributionDescription = getContributionDescription(contribution.description);
                     const previewable =
                       (contribution.type === "video" && !!contribution.url) ||
                       ((contribution.type === "notes" || contribution.type === "pyq") && !!contribution.pdfUrl);
@@ -1294,7 +1311,7 @@ const Profile = () => {
                                 </DropdownMenu>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <Badge variant={contribution.status === "approved" ? "default" : "secondary"} className="text-xs">
                                 {contribution.status}
                               </Badge>
@@ -1302,15 +1319,17 @@ const Profile = () => {
                                 <span>Sem {contribution.semester}</span>
                               )}
                               {contribution.branch && (
-                                <span>â€¢ {contribution.branch}</span>
+                                <span className="rounded-full border border-border/60 bg-background/60 px-2 py-0.5 uppercase tracking-wide">
+                                  {contribution.branch}
+                                </span>
                               )}
                               {contribution.subject && (
-                                <span>â€¢ {contribution.subject}</span>
+                                <span className="text-foreground/80">{contribution.subject}</span>
                               )}
                             </div>
-                            {contribution.description && (
+                            {contributionDescription && (
                               <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                {contribution.description}
+                                {contributionDescription}
                               </p>
                             )}
                             <div className="flex items-center justify-between mt-3">
