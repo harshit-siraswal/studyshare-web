@@ -137,7 +137,7 @@ const SelectCollege = () => {
                     <div className="inline-flex items-center gap-2 md:gap-3 mb-6">
                         <BrandMark
                             size={112}
-                            className="h-16 w-16 md:h-20 md:w-20 drop-shadow-[0_16px_30px_rgba(37,99,235,0.18)]"
+                            className="h-16 w-16 md:h-20 md:w-20 origin-center motion-safe:animate-[spin_14s_linear_infinite] drop-shadow-[0_16px_30px_rgba(37,99,235,0.18)]"
                             alt="StudyShare"
                         />
                         <h1 className="text-3xl md:text-5xl font-bold">
