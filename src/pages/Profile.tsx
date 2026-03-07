@@ -91,6 +91,8 @@ interface UserProfile {
   semester?: string;
   subject?: string;
   username?: string;
+  role?: string;
+  created_at?: string;
   ai_token_budget?: number;
   ai_token_used?: number;
   ai_token_remaining?: number;
@@ -118,6 +120,10 @@ interface AiTokenUsage {
 }
 
 const DEFAULT_AI_TOKEN_BASE_BUDGET = 40160;
+const USER_PROFILE_SELECT =
+  "id, email, display_name, bio, profile_photo_url, college, branch, semester, subject, username, role, created_at";
+const DISCOVER_USER_SELECT =
+  "id, email, display_name, username, profile_photo_url, college";
 
 const DEFAULT_AI_TOKEN_BUDGET = (() => {
   const raw = Number(import.meta.env.VITE_AI_TOKEN_BUDGET ?? 10000);
@@ -286,7 +292,7 @@ const Profile = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('*')
+          .select(USER_PROFILE_SELECT)
           .eq('id', authUser.uid)
           .maybeSingle();
 
@@ -309,7 +315,7 @@ const Profile = () => {
           const { data: created, error: createError } = await supabase
             .from('users')
             .insert([newProfile])
-            .select()
+            .select(USER_PROFILE_SELECT)
             .single();
 
           if (createError) throw createError;
@@ -502,7 +508,7 @@ const Profile = () => {
       // Fetch users from the same college, excluding current user
       const { data: allUsersData, error } = await supabase
         .from('users')
-        .select('*')
+        .select(DISCOVER_USER_SELECT)
         .neq('email', authUser.email)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -606,7 +612,7 @@ const Profile = () => {
       // Fetch the other user's profile
       const { data: otherProfile } = await supabase
         .from('users')
-        .select('*')
+        .select(USER_PROFILE_SELECT)
         .eq('username', viewingUsername)
         .maybeSingle();
 

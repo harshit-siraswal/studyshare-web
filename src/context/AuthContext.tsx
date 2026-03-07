@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { ApiError, verifyAndGetUser } from "@/lib/api";
+import { ApiError, getMyProfile, verifyAndGetUser } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -40,16 +40,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         // Parallel fetch for user info and subscription status
-        const [userInfo, { data: userRow }] = await Promise.all([
+        const [userInfo, profileResult] = await Promise.all([
           verifyAndGetUser(),
-          import("../supabase").then(({ supabase }) =>
-            supabase
-              .from('users')
-              .select('subscription_tier, subscription_end_date')
-              .eq('id', firebaseUser.uid)
-              .maybeSingle()
-          )
+          getMyProfile(),
         ]);
+        const userRow = profileResult?.profile;
 
         if (userInfo.isBanned) {
           setIsBanned(true);

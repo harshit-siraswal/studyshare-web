@@ -12,6 +12,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { supabase } from '../../supabase';
 
+const SIDEBAR_USER_SELECT =
+    'id, email, display_name, profile_photo_url, username, college';
+
 interface MobileSidebarProps {
     isOpen: boolean;
     onClose: () => void;
@@ -57,7 +60,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             try {
                 const { data } = await supabase
                     .from('users')
-                    .select('*')
+                    .select(SIDEBAR_USER_SELECT)
                     .eq('id', user.uid)
                     .maybeSingle();
 

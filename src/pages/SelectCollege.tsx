@@ -47,7 +47,7 @@ const SelectCollege = () => {
 
                     const { count, error } = await supabase
                         .from('users')
-                        .select('*', { count: 'exact', head: true })
+                        .select('id', { count: 'exact', head: true })
                         .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
 
                     if (!error && count !== null) {

@@ -17,6 +17,9 @@ import NotificationCenter from "./NotificationCenter";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 
+const SIDEBAR_USER_SELECT =
+  "id, email, display_name, profile_photo_url, username, college";
+
 const chatRooms = [
   { id: "placement", name: "placement", members: 312, isPrivate: false },
   { id: "general", name: "general", members: 567, isPrivate: false },
@@ -65,7 +68,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
       try {
         const { data } = await supabase
           .from('users')
-          .select('*')
+          .select(SIDEBAR_USER_SELECT)
           .eq('id', userId)
           .maybeSingle();
 
