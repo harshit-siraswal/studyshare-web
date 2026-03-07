@@ -134,10 +134,10 @@ const SelectCollege = () => {
 
                 {/* Header */}
                 <header className="text-center mb-12 md:mb-16 animate-fade-in">
-                    <div className="inline-flex items-center gap-5 md:gap-6 mb-6">
+                    <div className="inline-flex items-center gap-3 md:gap-4 mb-6">
                         <BrandMark
-                            size={132}
-                            className="h-20 w-20 md:h-32 md:w-32 drop-shadow-[0_18px_34px_rgba(37,99,235,0.22)]"
+                            size={156}
+                            className="h-24 w-24 md:h-36 md:w-36 drop-shadow-[0_18px_34px_rgba(37,99,235,0.22)]"
                             alt="StudyShare"
                         />
                         <h1 className="text-3xl md:text-5xl font-bold">
