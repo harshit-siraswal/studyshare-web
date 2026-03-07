@@ -9,9 +9,31 @@ const ts = require("typescript");
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const DEFAULT_SITE_URL = "https://studyshare.in";
+
+function normalizeSiteUrl(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return DEFAULT_SITE_URL;
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const url = new URL(withProtocol);
+    const hostname = url.hostname.toLowerCase();
+
+    // Ignore the retired domain even if a stale build env still injects it.
+    if (hostname.includes("mystudyspace.me")) {
+      return DEFAULT_SITE_URL;
+    }
+
+    return `${url.protocol}//${url.host}`.replace(/\/+$/, "");
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
 export function getSiteUrl() {
-  const raw = process.env.VITE_SITE_URL || "https://studyshare.in";
-  return String(raw).trim().replace(/\/+$/, "");
+  return normalizeSiteUrl(process.env.VITE_SITE_URL);
 }
 
 export function ensureDir(targetDir) {
@@ -75,4 +97,3 @@ export function loadBlogPosts() {
 
   return posts;
 }
-

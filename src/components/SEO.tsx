@@ -18,11 +18,31 @@ const DEFAULT_SITE_URL = 'https://studyshare.in';
 const DEFAULT_DESCRIPTION =
     'StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities.';
 
+const normalizeSiteUrl = (rawValue?: string) => {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return DEFAULT_SITE_URL;
+
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    try {
+        const url = new URL(withProtocol);
+        const hostname = url.hostname.toLowerCase();
+
+        if (hostname.includes('mystudyspace.me')) {
+            return DEFAULT_SITE_URL;
+        }
+
+        return `${url.protocol}//${url.host}`.replace(/\/+$/, '');
+    } catch {
+        return DEFAULT_SITE_URL;
+    }
+};
+
 const getSiteUrl = () => {
     const envUrl = import.meta.env.VITE_SITE_URL as string | undefined;
-    if (envUrl) return envUrl.replace(/\/+$/, '');
+    if (envUrl) return normalizeSiteUrl(envUrl);
     if (typeof window !== 'undefined' && window.location.origin) {
-        return window.location.origin.replace(/\/+$/, '');
+        return normalizeSiteUrl(window.location.origin);
     }
     return DEFAULT_SITE_URL;
 };
