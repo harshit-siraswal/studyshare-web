@@ -42,6 +42,53 @@ function upsertJsonLd(html, schemaValue) {
   return upsertTag(html, pattern, tag);
 }
 
+function injectRootMarkup(html, rootMarkup) {
+  return html.replace(
+    /<div id="root">[\s\S]*?<\/div>/i,
+    `<div id="root">${rootMarkup}</div>`,
+  );
+}
+
+function getHomeFallbackMarkup() {
+  return `
+    <main aria-label="StudyShare homepage" style="min-height:100vh;background:linear-gradient(180deg,#050816 0%,#0b1022 100%);color:#f8fafc;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <section style="max-width:1120px;margin:0 auto;padding:72px 24px 56px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;padding:8px 14px;border:1px solid rgba(148,163,184,.22);border-radius:999px;background:rgba(37,99,235,.10);color:#93c5fd;font-size:14px;font-weight:600;letter-spacing:.02em;">
+          AI study platform for college communities
+        </div>
+        <h1 style="margin:24px 0 16px;font-size:clamp(2.4rem,5vw,4.75rem);line-height:1.02;font-weight:800;letter-spacing:-0.04em;max-width:840px;">
+          StudyShare helps students find notes, PYQs, notices, syllabi, and AI study help in one place.
+        </h1>
+        <p style="margin:0;max-width:760px;font-size:clamp(1rem,1.8vw,1.25rem);line-height:1.75;color:#cbd5e1;">
+          Join your college, browse semester-wise resources, discover department notices, access previous year questions, and study faster with AI-powered learning tools built for campus workflows.
+        </p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:28px;">
+          <a href="/select-college" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 22px;border-radius:14px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;">Select Your College</a>
+          <a href="/blog" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 22px;border-radius:14px;border:1px solid rgba(148,163,184,.24);background:rgba(15,23,42,.72);color:#e2e8f0;text-decoration:none;font-weight:600;">Read Study Tips</a>
+        </div>
+      </section>
+
+      <section style="max-width:1120px;margin:0 auto;padding:0 24px 72px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;">
+          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
+            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">Semester-wise resources</h2>
+            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Browse curated notes, labs, handouts, and subject material mapped to your branch and semester.</p>
+          </article>
+          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
+            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">PYQs, notices, and syllabi</h2>
+            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Keep exam prep and academic updates together with previous year questions, official notices, and syllabus documents.</p>
+          </article>
+          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
+            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">AI-powered study tools</h2>
+            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Use AI study features to organize material, ask questions, and move faster through revision without losing context.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  `.trim();
+}
+
 function applySeo(baseHtml, meta) {
   const siteUrl = getSiteUrl();
   const canonical = toAbsoluteUrl(meta.canonicalPath, siteUrl);
@@ -135,7 +182,8 @@ function main() {
       ],
     },
   });
-  fs.writeFileSync(indexFile, homeHtml, "utf8");
+  const homeHtmlWithBody = injectRootMarkup(homeHtml, getHomeFallbackMarkup());
+  fs.writeFileSync(indexFile, homeHtmlWithBody, "utf8");
 
   const blogHtml = applySeo(baseHtml, {
     title: "Blog for College Study Tips and Exam Preparation",
