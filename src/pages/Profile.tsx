@@ -264,6 +264,7 @@ const Profile = () => {
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalMode, setPremiumModalMode] = useState<"premium" | "recharge">("premium");
 
   const { theme, toggleTheme } = useTheme();
   const { executeRecaptcha } = useGoogleReCaptcha();
@@ -998,6 +999,16 @@ const Profile = () => {
     ? formatVisibleCreditCount(aiTokenUsage.budget)
     : "0";
 
+  const openPremiumPlans = () => {
+    setPremiumModalMode("premium");
+    setShowPremiumModal(true);
+  };
+
+  const openRechargePlans = () => {
+    setPremiumModalMode("recharge");
+    setShowPremiumModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <SEO
@@ -1041,8 +1052,9 @@ const Profile = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="p-4 sm:p-6">
+        <div className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+          <div className="min-w-0 space-y-4 sm:space-y-6">
+            <Card className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
               <div className="relative mx-auto sm:mx-0">
                 <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
@@ -1146,79 +1158,10 @@ const Profile = () => {
                 </div>
               </div>
             </div>
-          </Card>
-
-          {!isViewingOther && aiTokenUsage && (
-            <Card className="h-fit border-primary/15 bg-gradient-to-br from-primary/6 via-card to-card p-5 shadow-sm lg:sticky lg:top-24">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI Tokens
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-foreground">
-                    {aiVisibleRemaining} left this cycle
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    The web app now uses the same Android conversion. You see AI tokens, not raw backend token counts.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 border-primary/20 bg-background/80 text-primary"
-                  onClick={() => setShowPremiumModal(true)}
-                >
-                  <CreditCard className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className={`h-full transition-all ${aiTokenUsage.remaining <= 0 ? "bg-red-500" : "bg-primary"}`}
-                  style={{ width: `${aiUsedPercent}%` }}
-                />
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Remaining</p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleRemaining}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Used</p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleUsed}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleBudget}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
-                <p>Cycle: {aiTokenUsage.cycleDays} days. Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}.</p>
-                <p>1 AI token = 2,000 raw billable tokens.</p>
-                <p>Base budget: {formatVisibleCreditCount(aiTokenUsage.baseBudget)} tokens. Premium multiplier: {aiTokenUsage.premiumMultiplier}x.</p>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-2">
-                <Button className="w-full" onClick={() => setShowPremiumModal(true)}>
-                  Recharge AI Tokens
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-primary/20 text-primary"
-                  onClick={() => setShowPremiumModal(true)}
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  Upgrade to Premium
-                </Button>
-              </div>
             </Card>
-          )}
-        </div>
-        {/* Search Bar for Contributions */}
-        <div className="relative mt-4 sm:mt-6">
+
+            {/* Search Bar for Contributions */}
+            <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search contributions (notes, title, subject)..."
@@ -1229,7 +1172,7 @@ const Profile = () => {
         </div>
 
         {/* Content Tabs */}
-        <Tabs defaultValue="contributions" className="mt-4 sm:mt-6">
+            <Tabs defaultValue="contributions" className="mt-0">
           <TabsList className="w-full grid grid-cols-3 h-auto">
             <TabsTrigger value="contributions" className="text-xs sm:text-sm py-2">
               Contributions
@@ -1453,8 +1396,107 @@ const Profile = () => {
               </TabsContent>
             )
           }
-        </Tabs >
-      </div >
+            </Tabs>
+          </div>
+
+          {!isViewingOther && (
+            <aside className="xl:sticky xl:top-24">
+              <Card className="h-fit border-primary/15 bg-gradient-to-br from-primary/6 via-card to-card p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      AI Tokens
+                    </div>
+                    <h3 className="mt-3 text-xl font-semibold text-foreground">
+                      {aiTokenUsage ? `${aiVisibleRemaining} left this cycle` : "Loading your token budget"}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      The web app now uses the same Android conversion. You see AI tokens, not raw backend token counts.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 border-primary/20 bg-background/80 text-primary"
+                    onClick={openPremiumPlans}
+                  >
+                    <Crown className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {aiTokenUsage ? (
+                  <>
+                    <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full transition-all ${aiTokenUsage.remaining <= 0 ? "bg-red-500" : "bg-primary"}`}
+                        style={{ width: `${aiUsedPercent}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-3">
+                      <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Remaining</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleRemaining}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Used</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleUsed}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleBudget}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
+                      <p>Cycle: {aiTokenUsage.cycleDays} days. Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}.</p>
+                      <p>1 AI token = 2,000 raw billable tokens.</p>
+                      <p>Base budget: {formatVisibleCreditCount(aiTokenUsage.baseBudget)} tokens. Premium multiplier: {aiTokenUsage.premiumMultiplier}x.</p>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button className="w-full" onClick={openRechargePlans}>
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Recharge AI Tokens
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full border-primary/20 text-primary"
+                        onClick={openPremiumPlans}
+                      >
+                        <Crown className="mr-2 h-4 w-4" />
+                        Upgrade to Premium
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    <div className="h-2.5 w-full animate-pulse rounded-full bg-muted" />
+                    <div className="grid grid-cols-3 gap-3">
+                      {[0, 1, 2].map((value) => (
+                        <div key={value} className="rounded-xl border border-border/60 bg-background/70 p-3">
+                          <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                          <div className="mt-3 h-6 w-10 animate-pulse rounded bg-muted" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-4">
+                      <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+                      <div className="h-3 w-3/5 animate-pulse rounded bg-muted" />
+                    </div>
+                    <div className="grid gap-2">
+                      <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+                      <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </aside>
+          )}
+        </div>
+      </div>
 
       {/* Logout Confirmation Dialog */}
       < AlertDialog open={showLogoutDialog} onOpenChange={(open) => {
@@ -1478,6 +1520,7 @@ const Profile = () => {
       <PremiumModal
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
+        mode={premiumModalMode}
       />
 
       {/* Edit Profile Dialog */}

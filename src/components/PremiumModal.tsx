@@ -19,12 +19,17 @@ import { AI_RECHARGE_LIMITS, PLANS, SubscriptionService } from "@/lib/subscripti
 interface PremiumModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: "premium" | "recharge";
 }
 
 const DEFAULT_BASE_BUDGET = 40160;
 const DEFAULT_BUDGET_INR = 1;
 
-const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
+const PremiumModal = ({
+  isOpen,
+  onClose,
+  mode = "premium",
+}: PremiumModalProps) => {
   const { user } = useAuth();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [rechargeLoading, setRechargeLoading] = useState(false);
@@ -81,6 +86,9 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
     () => estimateRechargeVisibleTokens(rechargeRupees, baseBudget, budgetInr),
     [rechargeRupees, baseBudget, budgetInr],
   );
+  const isRechargeOnly = mode === "recharge";
+  const showPremiumPlans = mode === "premium";
+  const showRechargeSection = mode === "recharge";
 
   const handleUpgrade = async (planId: string) => {
     if (!user) {
@@ -140,103 +148,119 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
           <div className="border-b border-border/60 bg-gradient-to-br from-primary/12 via-background to-background px-6 py-6">
             <DialogHeader className="gap-3 text-left">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                <Crown className="h-6 w-6" />
+                {isRechargeOnly ? (
+                  <Wallet className="h-6 w-6" />
+                ) : (
+                  <Crown className="h-6 w-6" />
+                )}
               </div>
               <div>
                 <DialogTitle className="text-2xl font-bold tracking-tight">
-                  StudyShare Premium
+                  {isRechargeOnly ? "AI Token Recharge" : "StudyShare Premium"}
                 </DialogTitle>
                 <DialogDescription className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Free users get {freeVisibleTokens} AI tokens every 30 days.
-                  Premium includes {premiumVisibleTokens} AI tokens every 30 days.
-                  Need more before the cycle resets? Use a student-friendly recharge.
+                  {isRechargeOnly ? (
+                    <>
+                      Pick a student-friendly top-up and add AI tokens to your account
+                      instantly. Recharge values follow the same token economics as
+                      the Android app.
+                    </>
+                  ) : (
+                    <>
+                      Free users get {freeVisibleTokens} AI tokens every 30 days.
+                      Premium includes {premiumVisibleTokens} AI tokens every 30 days.
+                    </>
+                  )}
                 </DialogDescription>
               </div>
             </DialogHeader>
           </div>
 
           <div className="space-y-6 px-6 py-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              {PLANS.map((plan) => {
-                const isQuarterly = plan.duration === "quarterly";
-                const isLoading = loadingPlanId === plan.id;
+            {showPremiumPlans && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {PLANS.map((plan) => {
+                  const isQuarterly = plan.duration === "quarterly";
+                  const isLoading = loadingPlanId === plan.id;
 
-                return (
-                  <Card
-                    key={plan.id}
-                    className={`relative border-border/70 p-5 shadow-sm ${
-                      isQuarterly
-                        ? "border-primary/40 bg-primary/5"
-                        : "bg-card/80"
-                    }`}
-                  >
-                    {isQuarterly && (
-                      <Badge className="absolute right-4 top-4 bg-primary text-primary-foreground">
-                        Best Value
-                      </Badge>
-                    )}
-
-                    <div className="mb-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <h3 className="text-lg font-semibold">{plan.name}</h3>
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <span className="text-3xl font-bold tracking-tight">INR {plan.price}</span>
-                        <span className="pb-1 text-sm text-muted-foreground">
-                          /{plan.duration === "monthly" ? "month" : "quarter"}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {plan.duration === "quarterly"
-                          ? "90-day access with best-value pricing."
-                          : "30-day access with all premium tools."}
-                      </p>
-                    </div>
-
-                    <div className="mb-5 rounded-xl border border-border/60 bg-background/70 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                        AI Token Access
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-foreground">
-                        {premiumVisibleTokens} AI tokens every 30 days
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {premiumMultiplier}x the free plan allowance.
-                      </p>
-                    </div>
-
-                    <ul className="mb-5 space-y-3">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-3 text-sm text-foreground">
-                          <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            <Check className="h-3 w-3" />
-                          </span>
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button
-                      className="w-full"
-                      variant={isQuarterly ? "default" : "outline"}
-                      disabled={!!loadingPlanId}
-                      onClick={() => handleUpgrade(plan.id)}
+                  return (
+                    <Card
+                      key={plan.id}
+                      className={`relative border-border/70 p-5 shadow-sm ${
+                        isQuarterly
+                          ? "border-primary/40 bg-primary/5"
+                          : "bg-card/80"
+                      }`}
                     >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isQuarterly ? (
-                        "Buy INR 149 Plan"
-                      ) : (
-                        "Buy INR 49 Plan"
+                      {isQuarterly && (
+                        <Badge className="absolute right-4 top-4 bg-primary text-primary-foreground">
+                          Best Value
+                        </Badge>
                       )}
-                    </Button>
-                  </Card>
-                );
-              })}
-            </div>
 
-            <Card className="border-border/70 bg-card/80 p-5 shadow-sm">
+                      <div className="mb-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <h3 className="text-lg font-semibold">{plan.name}</h3>
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <span className="text-3xl font-bold tracking-tight">INR {plan.price}</span>
+                          <span className="pb-1 text-sm text-muted-foreground">
+                            /{plan.duration === "monthly" ? "month" : "quarter"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {plan.duration === "quarterly"
+                            ? "90-day access with best-value pricing."
+                            : "30-day access with all premium tools."}
+                        </p>
+                      </div>
+
+                      <div className="mb-5 rounded-xl border border-border/60 bg-background/70 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                          AI Token Access
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-foreground">
+                          {premiumVisibleTokens} AI tokens every 30 days
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {premiumMultiplier}x the free plan allowance.
+                        </p>
+                      </div>
+
+                      <ul className="mb-5 space-y-3">
+                        {plan.features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-3 text-sm text-foreground">
+                            <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                              <Check className="h-3 w-3" />
+                            </span>
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        className="w-full"
+                        variant={isQuarterly ? "default" : "outline"}
+                        disabled={!!loadingPlanId}
+                        onClick={() => handleUpgrade(plan.id)}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isQuarterly ? (
+                          "Buy INR 149 Plan"
+                        ) : (
+                          "Buy INR 49 Plan"
+                        )}
+                      </Button>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {showRechargeSection && (
+              <Card className="border-border/70 bg-card/80 p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -311,7 +335,8 @@ const PremiumModal = ({ isOpen, onClose }: PremiumModalProps) => {
                   the Android app.
                 </p>
               </div>
-            </Card>
+              </Card>
+            )}
           </div>
         </div>
       </DialogContent>
