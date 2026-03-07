@@ -109,7 +109,7 @@ function main() {
         {
           "@type": "Organization",
           name: BRAND_NAME,
-          alternateName: ["StudyShare AI", "StudyShare.in"],
+          alternateName: ["StudyShare AI"],
           url: `${siteUrl}/`,
           logo: `${siteUrl}/brand/logo-mark.png`,
           description:
@@ -118,7 +118,7 @@ function main() {
         {
           "@type": "WebSite",
           name: BRAND_NAME,
-          alternateName: ["StudyShare AI", "StudyShare.in"],
+          alternateName: ["StudyShare AI"],
           url: `${siteUrl}/`,
           description:
             "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
