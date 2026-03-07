@@ -100,7 +100,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
     }
   };
 
-  const availableSubjects = formData.branch 
+  const availableSubjects = formData.branch && formData.semester
     ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
     : [];
 
@@ -135,7 +135,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
               <Label htmlFor="edit-semester">Semester</Label>
               <Select
                 value={formData.semester}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value, subject: "" }))}
                 disabled={updating}
               >
                 <SelectTrigger id="edit-semester">
@@ -179,7 +179,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
               <Select
                 value={formData.subject}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                disabled={updating || !formData.branch}
+                disabled={updating || !formData.branch || !formData.semester}
               >
                 <SelectTrigger id="edit-subject">
                   <SelectValue placeholder="Select subject" />

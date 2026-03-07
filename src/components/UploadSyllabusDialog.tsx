@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSyllabusUploadUrl, createSyllabus } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import {
   BRANCH_OPTIONS,
@@ -25,7 +24,6 @@ interface UploadSyllabusDialogProps {
 }
 
 const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps) => {
-  const { user } = useAuth();
   const { selectedCollegeId } = useCollege();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +37,7 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
   });
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
-  const availableSubjects = formData.branch
+  const availableSubjects = formData.branch && formData.semester
     ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
     : [];
 
@@ -199,7 +197,7 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
                   value={formData.subject}
                   onValueChange={(value) => setFormData({ ...formData, subject: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="subject">
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>

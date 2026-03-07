@@ -29,6 +29,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import PremiumModal from "@/components/PremiumModal";
 import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
 import VideoPlayer from "@/components/VideoPlayer";
+import { getBranchLabel, normalizeBranchCode } from "@/lib/academicSubjects";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -124,7 +125,7 @@ interface AiTokenUsage {
 
 const DEFAULT_AI_TOKEN_BASE_BUDGET = 40160;
 const USER_PROFILE_SELECT =
-  "id, email, display_name, bio, profile_photo_url, college, branch, semester, subject, username, role, created_at";
+  "id, email, display_name, bio, profile_photo_url, college, branch, semester, subject, username, role, created_at, subscription_tier, subscription_end_date";
 const DISCOVER_USER_SELECT =
   "id, email, display_name, username, profile_photo_url, college";
 
@@ -169,6 +170,128 @@ function getContributionDescription(description?: string): string | null {
   }
 
   return normalized;
+}
+
+function normalizeProfilePhotoUrl(value?: string | null): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+
+  const nullLikeValues = new Set(["null", "undefined", "n/a", "-"]);
+  if (nullLikeValues.has(trimmed.toLowerCase())) {
+    return null;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  return trimmed;
+}
+
+function resolveProfilePhotoUrl(
+  source: unknown,
+  fallbackValues: Array<string | null | undefined> = [],
+): string | null {
+  const candidates: Array<string | null | undefined> = [];
+
+  const addCandidate = (value: unknown) => {
+    if (value == null) return;
+    candidates.push(String(value));
+  };
+
+  const addFromMap = (map: Record<string, unknown>, keys: string[]) => {
+    for (const key of keys) {
+      if (!(key in map)) continue;
+      addCandidate(map[key]);
+    }
+  };
+
+  if (source && typeof source === "object") {
+    const map = source as Record<string, unknown>;
+    const defaultKeys = [
+      "profile_photo_url",
+      "photo_url",
+      "avatar_url",
+      "author_photo_url",
+      "user_photo_url",
+      "photoURL",
+      "avatarUrl",
+    ];
+
+    addFromMap(map, defaultKeys);
+
+    for (const nestedKey of ["user", "author", "profile"]) {
+      const nested = map[nestedKey];
+      if (!nested || typeof nested !== "object") continue;
+      addFromMap(nested as Record<string, unknown>, defaultKeys);
+    }
+  } else {
+    addCandidate(source);
+  }
+
+  candidates.push(...fallbackValues);
+
+  for (const candidate of candidates) {
+    const normalized = normalizeProfilePhotoUrl(candidate);
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
+
+function extractCollegeName(value?: string | null): string {
+  if (!value) return "College";
+  const trimmed = value.trim();
+  if (!trimmed) return "College";
+
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed?.name === "string" && parsed.name.trim()) {
+        return parsed.name.trim();
+      }
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed;
+}
+
+function isPremiumTierActive(profile?: Partial<UserProfile> | null): boolean {
+  if (!profile) return false;
+  const tier = String(profile.subscription_tier ?? "").trim().toLowerCase();
+  if (!["pro", "max", "premium"].includes(tier)) return false;
+  if (!profile.subscription_end_date) return false;
+  const expiry = new Date(profile.subscription_end_date);
+  if (Number.isNaN(expiry.getTime())) return false;
+  return expiry.getTime() > Date.now();
+}
+
+function getBranchBadgeLabel(branch?: string | null): string {
+  const normalized = normalizeBranchCode(branch);
+  const shortLabels: Record<string, string> = {
+    cse: "CSE",
+    it: "IT",
+    cse_ai: "CSE (AI)",
+    aiml: "CSE (AI & ML)",
+    ds: "CSE (DS)",
+    cse_cs: "CSE (Cyber Security)",
+    me: "ME",
+    amia: "AM&IA",
+    elce: "ELCE",
+    eee: "EEE",
+    ece: "ECE",
+    ece_vlsi: "ECE (VLSI)",
+    ce: "CE",
+  };
+
+  if (normalized && shortLabels[normalized]) {
+    return shortLabels[normalized];
+  }
+
+  const label = getBranchLabel(branch);
+  return label || (branch ?? "");
 }
 
 function toOptionalNumber(value: unknown): number | undefined {
@@ -307,72 +430,101 @@ const Profile = () => {
     }
   }, [authUser, loading, navigate]);
 
-  // Fetch user profile from Supabase
-  // Fetch user profile from Supabase
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!authUser) return;
 
       setLoadingProfile(true);
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select(USER_PROFILE_SELECT)
-          .eq('id', authUser.uid)
-          .maybeSingle();
+        let profile: UserProfile | null = null;
 
-        if (!data) {
-          // Profile doesn't exist, create it
-          const emailUsername = authUser.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-
-          const newProfile = {
-            id: authUser.uid,
-            email: authUser.email || '',
-            display_name: authUser.displayName || authUser.email?.split('@')[0] || 'User',
-            bio: '',
-            profile_photo_url: authUser.photoURL || null,
-            college: localStorage.getItem('selectedCollege') || '',
-            username: emailUsername,
-            branch: '',
-            semester: '',
-          };
-
-          const { data: created, error: createError } = await supabase
-            .from('users')
-            .insert([newProfile])
-            .select(USER_PROFILE_SELECT)
-            .single();
-
-          if (createError) throw createError;
-
-          setUserProfile(created);
-          setEditForm(prev => ({
-            ...prev,
-            name: created.display_name,
-            bio: created.bio || '',
-            username: created.username,
-            profilePhoto: created.profile_photo_url || prev.profilePhoto,
-            semester: created.semester || '',
-            branch: created.branch || '',
-            subject: created.subject || '',
-          }));
-        } else if (error) {
-          throw error;
-        } else {
-          setUserProfile(data);
-          setEditForm(prev => ({
-            ...prev,
-            name: data.display_name,
-            bio: data.bio || '',
-            username: data.username || prev.username,
-            profilePhoto: data.profile_photo_url || prev.profilePhoto,
-            semester: data.semester || '',
-            branch: data.branch || '',
-            subject: data.subject || '',
-          }));
+        try {
+          const profileResult = await api.getMyProfile();
+          profile = (profileResult?.profile ?? null) as UserProfile | null;
+        } catch (apiError) {
+          console.warn("Primary profile fetch failed, falling back to users table", apiError);
         }
+
+        if (!profile) {
+          const { data, error } = await supabase
+            .from("users")
+            .select(USER_PROFILE_SELECT)
+            .eq("id", authUser.uid)
+            .maybeSingle();
+
+          if (error) throw error;
+
+          if (!data) {
+            const emailUsername =
+              authUser.email?.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "user";
+
+            const newProfile = {
+              id: authUser.uid,
+              email: authUser.email || "",
+              display_name: authUser.displayName || authUser.email?.split("@")[0] || "User",
+              bio: "",
+              profile_photo_url: authUser.photoURL || null,
+              college: localStorage.getItem("selectedCollege") || "",
+              username: emailUsername,
+              branch: "",
+              semester: "",
+              subject: "",
+            };
+
+            const { data: created, error: createError } = await supabase
+              .from("users")
+              .insert([newProfile])
+              .select(USER_PROFILE_SELECT)
+              .single();
+
+            if (createError) throw createError;
+            profile = created as UserProfile;
+          } else {
+            profile = data as UserProfile;
+          }
+        }
+
+        const resolvedProfile: UserProfile = {
+          ...profile,
+          id: profile?.id || authUser.uid,
+          email: profile?.email || authUser.email || "",
+          display_name:
+            profile?.display_name ||
+            authUser.displayName ||
+            authUser.email?.split("@")[0] ||
+            "User",
+          bio: profile?.bio || "",
+          college: extractCollegeName(
+            profile?.college ||
+              (selectedCollege?.name ? selectedCollege.name : localStorage.getItem("selectedCollege")),
+          ),
+          username:
+            profile?.username ||
+            authUser.email?.split("@")[0]?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
+            "user",
+          profile_photo_url:
+            resolveProfilePhotoUrl(profile, [authUser.photoURL]) || undefined,
+          semester: profile?.semester || "",
+          branch: profile?.branch || "",
+          subject: profile?.subject || "",
+          role: profile?.role || "student",
+          subscription_tier: profile?.subscription_tier,
+          subscription_end_date: profile?.subscription_end_date,
+        };
+
+        setUserProfile(resolvedProfile);
+        setEditForm(prev => ({
+          ...prev,
+          name: resolvedProfile.display_name,
+          bio: resolvedProfile.bio || "",
+          username: resolvedProfile.username || prev.username,
+          profilePhoto: resolvedProfile.profile_photo_url || prev.profilePhoto,
+          semester: resolvedProfile.semester || "",
+          branch: resolvedProfile.branch || "",
+          subject: resolvedProfile.subject || "",
+        }));
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error("Error fetching profile:", error);
       } finally {
         setLoadingProfile(false);
       }
@@ -445,6 +597,14 @@ const Profile = () => {
       try {
         const profileResult = await api.getMyProfile();
         const profile = profileResult?.profile || {};
+        setUserProfile(prev => ({
+          ...(prev ?? {}),
+          ...profile,
+          profile_photo_url: resolveProfilePhotoUrl(profile, [
+            prev?.profile_photo_url,
+            authUser.photoURL,
+          ]) || undefined,
+        }));
         const balance = await api.getAiTokenBalance();
         const snapshot = buildAiTokenBudgetSnapshot(profile);
         const budgetFromApi = toSafeInt(balance.budget ?? profile.ai_token_budget);
@@ -622,7 +782,12 @@ const Profile = () => {
 
       if (otherProfile) {
         console.log('âœ… Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
-        setViewingOtherProfile(otherProfile);
+        setViewingOtherProfile({
+          ...otherProfile,
+          college: extractCollegeName(otherProfile.college),
+          profile_photo_url: resolveProfilePhotoUrl(otherProfile) || undefined,
+          role: otherProfile.role || "student",
+        });
 
         // Check if we're following them via backend API
         try {
@@ -711,50 +876,54 @@ const Profile = () => {
   }
 
   /* ðŸ§­ VIEW MODE - Phase 2: Fix profile routing */
-  const profileUser: ProfileUser = isViewingOther && viewingOtherProfile
-    ? {
-      name: viewingOtherProfile.display_name,
-      username: viewingOtherProfile.username,
-      email: viewingOtherProfile.email || "",
-      college: typeof viewingOtherProfile.college === 'string' && viewingOtherProfile.college.startsWith('{')
-        ? JSON.parse(viewingOtherProfile.college).name // Handle JSON string
-        : viewingOtherProfile.college || "College",
-      bio: viewingOtherProfile.bio || "",
-      profilePhoto: viewingOtherProfile.profile_photo_url || "",
-      role: "student",
-    }
-    : {
-      name: userProfile?.display_name || authUser.displayName || "Student",
-      username: userProfile?.username || editForm.username,
-      email: authUser.email || "",
-      college: userProfile?.college || "College",
-      bio: userProfile?.bio || "",
-      profilePhoto: userProfile?.profile_photo_url || authUser.photoURL || "",
-      role: "student",
-    };
+  const activeProfile = isViewingOther && viewingOtherProfile
+    ? viewingOtherProfile
+    : userProfile;
+  const profileUser: ProfileUser = {
+    name:
+      activeProfile?.display_name ||
+      authUser.displayName ||
+      authUser.email?.split("@")[0] ||
+      "Student",
+    username: activeProfile?.username || editForm.username,
+    email: activeProfile?.email || authUser.email || "",
+    college: extractCollegeName(
+      activeProfile?.college ||
+      (selectedCollege?.name ? selectedCollege.name : "College"),
+    ),
+    bio: activeProfile?.bio || "",
+    profilePhoto:
+      resolveProfilePhotoUrl(activeProfile, [
+        authUser.photoURL,
+        editForm.profilePhoto,
+      ]) || "",
+    role: activeProfile?.role || "student",
+  };
 
   /* ðŸ§¾ DISPLAY VALUES */
-  const displayName = isViewingOther
-    ? profileUser.name || "Student"
-    : (userProfile?.display_name || authUser.displayName || "Student");
-
-  const displayEmail = isViewingOther
-    ? profileUser.email
-    : (authUser.email || "");
-
-  const displayUsername = isViewingOther
-    ? profileUser.username
-    : (userProfile?.username || editForm.username);
-
-  const displayBio = isViewingOther
-    ? profileUser.bio
-    : (userProfile?.bio || editForm.bio);
+  const displayName = profileUser.name || "Student";
+  const displayEmail = profileUser.email;
+  const displayUsername = profileUser.username;
+  const displayBio = profileUser.bio;
+  const displaySemester = (activeProfile?.semester || editForm.semester || "").trim();
+  const displayBranch = getBranchBadgeLabel(activeProfile?.branch || editForm.branch);
+  const displaySubject = (activeProfile?.subject || editForm.subject || "").trim();
+  const premiumActive = isPremiumTierActive(activeProfile);
+  const premiumTierLabel = premiumActive
+    ? String(activeProfile?.subscription_tier ?? "")
+        .trim()
+        .replace(/^./, (value) => value.toUpperCase())
+    : "Free";
+  const premiumExpiryLabel =
+    premiumActive && activeProfile?.subscription_end_date
+      ? formatCycleDate(activeProfile.subscription_end_date)
+      : null;
 
   /* ðŸ‘¥ SOCIAL DATA */
   const displayContributions = contributions;
 
   /* ðŸŽ“ ROLE */
-  const isTeacher = profileUser.role === "teacher";
+  const isTeacher = ["teacher", "admin", "moderator"].includes(profileUser.role.toLowerCase());
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -1123,7 +1292,15 @@ const Profile = () => {
               <div className="flex-1 text-center sm:text-left w-full">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                   <div className="min-w-0">
-                    <h2 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h2>
+                      <Badge
+                        variant={premiumActive ? "default" : "secondary"}
+                        className={premiumActive ? "border-amber-500/30 bg-amber-500/15 text-amber-300" : ""}
+                      >
+                        {premiumTierLabel}
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">@{displayUsername}</p>
                   </div>
                   {!isViewingOther && (
@@ -1161,6 +1338,30 @@ const Profile = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground mb-3">{displayEmail}</p>
                 {displayBio && (
                   <p className="text-sm text-foreground mb-3">{displayBio}</p>
+                )}
+                {(displaySemester || displayBranch || displaySubject) && (
+                  <div className="mb-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    {displaySemester && (
+                      <Badge variant="secondary" className="font-medium">
+                        Sem {displaySemester}
+                      </Badge>
+                    )}
+                    {displayBranch && (
+                      <Badge variant="outline" className="font-medium">
+                        {displayBranch}
+                      </Badge>
+                    )}
+                    {displaySubject && (
+                      <Badge variant="outline" className="max-w-full">
+                        <span className="truncate">{displaySubject}</span>
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                {premiumExpiryLabel && (
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Premium active until {premiumExpiryLabel}
+                  </p>
                 )}
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div className="flex gap-3 sm:gap-4">
@@ -1320,7 +1521,7 @@ const Profile = () => {
                               )}
                               {contribution.branch && (
                                 <span className="rounded-full border border-border/60 bg-background/60 px-2 py-0.5 uppercase tracking-wide">
-                                  {contribution.branch}
+                                  {getBranchBadgeLabel(contribution.branch)}
                                 </span>
                               )}
                               {contribution.subject && (
@@ -1443,6 +1644,14 @@ const Profile = () => {
                     <h3 className="mt-3 text-xl font-semibold text-foreground">
                       {aiTokenUsage ? `${aiVisibleRemaining} left this cycle` : "AI tokens"}
                     </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Plan: <span className={premiumActive ? "font-semibold text-amber-300" : "font-medium text-foreground"}>{premiumTierLabel}</span>
+                    </p>
+                    {premiumExpiryLabel && (
+                      <p className="text-xs text-muted-foreground">
+                        Active until {premiumExpiryLabel}
+                      </p>
+                    )}
                   </div>
                   <Button
                     variant="outline"

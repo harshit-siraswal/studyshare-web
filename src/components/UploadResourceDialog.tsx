@@ -68,10 +68,9 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.oasis.opendocument.text",
         "application/vnd.oasis.opendocument.presentation",
-        "application/vnd.ms-powerpoint",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       ];
-      const validExtensions = [".pdf", ".doc", ".docx", ".odt", ".odp", ".ppt", ".pptx"];
+      const validExtensions = [".pdf", ".doc", ".docx", ".odt", ".odp", ".pptx"];
       const lowerName = file.name.toLowerCase();
       const isValidType = validTypes.includes(file.type) || validExtensions.some(ext => lowerName.endsWith(ext));
       if (!isValidType) {
@@ -108,19 +107,19 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
   const uploadFileToR2 = async (file: File): Promise<string> => {
     try {
-      console.log('📤 Uploading to R2:', file.name);
 
       const { uploadUrl, publicUrl } = await getResourceUploadUrl(file.name);
 
       const fileUrl = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const contentType = getFileContentType(file);
+        const XHR_TIMEOUT_MS = 30000; // 30 seconds
 
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const progress = Math.round((e.loaded / e.total) * 100);
-            const uploadProgress = 30 + (progress * 0.3); // 30% to 60%
-            setUploadProgress(Math.round(uploadProgress));
+            const computedUploadProgress = 30 + (progress * 0.3); // 30% to 60%
+            setUploadProgress(Math.round(computedUploadProgress));
           }
         });
 
@@ -134,7 +133,12 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
         xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
         xhr.addEventListener('abort', () => reject(new Error('Upload was aborted')));
+        xhr.addEventListener('timeout', () => {
+          setUploadProgress(0);
+          reject(new Error('Upload timed out'));
+        });
 
+        xhr.timeout = XHR_TIMEOUT_MS;
         xhr.open('PUT', uploadUrl);
         xhr.setRequestHeader('Content-Type', contentType);
         xhr.setRequestHeader('Cache-Control', 'max-age=31536000');
@@ -274,7 +278,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     setUploadProgress(0);
   };
 
-  const availableSubjects = formData.branch
+  const availableSubjects = formData.branch && formData.semester
     ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
     : [];
 
@@ -334,7 +338,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
               </Label>
               <Select
                 value={formData.semester}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value, subject: "" }))}
                 disabled={uploading}
               >
                 <SelectTrigger id="semester">
