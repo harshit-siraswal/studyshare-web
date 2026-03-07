@@ -1,7 +1,7 @@
 {
     "name": "StudyShare",
     "short_name": "StudyShare",
-    "description": "Community Learning Platform - Access study materials, notes, videos, and resources",
+    "description": "AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0a0a0f",

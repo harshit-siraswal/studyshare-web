@@ -98,18 +98,41 @@ function main() {
   const baseHtml = fs.readFileSync(indexFile, "utf8");
 
   const homeHtml = applySeo(baseHtml, {
-    title: "StudyShare - Community Learning Platform",
+    title: "StudyShare | AI Study Platform for College Notes, PYQs and Notices",
     description:
-      "Join your college community. Access curated study materials, videos, notes, and previous year questions. Study smarter with your peers.",
+      "StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities. Join your college, find semester-wise resources, and study faster.",
     canonicalPath: "/",
     type: "website",
     structuredData: {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      name: BRAND_NAME,
-      url: siteUrl,
-      logo: `${siteUrl}/brand/logo-mark.png`,
-      description: "College learning community with resources, notices, chatrooms, and AI tools.",
+      "@graph": [
+        {
+          "@type": "Organization",
+          name: BRAND_NAME,
+          alternateName: ["StudyShare AI", "StudyShare.in"],
+          url: `${siteUrl}/`,
+          logo: `${siteUrl}/brand/logo-mark.png`,
+          description:
+            "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+        },
+        {
+          "@type": "WebSite",
+          name: BRAND_NAME,
+          alternateName: ["StudyShare AI", "StudyShare.in"],
+          url: `${siteUrl}/`,
+          description:
+            "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+        },
+        {
+          "@type": "SoftwareApplication",
+          name: BRAND_NAME,
+          applicationCategory: "EducationalApplication",
+          operatingSystem: "Web, Android",
+          url: `${siteUrl}/`,
+          description:
+            "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices.",
+        },
+      ],
     },
   });
   fs.writeFileSync(indexFile, homeHtml, "utf8");
@@ -194,4 +217,3 @@ function main() {
 }
 
 main();
-
