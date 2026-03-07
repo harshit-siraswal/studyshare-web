@@ -42,69 +42,6 @@ function upsertJsonLd(html, schemaValue) {
   return upsertTag(html, pattern, tag);
 }
 
-function injectRootMarkup(html, rootMarkup) {
-  return html.replace(
-    /<div id="root">[\s\S]*?<\/div>/i,
-    `<div id="root">${rootMarkup}</div>`,
-  );
-}
-
-function getHomeFallbackMarkup() {
-  return `
-    <main aria-label="StudyShare homepage" style="min-height:100vh;background:radial-gradient(circle at top,#1d4ed80f 0%,transparent 38%),linear-gradient(180deg,#020617 0%,#0f172a 100%);color:#f8fafc;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <div style="max-width:1120px;margin:0 auto;padding:32px 16px 72px;">
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin:0 0 32px;">
-          <span style="display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.65);color:#cbd5e1;font-size:13px;">Theme</span>
-          <span style="display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;">Download APK</span>
-        </div>
-
-        <header style="text-align:center;margin:0 0 52px;">
-          <div style="display:inline-flex;align-items:center;gap:18px;margin:0 0 22px;padding:16px 20px;border-radius:28px;border:1px solid rgba(37,99,235,.16);background:rgba(15,23,42,.62);box-shadow:0 24px 60px rgba(15,23,42,.22);backdrop-filter:blur(20px);">
-            <div style="display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,rgba(37,99,235,.18),rgba(59,130,246,.08));box-shadow:inset 0 0 0 1px rgba(37,99,235,.18);">
-              <img src="/brand/logo-mark.png" alt="StudyShare" width="72" height="72" style="display:block;width:72px;height:72px;object-fit:contain;" />
-            </div>
-            <div style="text-align:left;">
-              <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:rgba(96,165,250,.9);">AI Study Platform</p>
-              <h1 style="margin:0;font-size:clamp(2.6rem,5vw,4.8rem);line-height:1;font-weight:800;letter-spacing:-.05em;color:#f8fafc;">StudyShare</h1>
-            </div>
-          </div>
-          <p style="margin:0 auto;max-width:760px;font-size:clamp(1rem,1.8vw,1.22rem);line-height:1.75;color:#cbd5e1;">
-            StudyShare helps students find notes, PYQs, notices, syllabi, and AI study help in one place. Join your college, browse semester-wise resources, and study faster with AI-powered learning tools built for campus workflows.
-          </p>
-        </header>
-
-        <section style="max-width:832px;margin:0 auto 28px;">
-          <div style="position:relative;padding:0 18px;height:56px;border-radius:18px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.74);box-shadow:0 18px 40px rgba(2,6,23,.18);display:flex;align-items:center;color:#64748b;font-size:16px;">
-            Search for your college or university...
-          </div>
-        </section>
-
-        <section style="max-width:980px;margin:0 auto;">
-          <p style="margin:0 0 18px;font-size:16px;font-weight:500;color:#94a3b8;">Select your institution</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
-            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
-              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">Krishna Institute of Engineering and Technology</h2>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">Ghaziabad</p>
-            </article>
-            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
-              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">IIIT Bhagalpur</h2>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">Bhagalpur, Bihar</p>
-            </article>
-            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
-              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">IIIT Sonepat</h2>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">Sonepat, Haryana</p>
-            </article>
-            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
-              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">Delhi University</h2>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">New Delhi</p>
-            </article>
-          </div>
-        </section>
-      </div>
-    </main>
-  `.trim();
-}
-
 function applySeo(baseHtml, meta) {
   const siteUrl = getSiteUrl();
   const canonical = toAbsoluteUrl(meta.canonicalPath, siteUrl);
@@ -196,8 +133,7 @@ function main() {
       ],
     },
   });
-  const homeHtmlWithBody = injectRootMarkup(homeHtml, getHomeFallbackMarkup());
-  fs.writeFileSync(indexFile, homeHtmlWithBody, "utf8");
+  fs.writeFileSync(indexFile, homeHtml, "utf8");
 
   const blogHtml = applySeo(baseHtml, {
     title: "Blog for College Study Tips and Exam Preparation",
