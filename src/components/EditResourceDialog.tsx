@@ -8,6 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
+import {
+  BRANCH_OPTIONS,
+  SEMESTER_OPTIONS,
+  getSubjectsForBranchAndSemester,
+} from "@/lib/academicSubjects";
 
 interface Resource {
   id: string;
@@ -27,39 +32,6 @@ interface EditResourceDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
-
-const SEMESTERS = [
-  { value: "1", label: "Semester 1" },
-  { value: "2", label: "Semester 2" },
-  { value: "3", label: "Semester 3" },
-  { value: "4", label: "Semester 4" },
-  { value: "5", label: "Semester 5" },
-  { value: "6", label: "Semester 6" },
-  { value: "7", label: "Semester 7" },
-  { value: "8", label: "Semester 8" },
-];
-
-const BRANCHES = [
-  { value: "cse", label: "Computer Science & Engineering" },
-  { value: "ece", label: "Electronics & Communication" },
-  { value: "eee", label: "Electrical & Electronics" },
-  { value: "me", label: "Mechanical Engineering" },
-  { value: "ce", label: "Civil Engineering" },
-  { value: "aiml", label: "AI & Machine Learning" },
-  { value: "ds", label: "Data Science" },
-  { value: "it", label: "Information Technology" },
-];
-
-const SUBJECTS = {
-  cse: ["Data Structures", "Algorithms", "DBMS", "Operating Systems", "Computer Networks", "Software Engineering"],
-  ece: ["Digital Electronics", "Signals & Systems", "Communication Systems", "VLSI", "Microprocessors"],
-  eee: ["Power Systems", "Control Systems", "Electrical Machines", "Power Electronics"],
-  me: ["Thermodynamics", "Fluid Mechanics", "Machine Design", "Manufacturing"],
-  ce: ["Structural Analysis", "Surveying", "Construction Management", "Geotechnical Engineering"],
-  aiml: ["Machine Learning", "Deep Learning", "NLP", "Computer Vision", "Data Mining"],
-  ds: ["Statistics", "Data Mining", "Big Data Analytics", "Machine Learning", "Data Visualization"],
-  it: ["Web Development", "Database Systems", "Networking", "Cloud Computing", "Cybersecurity"],
-};
 
 const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditResourceDialogProps) => {
   const [updating, setUpdating] = useState(false);
@@ -129,7 +101,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
   };
 
   const availableSubjects = formData.branch 
-    ? SUBJECTS[formData.branch as keyof typeof SUBJECTS] || []
+    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
     : [];
 
   return (
@@ -170,7 +142,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
                   <SelectValue placeholder="Select semester" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SEMESTERS.map(sem => (
+                  {SEMESTER_OPTIONS.map(sem => (
                     <SelectItem key={sem.value} value={sem.value}>
                       {sem.label}
                     </SelectItem>
@@ -190,7 +162,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BRANCHES.map(branch => (
+                  {BRANCH_OPTIONS.map(branch => (
                     <SelectItem key={branch.value} value={branch.value}>
                       {branch.label}
                     </SelectItem>

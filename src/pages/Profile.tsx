@@ -3,7 +3,7 @@ import { useCollege } from "@/context/CollegeContext";
 import * as api from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { ArrowLeft, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, ExternalLink, MessageCircle, MoreVertical, Trash2, Bookmark, Moon, Sun, Loader2 } from "lucide-react";
+import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, ExternalLink, MessageCircle, MoreVertical, Trash2, Bookmark, Moon, Sun, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,8 @@ import { SEO } from "@/components/SEO";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { usePermissions } from "@/hooks/usePermissions";
+import PremiumModal from "@/components/PremiumModal";
+import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -117,6 +119,7 @@ interface AiTokenUsage {
   cycleDays: number;
   cycleStartedAt: string | null;
   cycleEndsAt: string | null;
+  budgetInr: number;
 }
 
 const DEFAULT_AI_TOKEN_BASE_BUDGET = 40160;
@@ -146,6 +149,10 @@ function formatCycleDate(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleString();
+}
+
+function formatVisibleCreditCount(rawValue: number): string {
+  return formatVisibleAiTokens(rawValue);
 }
 
 function toOptionalNumber(value: unknown): number | undefined {
@@ -218,11 +225,11 @@ const Profile = () => {
   const { username: viewingUsername } = useParams();
   const isViewingOther = !!viewingUsername;
 
-  /* 🔐 AUTH */
+  /* ðŸ” AUTH */
   const { user: authUser, loading, logout } = useAuth();
   const { selectedCollege } = useCollege();
 
-  /* 🧠 STATE */
+  /* ðŸ§  STATE */
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -256,12 +263,13 @@ const Profile = () => {
   // Image Cropper State
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
   const { executeRecaptcha } = useGoogleReCaptcha();
   const { canFollow } = usePermissions();
 
-  /* ✏️ EDIT FORM */
+  /* âœï¸ EDIT FORM */
   const [editForm, setEditForm] = useState({
     name: authUser?.displayName || "",
     bio: "",
@@ -275,7 +283,7 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFollowingOther, setIsFollowingOther] = useState(false);
 
-  /* 🔐 AUTH GUARD — SAFE */
+  /* ðŸ” AUTH GUARD â€” SAFE */
   useEffect(() => {
     if (!loading && !authUser) {
       navigate("/auth", { replace: true });
@@ -421,34 +429,11 @@ const Profile = () => {
         const profileResult = await api.getMyProfile();
         const profile = profileResult?.profile || {};
         const balance = await api.getAiTokenBalance();
+        const snapshot = buildAiTokenBudgetSnapshot(profile);
         const budgetFromApi = toSafeInt(balance.budget ?? profile.ai_token_budget);
         const usedFromApi = toSafeInt(balance.used ?? profile.ai_token_used);
         const remainingFromApi = toSafeInt(balance.remaining ?? profile.ai_token_remaining);
-        const baseBudgetFromApi = toSafeInt(profile.ai_token_base_budget);
-        const premiumMultiplierFromApi = Math.max(1, toSafeInt(profile.ai_token_premium_multiplier));
-        const currentMultiplier = Math.max(1, toSafeInt(profile.ai_token_budget_multiplier));
-        const tier = String(profile.subscription_tier || "").toLowerCase();
-        const subscriptionEnd = profile.subscription_end_date
-          ? new Date(profile.subscription_end_date)
-          : null;
-        const isPremiumActive =
-          (tier === "pro" || tier === "max") &&
-          !!subscriptionEnd &&
-          !Number.isNaN(subscriptionEnd.getTime()) &&
-          subscriptionEnd.getTime() > Date.now();
-
-        const safeBaseBudget = baseBudgetFromApi > 0
-          ? baseBudgetFromApi
-          : (budgetFromApi > 0 && currentMultiplier > 1
-            ? Math.round(budgetFromApi / currentMultiplier)
-            : (budgetFromApi > 0 ? budgetFromApi : DEFAULT_AI_TOKEN_BASE_BUDGET));
-        const resolvedMultiplier = currentMultiplier > 1
-          ? currentMultiplier
-          : (isPremiumActive ? premiumMultiplierFromApi : 1);
-
-        const budget = budgetFromApi > 0
-          ? budgetFromApi
-          : safeBaseBudget * resolvedMultiplier;
+        const budget = budgetFromApi > 0 ? budgetFromApi : snapshot.currentBudget;
         const used = clamp(usedFromApi, 0, Math.max(budget, 0));
         let remaining = budget > 0
           ? clamp(remainingFromApi, 0, budget)
@@ -470,9 +455,9 @@ const Profile = () => {
           budget,
           used,
           remaining,
-          baseBudget: safeBaseBudget > 0 ? safeBaseBudget : DEFAULT_AI_TOKEN_BASE_BUDGET,
-          budgetMultiplier: resolvedMultiplier,
-          premiumMultiplier: premiumMultiplierFromApi,
+          baseBudget: snapshot.baseBudget > 0 ? snapshot.baseBudget : DEFAULT_AI_TOKEN_BASE_BUDGET,
+          budgetMultiplier: snapshot.budgetMultiplier,
+          premiumMultiplier: snapshot.premiumMultiplier,
           cycleDays,
           cycleStartedAt: cycleStartedAt && !Number.isNaN(cycleStartedAt.getTime())
             ? cycleStartedAt.toISOString()
@@ -480,6 +465,7 @@ const Profile = () => {
           cycleEndsAt: cycleEndsAt && !Number.isNaN(cycleEndsAt.getTime())
             ? cycleEndsAt.toISOString()
             : null,
+          budgetInr: snapshot.budgetInr,
         });
       } catch (error) {
         console.error('Failed to fetch AI token usage:', error);
@@ -493,6 +479,7 @@ const Profile = () => {
           cycleDays: 30,
           cycleStartedAt: null,
           cycleEndsAt: null,
+          budgetInr: 1,
         });
       }
     };
@@ -605,7 +592,7 @@ const Profile = () => {
       }
 
       // Clear old data before fetching new profile
-      console.log('🔄 Switching to view profile:', viewingUsername);
+      console.log('ðŸ”„ Switching to view profile:', viewingUsername);
       setContributions([]);
       setViewingOtherProfile(null);
 
@@ -617,7 +604,7 @@ const Profile = () => {
         .maybeSingle();
 
       if (otherProfile) {
-        console.log('✅ Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
+        console.log('âœ… Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
         setViewingOtherProfile(otherProfile);
 
         // Check if we're following them via backend API
@@ -641,7 +628,7 @@ const Profile = () => {
 
       try {
         // Query by uploaded_by_email to match how resources are stored
-        console.log('📚 Fetching contributions for user email:', viewingOtherProfile.email);
+        console.log('ðŸ“š Fetching contributions for user email:', viewingOtherProfile.email);
         const { data, error } = await supabase
           .from('resources')
           .select('*')
@@ -650,7 +637,7 @@ const Profile = () => {
 
         if (error) throw error;
 
-        console.log('✅ Found', data?.length || 0, 'contributions for', viewingOtherProfile.display_name);
+        console.log('âœ… Found', data?.length || 0, 'contributions for', viewingOtherProfile.display_name);
 
         const transformed = data?.map(r => ({
           id: r.id,
@@ -706,7 +693,7 @@ const Profile = () => {
     return null;
   }
 
-  /* 🧭 VIEW MODE - Phase 2: Fix profile routing */
+  /* ðŸ§­ VIEW MODE - Phase 2: Fix profile routing */
   const profileUser: ProfileUser = isViewingOther && viewingOtherProfile
     ? {
       name: viewingOtherProfile.display_name,
@@ -729,7 +716,7 @@ const Profile = () => {
       role: "student",
     };
 
-  /* 🧾 DISPLAY VALUES */
+  /* ðŸ§¾ DISPLAY VALUES */
   const displayName = isViewingOther
     ? profileUser.name || "Student"
     : (userProfile?.display_name || authUser.displayName || "Student");
@@ -746,10 +733,10 @@ const Profile = () => {
     ? profileUser.bio
     : (userProfile?.bio || editForm.bio);
 
-  /* 👥 SOCIAL DATA */
+  /* ðŸ‘¥ SOCIAL DATA */
   const displayContributions = contributions;
 
-  /* 🎓 ROLE */
+  /* ðŸŽ“ ROLE */
   const isTeacher = profileUser.role === "teacher";
 
   const getInitials = (name: string) => {
@@ -998,6 +985,19 @@ const Profile = () => {
     toast.success("Post removed from saved");
   };
 
+  const aiUsedPercent = aiTokenUsage?.budget
+    ? Math.min((aiTokenUsage.used / aiTokenUsage.budget) * 100, 100)
+    : 0;
+  const aiVisibleRemaining = aiTokenUsage
+    ? formatVisibleCreditCount(aiTokenUsage.remaining)
+    : "0";
+  const aiVisibleUsed = aiTokenUsage
+    ? formatVisibleCreditCount(aiTokenUsage.used)
+    : "0";
+  const aiVisibleBudget = aiTokenUsage
+    ? formatVisibleCreditCount(aiTokenUsage.budget)
+    : "0";
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <SEO
@@ -1010,7 +1010,7 @@ const Profile = () => {
       />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/90 backdrop-blur-lg border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
               <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1040,162 +1040,183 @@ const Profile = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
-        {/* Profile Header */}
-        <Card className="p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
-            {/* Profile Photo */}
-            <div className="relative mx-auto sm:mx-0">
-              <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
-                {profileUser.profilePhoto ? (
-                  <AvatarImage
-                    src={profileUser.profilePhoto}
-                    alt={displayName}
-                  />
-                ) : (
-                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                    {getInitials(displayName)}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              {!isViewingOther && (
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                >
-                  {uploadingPhoto ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+      <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Card className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+              <div className="relative mx-auto sm:mx-0">
+                <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
+                  {profileUser.profilePhoto ? (
+                    <AvatarImage
+                      src={profileUser.profilePhoto}
+                      alt={displayName}
+                    />
                   ) : (
-                    <Camera className="w-3 h-3" />
+                    <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                      {getInitials(displayName)}
+                    </AvatarFallback>
                   )}
-                </Button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-            </div>
-
-            {/* Profile Info */}
-            <div className="flex-1 text-center sm:text-left w-full">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h2>
-                  <p className="text-sm text-muted-foreground">@{displayUsername}</p>
-                </div>
+                </Avatar>
                 {!isViewingOther && (
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="w-full sm:w-auto"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhoto}
                   >
-                    <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                )}
-                {isViewingOther && (
-                  <Button
-                    variant={isFollowingOther ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleFollowUser(viewingOtherProfile?.email || "", viewingOtherProfile?.display_name)}
-                    className="w-full sm:w-auto"
-                  >
-                    {isFollowingOther ? (
-                      <>
-                        <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                        Following
-                      </>
+                    {uploadingPhoto ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
-                      <>
-                        <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                        Follow
-                      </>
+                      <Camera className="w-3 h-3" />
                     )}
                   </Button>
                 )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-3">{displayEmail}</p>
-              {displayBio && (
-                <p className="text-sm text-foreground mb-3">{displayBio}</p>
-              )}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
-                <div className="flex gap-3 sm:gap-4">
-                  <span className="text-foreground font-medium">
-                    <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                    {contributions.length} contributions
-                  </span>
-                  <button
-                    className="text-foreground font-medium hover:underline cursor-pointer"
-                    onClick={() => setShowFollowersDialog(true)}
-                  >
-                    <Users className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                    {followersCount} followers
-                  </button>
-                  <button
-                    className="text-foreground font-medium hover:underline cursor-pointer"
-                    onClick={() => setShowFollowingDialog(true)}
-                  >
-                    {followingCount} following
-                  </button>
-                </div>
-              </div>
-              {!isViewingOther && aiTokenUsage && (
-                <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                      Monthly AI Tokens
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Remaining {aiTokenUsage.remaining.toLocaleString()} / {aiTokenUsage.budget.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full transition-all ${aiTokenUsage.remaining <= 0 ? "bg-red-500" : "bg-primary"}`}
-                      style={{
-                        width: `${
-                          aiTokenUsage.budget > 0
-                            ? Math.min((aiTokenUsage.used / aiTokenUsage.budget) * 100, 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
-                      <p className="text-[11px] text-muted-foreground">Remaining</p>
-                      <p className="font-semibold text-foreground">{aiTokenUsage.remaining.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
-                      <p className="text-[11px] text-muted-foreground">Used</p>
-                      <p className="font-semibold text-foreground">{aiTokenUsage.used.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-background/70 p-2">
-                      <p className="text-[11px] text-muted-foreground">Total</p>
-                      <p className="font-semibold text-foreground">{aiTokenUsage.budget.toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-[11px] text-muted-foreground">
-                    <p>Cycle: {aiTokenUsage.cycleDays} days • Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}</p>
-                    <p>Base budget: {aiTokenUsage.baseBudget.toLocaleString()} tokens</p>
-                    <p>
-                      Multiplier: {aiTokenUsage.budgetMultiplier}x (Premium {aiTokenUsage.premiumMultiplier}x)
-                    </p>
-                    <p>Consumption = input tokens + weighted output tokens.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
 
+              <div className="flex-1 text-center sm:text-left w-full">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h2>
+                    <p className="text-sm text-muted-foreground">@{displayUsername}</p>
+                  </div>
+                  {!isViewingOther && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  )}
+                  {isViewingOther && (
+                    <Button
+                      variant={isFollowingOther ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => handleFollowUser(viewingOtherProfile?.email || "", viewingOtherProfile?.display_name)}
+                      className="w-full sm:w-auto"
+                    >
+                      {isFollowingOther ? (
+                        <>
+                          <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                          Following
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                          Follow
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-3">{displayEmail}</p>
+                {displayBio && (
+                  <p className="text-sm text-foreground mb-3">{displayBio}</p>
+                )}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
+                  <div className="flex gap-3 sm:gap-4">
+                    <span className="text-foreground font-medium">
+                      <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                      {contributions.length} contributions
+                    </span>
+                    <button
+                      className="text-foreground font-medium hover:underline cursor-pointer"
+                      onClick={() => setShowFollowersDialog(true)}
+                    >
+                      <Users className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                      {followersCount} followers
+                    </button>
+                    <button
+                      className="text-foreground font-medium hover:underline cursor-pointer"
+                      onClick={() => setShowFollowingDialog(true)}
+                    >
+                      {followingCount} following
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {!isViewingOther && aiTokenUsage && (
+            <Card className="h-fit border-primary/15 bg-gradient-to-br from-primary/6 via-card to-card p-5 shadow-sm lg:sticky lg:top-24">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Tokens
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold text-foreground">
+                    {aiVisibleRemaining} left this cycle
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    The web app now uses the same Android conversion. You see AI tokens, not raw backend token counts.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 border-primary/20 bg-background/80 text-primary"
+                  onClick={() => setShowPremiumModal(true)}
+                >
+                  <CreditCard className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full transition-all ${aiTokenUsage.remaining <= 0 ? "bg-red-500" : "bg-primary"}`}
+                  style={{ width: `${aiUsedPercent}%` }}
+                />
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Remaining</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleRemaining}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Used</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleUsed}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleBudget}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
+                <p>Cycle: {aiTokenUsage.cycleDays} days. Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}.</p>
+                <p>1 AI token = 2,000 raw billable tokens.</p>
+                <p>Base budget: {formatVisibleCreditCount(aiTokenUsage.baseBudget)} tokens. Premium multiplier: {aiTokenUsage.premiumMultiplier}x.</p>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <Button className="w-full" onClick={() => setShowPremiumModal(true)}>
+                  Recharge AI Tokens
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/20 text-primary"
+                  onClick={() => setShowPremiumModal(true)}
+                >
+                  <Crown className="mr-2 h-4 w-4" />
+                  Upgrade to Premium
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
         {/* Search Bar for Contributions */}
         <div className="relative mt-4 sm:mt-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1305,10 +1326,10 @@ const Profile = () => {
                                 <span>Sem {contribution.semester}</span>
                               )}
                               {contribution.branch && (
-                                <span>• {contribution.branch}</span>
+                                <span>â€¢ {contribution.branch}</span>
                               )}
                               {contribution.subject && (
-                                <span>• {contribution.subject}</span>
+                                <span>â€¢ {contribution.subject}</span>
                               )}
                             </div>
                             {contribution.description && (
@@ -1453,6 +1474,11 @@ const Profile = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog >
+
+      <PremiumModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+      />
 
       {/* Edit Profile Dialog */}
       < Dialog open={isEditing} onOpenChange={setIsEditing} >

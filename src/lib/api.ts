@@ -279,7 +279,32 @@ export async function createPaymentOrder(
 }> {
     return apiRequest('/api/payments/order', {
         method: 'POST',
-        body: JSON.stringify({ amount, planId }),
+        body: JSON.stringify({ amount, planId, purchaseType: 'premium' }),
+    });
+}
+
+export async function createAiTokenRechargeOrder(
+    rechargeRupees: number
+): Promise<{
+    id: string;
+    amount: number;
+    currency: string;
+    key?: string;
+    key_id?: string;
+    keyId?: string;
+    razorpay_key_id?: string;
+    razorpayKeyId?: string;
+    purchase_type?: string;
+    recharge_rupees?: number;
+    recharge_tokens?: number;
+    tokens_per_rupee?: number;
+}> {
+    return apiRequest('/api/payments/order', {
+        method: 'POST',
+        body: JSON.stringify({
+            purchaseType: 'ai_token_recharge',
+            rechargeRupees,
+        }),
     });
 }
 
@@ -289,9 +314,15 @@ export async function verifyPayment(
     signature: string
 ): Promise<{
     message: string;
-    subscription_tier: string;
-    valid_until: string;
-    days_added: number;
+    purchase_type?: string;
+    subscription_tier?: string;
+    valid_until?: string;
+    days_added?: number;
+    recharge?: {
+        rupees?: number;
+        tokens_credited?: number;
+        tokens_per_rupee?: number;
+    };
 }> {
     return apiRequest('/api/payments/verify', {
         method: 'POST',

@@ -13,6 +13,11 @@ import { toast } from "sonner";
 import { getSyllabusUploadUrl, createSyllabus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
+import {
+  BRANCH_OPTIONS,
+  SEMESTER_OPTIONS,
+  getSubjectsForBranchAndSemester,
+} from "@/lib/academicSubjects";
 
 interface UploadSyllabusDialogProps {
   trigger: React.ReactNode;
@@ -34,8 +39,9 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
   });
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
-  const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
-  const branches = ["cse", "ece", "me", "ce", "eee", "aiml", "ds", "it"];
+  const availableSubjects = formData.branch
+    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    : [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,15 +158,15 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
               <Label htmlFor="semester">Semester *</Label>
               <Select
                 value={formData.semester}
-                onValueChange={(value) => setFormData({ ...formData, semester: value })}
+                onValueChange={(value) => setFormData({ ...formData, semester: value, subject: "" })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {semesters.map((sem) => (
-                    <SelectItem key={sem} value={sem}>
-                      Sem {sem}
+                  {SEMESTER_OPTIONS.map((sem) => (
+                    <SelectItem key={sem.value} value={sem.value}>
+                      {sem.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -171,15 +177,15 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
               <Label htmlFor="branch">Branch *</Label>
               <Select
                 value={formData.branch}
-                onValueChange={(value) => setFormData({ ...formData, branch: value })}
+                onValueChange={(value) => setFormData({ ...formData, branch: value, subject: "" })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Branch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch} value={branch}>
-                      {branch.toUpperCase()}
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      {branch.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -188,13 +194,31 @@ const UploadSyllabusDialog = ({ trigger, onSuccess }: UploadSyllabusDialogProps)
 
             <div>
               <Label htmlFor="subject">Subject *</Label>
-              <Input
-                id="subject"
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                placeholder="Subject"
-                required
-              />
+              {availableSubjects.length > 0 ? (
+                <Select
+                  value={formData.subject}
+                  onValueChange={(value) => setFormData({ ...formData, subject: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSubjects.map((subject) => (
+                      <SelectItem key={subject} value={subject}>
+                        {subject}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="subject"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  placeholder="Subject"
+                  required
+                />
+              )}
             </div>
           </div>
 

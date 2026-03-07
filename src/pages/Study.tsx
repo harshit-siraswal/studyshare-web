@@ -27,30 +27,7 @@ import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useResources } from "@/hooks/useResources";
-
-const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
-const branches = ["cse", "ece", "me", "ce", "eee", "aiml", "ds", "it"];
-const branchLabels: Record<string, string> = {
-  cse: "Computer Science",
-  ece: "Electronics",
-  me: "Mechanical",
-  ce: "Civil",
-  eee: "Electrical",
-  aiml: "AI & ML",
-  ds: "Data Science",
-  it: "Information Technology",
-};
-
-const subjects: Record<string, string[]> = {
-  cse: ["Data Structures", "Algorithms", "Operating Systems", "DBMS", "Computer Networks", "Machine Learning"],
-  ece: ["Digital Electronics", "Analog Circuits", "Signal Processing", "VLSI", "Embedded Systems"],
-  me: ["Thermodynamics", "Fluid Mechanics", "Machine Design", "Manufacturing", "Heat Transfer"],
-  ce: ["Structural Analysis", "Concrete Technology", "Geotechnical", "Surveying", "Hydrology"],
-  eee: ["Power Systems", "Control Systems", "Electrical Machines", "Power Electronics"],
-  aiml: ["Machine Learning", "Deep Learning", "NLP", "Computer Vision", "Data Mining"],
-  ds: ["Statistics", "Data Mining", "Big Data Analytics", "Machine Learning", "Data Visualization"],
-  it: ["Web Development", "Database Systems", "Networking", "Cloud Computing", "Cybersecurity"],
-};
+import { BRANCH_OPTIONS, SEMESTER_OPTIONS, getBranchLabel, getSubjectsForBranchAndSemester } from "@/lib/academicSubjects";
 
 type SortOption = "teacher" | "votes" | "recent";
 
@@ -111,7 +88,7 @@ const Study = () => {
   if (!user) return null;
 
   const availableSubjects = (selectedBranch && selectedBranch !== 'all')
-    ? subjects[selectedBranch as keyof typeof subjects] || []
+    ? getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
     : [];
 
   // Filter and sort resources (memoized for performance)
@@ -256,9 +233,9 @@ const Study = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Semesters</SelectItem>
-                  {semesters.map((sem) => (
-                    <SelectItem key={sem} value={sem}>
-                      Semester {sem}
+                  {SEMESTER_OPTIONS.map((sem) => (
+                    <SelectItem key={sem.value} value={sem.value}>
+                      {sem.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -273,9 +250,9 @@ const Study = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch} value={branch}>
-                      {branchLabels[branch]}
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      {getBranchLabel(branch.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>

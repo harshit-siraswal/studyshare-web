@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { createPaymentOrder, verifyPayment } from './api';
+import { createAiTokenRechargeOrder, createPaymentOrder, verifyPayment } from './api';
 
 interface RazorpayPaymentSuccessPayload {
     razorpay_order_id: string;
@@ -73,6 +73,11 @@ export const PLANS: PremiumPlan[] = [
         ]
     }
 ];
+
+export const AI_RECHARGE_LIMITS = {
+    min: 10,
+    max: 5000,
+} as const;
 
 export class SubscriptionService {
     private static ensureRazorpayLoaded(): Promise<void> {
@@ -200,6 +205,66 @@ export class SubscriptionService {
                     setTimeout(() => window.location.reload(), 1500);
                 } catch (error) {
                     toast.error('Payment verification failed');
+                    console.error(error);
+                }
+            },
+            prefill: {
+                email: userEmail,
+            },
+            theme: {
+                color: '#6366f1',
+            },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    }
+
+    static async initiateAiRechargePayment(
+        rechargeRupees: number,
+        userEmail: string,
+        _userId: string,
+    ): Promise<void> {
+        if (!Number.isFinite(rechargeRupees) || rechargeRupees < AI_RECHARGE_LIMITS.min || rechargeRupees > AI_RECHARGE_LIMITS.max) {
+            throw new Error(`Recharge amount must be between INR ${AI_RECHARGE_LIMITS.min} and INR ${AI_RECHARGE_LIMITS.max}.`);
+        }
+
+        const order = await createAiTokenRechargeOrder(Math.round(rechargeRupees)) as Record<string, unknown>;
+        const keyId = SubscriptionService.resolveRazorpayKey(order);
+
+        if (!keyId) {
+            toast.error('Payment setup incomplete. Please contact support.');
+            console.error('Unable to resolve Razorpay key ID');
+            return;
+        }
+
+        try {
+            await SubscriptionService.ensureRazorpayLoaded();
+        } catch (error) {
+            toast.error('Payment SDK failed to load. Please try again.');
+            console.error(error);
+            return;
+        }
+
+        const options = {
+            key: keyId,
+            amount: Number(order.amount || rechargeRupees * 100),
+            currency: 'INR' as const,
+            name: 'StudyShare',
+            description: `AI Token Recharge (INR ${Math.round(rechargeRupees)})`,
+            image: '/icons/icon-192.png',
+            order_id: String(order.id),
+            handler: async function (response: RazorpayPaymentSuccessPayload) {
+                try {
+                    const result = await verifyPayment(
+                        response.razorpay_order_id,
+                        response.razorpay_payment_id,
+                        response.razorpay_signature
+                    );
+                    toast.success(result.message || 'AI tokens added. Please refresh to see your updated balance.');
+                    setTimeout(() => window.location.reload(), 1500);
+                } catch (error) {
+                    toast.error('AI token recharge verification failed');
                     console.error(error);
                 }
             },

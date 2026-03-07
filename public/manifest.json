@@ -2,6 +2,7 @@
     "name": "StudyShare",
     "short_name": "StudyShare",
     "description": "AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities",
+    "version": "1.0.1",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0a0a0f",
