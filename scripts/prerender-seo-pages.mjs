@@ -51,40 +51,56 @@ function injectRootMarkup(html, rootMarkup) {
 
 function getHomeFallbackMarkup() {
   return `
-    <main aria-label="StudyShare homepage" style="min-height:100vh;background:linear-gradient(180deg,#050816 0%,#0b1022 100%);color:#f8fafc;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <section style="max-width:1120px;margin:0 auto;padding:72px 24px 56px;">
-        <div style="display:inline-flex;align-items:center;gap:12px;padding:8px 14px;border:1px solid rgba(148,163,184,.22);border-radius:999px;background:rgba(37,99,235,.10);color:#93c5fd;font-size:14px;font-weight:600;letter-spacing:.02em;">
-          AI study platform for college communities
+    <main aria-label="StudyShare homepage" style="min-height:100vh;background:radial-gradient(circle at top,#1d4ed80f 0%,transparent 38%),linear-gradient(180deg,#020617 0%,#0f172a 100%);color:#f8fafc;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="max-width:1120px;margin:0 auto;padding:32px 16px 72px;">
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin:0 0 32px;">
+          <span style="display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.65);color:#cbd5e1;font-size:13px;">Theme</span>
+          <span style="display:inline-flex;align-items:center;padding:9px 14px;border-radius:999px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;">Download APK</span>
         </div>
-        <h1 style="margin:24px 0 16px;font-size:clamp(2.4rem,5vw,4.75rem);line-height:1.02;font-weight:800;letter-spacing:-0.04em;max-width:840px;">
-          StudyShare helps students find notes, PYQs, notices, syllabi, and AI study help in one place.
-        </h1>
-        <p style="margin:0;max-width:760px;font-size:clamp(1rem,1.8vw,1.25rem);line-height:1.75;color:#cbd5e1;">
-          Join your college, browse semester-wise resources, discover department notices, access previous year questions, and study faster with AI-powered learning tools built for campus workflows.
-        </p>
 
-        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:28px;">
-          <a href="/select-college" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 22px;border-radius:14px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;">Select Your College</a>
-          <a href="/blog" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 22px;border-radius:14px;border:1px solid rgba(148,163,184,.24);background:rgba(15,23,42,.72);color:#e2e8f0;text-decoration:none;font-weight:600;">Read Study Tips</a>
-        </div>
-      </section>
+        <header style="text-align:center;margin:0 0 52px;">
+          <div style="display:inline-flex;align-items:center;gap:18px;margin:0 0 22px;padding:16px 20px;border-radius:28px;border:1px solid rgba(37,99,235,.16);background:rgba(15,23,42,.62);box-shadow:0 24px 60px rgba(15,23,42,.22);backdrop-filter:blur(20px);">
+            <div style="display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,rgba(37,99,235,.18),rgba(59,130,246,.08));box-shadow:inset 0 0 0 1px rgba(37,99,235,.18);">
+              <img src="/brand/logo-mark.png" alt="StudyShare" width="72" height="72" style="display:block;width:72px;height:72px;object-fit:contain;" />
+            </div>
+            <div style="text-align:left;">
+              <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:rgba(96,165,250,.9);">AI Study Platform</p>
+              <h1 style="margin:0;font-size:clamp(2.6rem,5vw,4.8rem);line-height:1;font-weight:800;letter-spacing:-.05em;color:#f8fafc;">StudyShare</h1>
+            </div>
+          </div>
+          <p style="margin:0 auto;max-width:760px;font-size:clamp(1rem,1.8vw,1.22rem);line-height:1.75;color:#cbd5e1;">
+            StudyShare helps students find notes, PYQs, notices, syllabi, and AI study help in one place. Join your college, browse semester-wise resources, and study faster with AI-powered learning tools built for campus workflows.
+          </p>
+        </header>
 
-      <section style="max-width:1120px;margin:0 auto;padding:0 24px 72px;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;">
-          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
-            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">Semester-wise resources</h2>
-            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Browse curated notes, labs, handouts, and subject material mapped to your branch and semester.</p>
-          </article>
-          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
-            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">PYQs, notices, and syllabi</h2>
-            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Keep exam prep and academic updates together with previous year questions, official notices, and syllabus documents.</p>
-          </article>
-          <article style="padding:22px;border-radius:22px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78);box-shadow:0 20px 60px rgba(2,6,23,.28);">
-            <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;color:#f8fafc;">AI-powered study tools</h2>
-            <p style="margin:0;line-height:1.7;color:#cbd5e1;">Use AI study features to organize material, ask questions, and move faster through revision without losing context.</p>
-          </article>
-        </div>
-      </section>
+        <section style="max-width:832px;margin:0 auto 28px;">
+          <div style="position:relative;padding:0 18px;height:56px;border-radius:18px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.74);box-shadow:0 18px 40px rgba(2,6,23,.18);display:flex;align-items:center;color:#64748b;font-size:16px;">
+            Search for your college or university...
+          </div>
+        </section>
+
+        <section style="max-width:980px;margin:0 auto;">
+          <p style="margin:0 0 18px;font-size:16px;font-weight:500;color:#94a3b8;">Select your institution</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
+              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">Krishna Institute of Engineering and Technology</h2>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">Ghaziabad</p>
+            </article>
+            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
+              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">IIIT Bhagalpur</h2>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">Bhagalpur, Bihar</p>
+            </article>
+            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
+              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">IIIT Sonepat</h2>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">Sonepat, Haryana</p>
+            </article>
+            <article style="padding:18px 20px;border-radius:20px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.74);">
+              <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#f8fafc;">Delhi University</h2>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">New Delhi</p>
+            </article>
+          </div>
+        </section>
+      </div>
     </main>
   `.trim();
 }
