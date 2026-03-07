@@ -134,22 +134,15 @@ const SelectCollege = () => {
 
                 {/* Header */}
                 <header className="text-center mb-12 md:mb-16 animate-fade-in">
-                    <div className="inline-flex items-center gap-4 md:gap-5 mb-6 rounded-[28px] border border-primary/15 bg-card/65 px-5 py-4 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-gradient-to-br from-primary/18 via-primary/10 to-accent/10 ring-1 ring-inset ring-primary/20 md:h-28 md:w-28">
-                            <BrandMark
-                                size={112}
-                                className="h-14 w-14 md:h-20 md:w-20 drop-shadow-[0_16px_30px_rgba(37,99,235,0.22)]"
-                                alt="StudyShare"
-                            />
-                        </div>
-                        <div className="text-left">
-                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/80 md:text-xs">
-                                AI Study Platform
-                            </p>
-                            <h1 className="text-4xl font-bold leading-none md:text-6xl">
-                                Study<span className="text-gradient">Share</span>
-                            </h1>
-                        </div>
+                    <div className="inline-flex items-center gap-4 md:gap-5 mb-6">
+                        <BrandMark
+                            size={96}
+                            className="h-16 w-16 md:h-24 md:w-24 drop-shadow-[0_16px_30px_rgba(37,99,235,0.18)]"
+                            alt="StudyShare"
+                        />
+                        <h1 className="text-3xl md:text-5xl font-bold">
+                            Study<span className="text-gradient">Share</span>
+                        </h1>
                     </div>
                     <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
                         AI-powered college learning for notes, PYQs, notices, and campus communities. Join your college, find semester-wise resources, and study faster.
