@@ -258,40 +258,43 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
               <TooltipContent side="right">AI Chat</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleTheme}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="w-5 h-5" />
-                  ) : (
-                    <Moon className="w-5 h-5" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </TooltipContent>
-            </Tooltip>
           </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowLogoutDialog(true)}
-                  className="mx-auto text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Logout</TooltipContent>
-            </Tooltip>
+            <div className="mt-auto flex flex-col items-center gap-1 px-2 pt-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleTheme}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="w-5 h-5" />
+                    ) : (
+                      <Moon className="w-5 h-5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowLogoutDialog(true)}
+                    className="mx-auto text-muted-foreground hover:text-destructive"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Logout</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </TooltipProvider>
 
@@ -345,14 +348,6 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             </div>
           </button>
           <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowLogoutDialog(true)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
             <Button variant="ghost" size="icon" onClick={onToggle}>
               <PanelLeftClose className="w-4 h-4" />
             </Button>
@@ -426,23 +421,34 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
               <span>AI Chat</span>
             </Button>
           </div>
-
-          <div>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
-              onClick={toggleTheme}
-            >
-              {theme === "dark" ? (
-                <Sun className="w-4 h-4" />
-              ) : (
-                <Moon className="w-4 h-4" />
-              )}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </Button>
-          </div>
         </div>
       </ScrollArea>
+
+      <div className="border-t border-sidebar-border p-3">
+        <div className="space-y-2">
+          <Button
+            variant="ghost"
+            className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
+            <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="flex w-full items-center justify-start gap-2 px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-destructive"
+            onClick={() => setShowLogoutDialog(true)}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </Button>
+        </div>
+      </div>
 
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>

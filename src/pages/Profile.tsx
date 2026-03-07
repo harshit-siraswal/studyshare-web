@@ -3,7 +3,7 @@ import { useCollege } from "@/context/CollegeContext";
 import * as api from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, ExternalLink, MessageCircle, MoreVertical, Trash2, Bookmark, Moon, Sun, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, MoreVertical, Trash2, Bookmark, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +21,6 @@ import PDFViewer from "@/components/PDFViewer";
 import EditResourceDialog from "@/components/EditResourceDialog";
 import FollowButton from "@/components/FollowButton";
 import ImageCropper from "@/components/ImageCropper";
-import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "../supabase";
 import { SEO } from "@/components/SEO";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
@@ -29,6 +28,7 @@ import { getRecaptchaToken } from "@/lib/recaptcha";
 import { usePermissions } from "@/hooks/usePermissions";
 import PremiumModal from "@/components/PremiumModal";
 import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
+import VideoPlayer from "@/components/VideoPlayer";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -234,7 +234,8 @@ const Profile = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [selectedPdf, setSelectedPdf] = useState<{ title: string; url: string } | null>(null);
+  const [selectedPdf, setSelectedPdf] = useState<{ title: string; url: string; resourceId?: string } | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<{ title: string; url: string; resourceId?: string } | null>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -266,7 +267,6 @@ const Profile = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumModalMode, setPremiumModalMode] = useState<"premium" | "recharge">("premium");
 
-  const { theme, toggleTheme } = useTheme();
   const { executeRecaptcha } = useGoogleReCaptcha();
   const { canFollow } = usePermissions();
 
@@ -1009,6 +1009,25 @@ const Profile = () => {
     setShowPremiumModal(true);
   };
 
+  const openContributionPreview = (contribution: Contribution) => {
+    if (contribution.type === "video" && contribution.url) {
+      setSelectedVideo({
+        title: contribution.title,
+        url: contribution.url,
+        resourceId: String(contribution.id),
+      });
+      return;
+    }
+
+    if ((contribution.type === "notes" || contribution.type === "pyq") && contribution.pdfUrl) {
+      setSelectedPdf({
+        title: contribution.title,
+        url: contribution.pdfUrl,
+        resourceId: String(contribution.id),
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <SEO
@@ -1029,14 +1048,6 @@ const Profile = () => {
             <h1 className="text-lg sm:text-xl font-semibold">{isViewingOther ? `${profileUser.name}'s Profile` : "My Profile"}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="h-8 w-8 sm:h-9 sm:w-9"
-            >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </Button>
             {!isViewingOther && (
               <Button
                 variant="ghost"
@@ -1224,8 +1235,25 @@ const Profile = () => {
 
                   return filteredContributions.map((contribution) => {
                     const Icon = typeIcons[contribution.type as keyof typeof typeIcons];
+                    const previewable =
+                      (contribution.type === "video" && !!contribution.url) ||
+                      ((contribution.type === "notes" || contribution.type === "pyq") && !!contribution.pdfUrl);
+
                     return (
-                      <Card key={contribution.id} variant="interactive" className="p-4 hover:shadow-lg transition-shadow">
+                      <Card
+                        key={contribution.id}
+                        variant="interactive"
+                        role={previewable ? "button" : undefined}
+                        tabIndex={previewable ? 0 : -1}
+                        onClick={previewable ? () => openContributionPreview(contribution) : undefined}
+                        onKeyDown={previewable ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            openContributionPreview(contribution);
+                          }
+                        } : undefined}
+                        className={`p-4 transition-shadow ${previewable ? "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2" : ""}`}
+                      >
                         <div className="flex items-start gap-3">
                           <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <Icon className="w-6 h-6 text-primary" />
@@ -1238,7 +1266,12 @@ const Profile = () => {
                               {!isViewingOther && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0"
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
                                       <MoreVertical className="w-4 h-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
@@ -1285,26 +1318,6 @@ const Profile = () => {
                                 <span>{contribution.votes || 0} votes</span>
                                 <span>{contribution.date}</span>
                               </div>
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                              {contribution.type === "video" && contribution.url && (
-                                <Button size="sm" variant="outline" asChild>
-                                  <a href={contribution.url} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="w-3 h-3 mr-2" />
-                                    Watch
-                                  </a>
-                                </Button>
-                              )}
-                              {(contribution.type === "notes" || contribution.type === "pyq") && contribution.pdfUrl && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedPdf({ title: contribution.title, url: contribution.pdfUrl! })}
-                                >
-                                  <FileText className="w-3 h-3 mr-2" />
-                                  View PDF
-                                </Button>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1409,11 +1422,8 @@ const Profile = () => {
                       AI Tokens
                     </div>
                     <h3 className="mt-3 text-xl font-semibold text-foreground">
-                      {aiTokenUsage ? `${aiVisibleRemaining} left this cycle` : "Loading your token budget"}
+                      {aiTokenUsage ? `${aiVisibleRemaining} left this cycle` : "AI tokens"}
                     </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      The web app now uses the same Android conversion. You see AI tokens, not raw backend token counts.
-                    </p>
                   </div>
                   <Button
                     variant="outline"
@@ -1648,9 +1658,20 @@ const Profile = () => {
             onClose={() => setSelectedPdf(null)}
             title={selectedPdf.title}
             pdfUrl={selectedPdf.url}
+            resourceId={selectedPdf.resourceId}
           />
         )
       }
+
+      {selectedVideo && (
+        <VideoPlayer
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          title={selectedVideo.title}
+          videoUrl={selectedVideo.url}
+          resourceId={selectedVideo.resourceId}
+        />
+      )}
 
       {/* Followers Dialog - Instagram Style */}
       <Dialog open={showFollowersDialog} onOpenChange={setShowFollowersDialog}>
