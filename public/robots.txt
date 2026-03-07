@@ -10,4 +10,3 @@ Disallow: /explore
 Disallow: /ai-chat
 
 Sitemap: https://studyshare.in/sitemap.xml
-Sitemap: https://studyshare.in/blogs.xml

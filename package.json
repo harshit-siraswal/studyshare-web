@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "seo:generate": "node scripts/generate-sitemaps.mjs",
+    "seo:prerender": "node scripts/prerender-seo-pages.mjs",
+    "build": "npm run seo:generate && vite build && npm run seo:prerender",
+    "build:dev": "npm run seo:generate && vite build --mode development && npm run seo:prerender",
     "lint": "eslint .",
     "security:scan": "node scripts/security-scan.mjs",
     "test": "jest",
