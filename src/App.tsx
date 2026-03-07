@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,22 +11,89 @@ import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AnimatePresence, motion } from "framer-motion";
 
+const createLazyPage = <T extends Record<string, unknown>>(
+  loader: () => Promise<T>,
+  key: string
+) =>
+  lazy(async () => {
+    try {
+      const module = await loader();
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(`route-retry:${key}`);
+      }
+      return module;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isChunkLoadFailure =
+        /Failed to fetch dynamically imported module|ChunkLoadError|Importing a module script failed/i.test(
+          message
+        );
+
+      if (isChunkLoadFailure && typeof window !== "undefined") {
+        const retryKey = `route-retry:${key}`;
+        const alreadyRetried = window.sessionStorage.getItem(retryKey) === "1";
+        if (!alreadyRetried) {
+          window.sessionStorage.setItem(retryKey, "1");
+          window.location.reload();
+          return new Promise<never>(() => {});
+        }
+      }
+
+      throw error;
+    }
+  });
+
+const loadSelectCollege = () => import("./pages/SelectCollege");
+const loadAuth = () => import("./pages/Auth");
+const loadStudy = () => import("./pages/Study");
+const loadNotices = () => import("./pages/Notices");
+const loadChatroom = () => import("./pages/Chatroom");
+const loadChatPostDetail = () => import("./pages/ChatPostDetail");
+const loadProfile = () => import("./pages/Profile");
+const loadMessages = () => import("./pages/Messages");
+const loadExplore = () => import("./pages/Explore");
+const loadDepartmentProfile = () => import("./pages/DepartmentProfile");
+const loadBookmarks = () => import("./pages/Bookmarks");
+const loadAIChat = () => import("./pages/AIChat");
+const loadBlog = () => import("./pages/Blog");
+const loadBlogPost = () => import("./pages/BlogPost");
+const loadNotFound = () => import("./pages/NotFound");
+
 // Lazy load all pages for code splitting
-const SelectCollege = lazy(() => import("./pages/SelectCollege"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Study = lazy(() => import("./pages/Study"));
-const Notices = lazy(() => import("./pages/Notices"));
-const Chatroom = lazy(() => import("./pages/Chatroom"));
-const ChatPostDetail = lazy(() => import("./pages/ChatPostDetail"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Messages = lazy(() => import("./pages/Messages"));
-const Explore = lazy(() => import("./pages/Explore"));
-const DepartmentProfile = lazy(() => import("./pages/DepartmentProfile"));
-const Bookmarks = lazy(() => import("./pages/Bookmarks"));
-const AIChat = lazy(() => import("./pages/AIChat"));
-const Blog = lazy(() => import("./pages/Blog"));
-const BlogPost = lazy(() => import("./pages/BlogPost"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const SelectCollege = createLazyPage(loadSelectCollege, "select-college");
+const Auth = createLazyPage(loadAuth, "auth");
+const Study = createLazyPage(loadStudy, "study");
+const Notices = createLazyPage(loadNotices, "notices");
+const Chatroom = createLazyPage(loadChatroom, "chatroom");
+const ChatPostDetail = createLazyPage(loadChatPostDetail, "chat-post-detail");
+const Profile = createLazyPage(loadProfile, "profile");
+const Messages = createLazyPage(loadMessages, "messages");
+const Explore = createLazyPage(loadExplore, "explore");
+const DepartmentProfile = createLazyPage(loadDepartmentProfile, "department-profile");
+const Bookmarks = createLazyPage(loadBookmarks, "bookmarks");
+const AIChat = createLazyPage(loadAIChat, "ai-chat");
+const Blog = createLazyPage(loadBlog, "blog");
+const BlogPost = createLazyPage(loadBlogPost, "blog-post");
+const NotFound = createLazyPage(loadNotFound, "not-found");
+
+const preloadRouteModules = () => {
+  [
+    loadAuth,
+    loadStudy,
+    loadNotices,
+    loadChatroom,
+    loadProfile,
+    loadMessages,
+    loadExplore,
+    loadBookmarks,
+    loadAIChat,
+    loadBlog,
+  ].forEach((loadPage) => {
+    loadPage().catch(() => {
+      // Ignore preload failures; route access will handle retry/reload logic if needed.
+    });
+  });
+};
 
 // Optimized QueryClient configuration for better caching and reduced network requests
 const queryClient = new QueryClient({
@@ -42,8 +109,10 @@ const queryClient = new QueryClient({
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-background">
-    <BrandLoader label="Loading your space..." />
+  <div className="flex min-h-screen items-center justify-center bg-gradient-hero">
+    <div className="rounded-3xl border border-border/50 bg-card/80 px-8 py-6 shadow-card backdrop-blur-xl">
+      <BrandLoader label="Loading your space..." />
+    </div>
   </div>
 );
 
@@ -108,4 +177,24 @@ const App = () => (
   </QueryClientProvider>
 );
 
-export default App;
+const AppWithPreload = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const schedule = "requestIdleCallback" in window
+      ? window.requestIdleCallback(() => preloadRouteModules(), { timeout: 1500 })
+      : window.setTimeout(() => preloadRouteModules(), 800);
+
+    return () => {
+      if (typeof schedule === "number") {
+        window.clearTimeout(schedule);
+      } else if ("cancelIdleCallback" in window) {
+        window.cancelIdleCallback(schedule);
+      }
+    };
+  }, []);
+
+  return <App />;
+};
+
+export default AppWithPreload;
