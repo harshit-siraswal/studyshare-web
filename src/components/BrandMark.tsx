@@ -5,9 +5,15 @@ interface BrandMarkProps {
   size?: number;
   className?: string;
   alt?: string;
+  priority?: boolean;
 }
 
-const BrandMark = ({ size = 40, className, alt = "StudyShare logo" }: BrandMarkProps) => {
+const BrandMark = ({
+  size = 40,
+  className,
+  alt = "StudyShare logo",
+  priority = false,
+}: BrandMarkProps) => {
   const handleError = (e: SyntheticEvent<HTMLImageElement>) => {
     const target = e.currentTarget;
     if (target.src.includes("logo-mark-light.png")) {
@@ -27,8 +33,9 @@ const BrandMark = ({ size = 40, className, alt = "StudyShare logo" }: BrandMarkP
         width={size}
         height={size}
         className={cn("object-contain dark:hidden", className)}
-        loading="lazy"
-        decoding="async"
+        loading={priority ? "eager" : "lazy"}
+        decoding={priority ? "sync" : "async"}
+        fetchPriority={priority ? "high" : "auto"}
         onError={handleError}
       />
       <img
@@ -37,8 +44,9 @@ const BrandMark = ({ size = 40, className, alt = "StudyShare logo" }: BrandMarkP
         width={size}
         height={size}
         className={cn("hidden object-contain dark:block", className)}
-        loading="lazy"
-        decoding="async"
+        loading={priority ? "eager" : "lazy"}
+        decoding={priority ? "sync" : "async"}
+        fetchPriority={priority ? "high" : "auto"}
         onError={handleError}
       />
     </>

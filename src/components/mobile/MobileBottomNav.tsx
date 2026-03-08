@@ -5,8 +5,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Bookmark, Plus, Bell, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import UploadResourceDialog from '@/components/UploadResourceDialog';
+import { lazy, Suspense, useState } from 'react';
+
+const UploadResourceDialog = lazy(() => import('@/components/UploadResourceDialog'));
 
 interface NavItem {
     icon: React.ReactNode;
@@ -82,10 +83,14 @@ export function MobileBottomNav() {
             </nav>
 
             {/* Upload Dialog triggered by + button */}
-            <UploadResourceDialog
-                open={uploadDialogOpen}
-                onOpenChange={setUploadDialogOpen}
-            />
+            {uploadDialogOpen ? (
+                <Suspense fallback={null}>
+                    <UploadResourceDialog
+                        open={uploadDialogOpen}
+                        onOpenChange={setUploadDialogOpen}
+                    />
+                </Suspense>
+            ) : null}
         </>
     );
 }

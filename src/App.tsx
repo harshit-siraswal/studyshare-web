@@ -2,14 +2,16 @@ import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
-import { MobileBottomNav } from "@/components/mobile";
 import { Analytics } from "@vercel/analytics/react";
 import BrandLoader from "@/components/BrandLoader";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { AnimatePresence, motion } from "framer-motion";
+import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
+import { AuthProvider } from "@/context/AuthContext";
+import { CollegeProvider } from "@/context/CollegeContext";
+import { TimerProvider } from "@/context/TimerContext";
+import { cn } from "@/lib/utils";
 
 const createLazyPage = <T extends Record<string, unknown>>(
   loader: () => Promise<T>,
@@ -58,6 +60,7 @@ const loadAIChat = () => import("./pages/AIChat");
 const loadBlog = () => import("./pages/Blog");
 const loadBlogPost = () => import("./pages/BlogPost");
 const loadNotFound = () => import("./pages/NotFound");
+const loadMobileBottomNav = () => import("@/components/mobile/MobileBottomNav");
 
 // Lazy load all pages for code splitting
 const SelectCollege = createLazyPage(loadSelectCollege, "select-college");
@@ -75,6 +78,15 @@ const AIChat = createLazyPage(loadAIChat, "ai-chat");
 const Blog = createLazyPage(loadBlog, "blog");
 const BlogPost = createLazyPage(loadBlogPost, "blog-post");
 const NotFound = createLazyPage(loadNotFound, "not-found");
+const MobileBottomNav = lazy(loadMobileBottomNav);
+
+const recaptchaSiteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY || "").trim();
+
+const isLightweightPublicPath = (pathname: string) =>
+  pathname === "/" ||
+  pathname === "/select-college" ||
+  pathname === "/blog" ||
+  pathname.startsWith("/blog/");
 
 const preloadRouteModules = () => {
   [
@@ -95,18 +107,6 @@ const preloadRouteModules = () => {
   });
 };
 
-// Optimized QueryClient configuration for better caching and reduced network requests
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes - data considered fresh
-      gcTime: 1000 * 60 * 30, // 30 minutes - cache retention (formerly cacheTime)
-      refetchOnWindowFocus: false, // Don't refetch when user switches tabs
-      retry: 1, // Only retry once on failure
-    },
-  },
-});
-
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-gradient-hero">
@@ -116,83 +116,120 @@ const PageLoader = () => (
   </div>
 );
 
-const AnimatedAppRoutes = () => {
+const AppRoutes = () => {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 12, scale: 0.995 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -12, scale: 0.995 }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <Routes location={location}>
-          <Route path="/" element={<SelectCollege />} />
-          <Route path="/select-college" element={<SelectCollege />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<BlogPost />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
-          <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-          <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-          <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
-          <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-          <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-          <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
-          <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
-          <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
-          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-          <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
+    <Routes location={location}>
+      <Route path="/" element={<SelectCollege />} />
+      <Route path="/select-college" element={<SelectCollege />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/blog/:slug" element={<BlogPost />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
+      <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+      <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+      <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
+      <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+      <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
+      <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+      <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
+      <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+      <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const AppProviders = ({
+  children,
+  enabled,
+}: {
+  children: React.ReactNode;
+  enabled: boolean;
+}) => {
+  if (!enabled) {
+    return <>{children}</>;
+  }
+
+  const appTree = (
+    <AuthProvider>
+      <CollegeProvider>
+        <TimerProvider>{children}</TimerProvider>
+      </CollegeProvider>
+    </AuthProvider>
+  );
+
+  if (!recaptchaSiteKey) {
+    return appTree;
+  }
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={recaptchaSiteKey}
+      scriptProps={{
+        async: true,
+        defer: true,
+      }}
+    >
+      {appTree}
+    </GoogleReCaptchaProvider>
+  );
+};
+
+const App = () => {
+  const location = useLocation();
+  const lightweightPublicRoute = isLightweightPublicPath(location.pathname);
+  const shouldRenderMobileNav = !lightweightPublicRoute && location.pathname !== "/auth";
+
+  return (
     <ThemeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-
-        {/* Main content with bottom padding for mobile nav */}
-        <div className="pb-16 md:pb-0">
-          <Suspense fallback={<PageLoader />}>
-            <AnimatedAppRoutes />
-          </Suspense>
-        </div>
-
-        {/* Mobile bottom navigation - visible only on mobile (md:hidden in component) */}
-        <MobileBottomNav />
+        <AppProviders enabled={!lightweightPublicRoute}>
+          <div className={cn(shouldRenderMobileNav && "pb-16 md:pb-0")}>
+            <Suspense fallback={<PageLoader />}>
+              <AppRoutes />
+            </Suspense>
+          </div>
+          {shouldRenderMobileNav ? (
+            <Suspense fallback={null}>
+              <MobileBottomNav />
+            </Suspense>
+          ) : null}
+        </AppProviders>
         <Analytics />
       </TooltipProvider>
     </ThemeProvider>
-  </QueryClientProvider>
-);
+  );
+};
 
 const AppWithPreload = () => {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const location = useLocation();
 
-    const schedule = "requestIdleCallback" in window
+  useEffect(() => {
+    if (typeof window === "undefined" || isLightweightPublicPath(location.pathname)) {
+      return;
+    }
+
+    const usesIdleCallback = "requestIdleCallback" in window;
+    const schedule = usesIdleCallback
       ? window.requestIdleCallback(() => preloadRouteModules(), { timeout: 1500 })
       : window.setTimeout(() => preloadRouteModules(), 800);
 
     return () => {
-      if (typeof schedule === "number") {
-        window.clearTimeout(schedule);
-      } else if ("cancelIdleCallback" in window) {
+      if (usesIdleCallback && "cancelIdleCallback" in window) {
         window.cancelIdleCallback(schedule);
+      } else {
+        window.clearTimeout(schedule);
       }
     };
-  }, []);
+  }, [location.pathname]);
 
   return <App />;
 };

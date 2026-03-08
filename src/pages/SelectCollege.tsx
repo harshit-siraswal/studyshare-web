@@ -12,6 +12,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { openAndroidApkDownload } from "@/lib/apk";
 import { toast } from "sonner";
 
+type CollegeCard = (typeof initialColleges)[number];
+type CollegeCountMap = Record<number, number>;
+
 // All active colleges with online-verified institutional/student domains
 const initialColleges = [
     { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
@@ -31,6 +34,71 @@ const initialColleges = [
     { id: 12, name: "Manipal Institute of Technology", location: "Manipal", students: 0, domain: "learner.manipal.edu" },
 ];
 
+const USER_COUNT_CACHE_KEY = "studyshare:college-user-counts:v1";
+const USER_COUNT_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+type WindowWithIdleCallback = Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (handle: number) => void;
+};
+
+const applyUserCounts = (counts: CollegeCountMap): CollegeCard[] =>
+    initialColleges.map((college) => ({
+        ...college,
+        students: counts[college.id] ?? college.students,
+    }));
+
+const readCachedUserCounts = (): CollegeCountMap | null => {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(USER_COUNT_CACHE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw) as {
+            updatedAt?: number;
+            counts?: Record<string, number>;
+        };
+
+        if (!parsed.updatedAt || !parsed.counts) {
+            return null;
+        }
+
+        if (Date.now() - parsed.updatedAt > USER_COUNT_CACHE_TTL_MS) {
+            window.localStorage.removeItem(USER_COUNT_CACHE_KEY);
+            return null;
+        }
+
+        return Object.fromEntries(
+            Object.entries(parsed.counts).map(([id, count]) => [Number(id), Number(count)])
+        );
+    } catch {
+        return null;
+    }
+};
+
+const persistUserCounts = (counts: CollegeCountMap) => {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(
+            USER_COUNT_CACHE_KEY,
+            JSON.stringify({
+                updatedAt: Date.now(),
+                counts,
+            })
+        );
+    } catch {
+        // Ignore storage quota failures.
+    }
+};
+
 const SelectCollege = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [colleges, setColleges] = useState(initialColleges);
@@ -39,29 +107,67 @@ const SelectCollege = () => {
 
     // Fetch actual user counts for all active colleges
     useEffect(() => {
+        const cachedCounts = readCachedUserCounts();
+        if (cachedCounts) {
+            setColleges(applyUserCounts(cachedCounts));
+        }
+
+        let active = true;
+        const idleWindow = window as WindowWithIdleCallback;
+
         const fetchUserCounts = async () => {
             try {
-                // Fetch counts for each active college domain
-                for (const college of initialColleges) {
-                    if (!college.domain) continue;
+                const entries = await Promise.all(
+                    initialColleges
+                        .filter((college) => college.domain)
+                        .map(async (college) => {
+                            const { count, error } = await supabase
+                                .from('users')
+                                .select('id', { count: 'exact', head: true })
+                                .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
 
-                    const { count, error } = await supabase
-                        .from('users')
-                        .select('id', { count: 'exact', head: true })
-                        .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
+                            if (error || count === null) {
+                                return null;
+                            }
 
-                    if (!error && count !== null) {
-                        setColleges(prev => prev.map(c =>
-                            c.id === college.id ? { ...c, students: count } : c
-                        ));
-                    }
+                            return [college.id, count] as const;
+                        })
+                );
+
+                if (!active) {
+                    return;
+                }
+
+                const counts = Object.fromEntries(
+                    entries.filter((entry): entry is readonly [number, number] => entry !== null)
+                );
+
+                if (Object.keys(counts).length > 0) {
+                    setColleges(applyUserCounts(counts));
+                    persistUserCounts(counts);
                 }
             } catch (err) {
                 console.error('Failed to fetch user counts:', err);
             }
         };
 
-        fetchUserCounts();
+        const scheduledTask = idleWindow.requestIdleCallback
+            ? idleWindow.requestIdleCallback(() => {
+                void fetchUserCounts();
+            }, { timeout: cachedCounts ? 2500 : 1200 })
+            : window.setTimeout(() => {
+                void fetchUserCounts();
+            }, cachedCounts ? 2500 : 1200);
+
+        return () => {
+            active = false;
+            if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
+                idleWindow.cancelIdleCallback(scheduledTask);
+                return;
+            }
+
+            window.clearTimeout(scheduledTask);
+        };
     }, []);
 
     const filteredColleges = colleges.filter((college) =>
@@ -139,6 +245,7 @@ const SelectCollege = () => {
                             size={112}
                             className="h-16 w-16 md:h-20 md:w-20 origin-center motion-safe:animate-[spin_14s_linear_infinite] drop-shadow-[0_16px_30px_rgba(37,99,235,0.18)]"
                             alt="StudyShare"
+                            priority
                         />
                         <h1 className="text-3xl md:text-5xl font-bold">
                             Study<span className="text-gradient">Share</span>
