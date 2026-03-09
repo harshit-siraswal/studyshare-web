@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
-import { postChatMessage, voteChatMessage, toggleSaveChatPost, getUserChatVotes, getChatRoomInfo, joinChatRoomById } from "@/lib/api";
+import { postChatMessage, voteChatMessage, toggleSaveChatPost, getUserChatVotes, getChatRoomInfo, joinChatRoomById, getSavedChatPosts } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -423,12 +423,14 @@ const Chatroom = () => {
   const fetchSavedPosts = async () => {
     if (!user?.email) return;
     try {
-      const { data, error } = await supabase
-        .from('saved_posts')
-        .select('message_id')
-        .eq('user_email', user.email);
-      if (error) throw error;
-      setSavedPosts(new Set(data?.map(s => s.message_id) || []));
+      const { savedPosts: saved } = await getSavedChatPosts();
+      setSavedPosts(
+        new Set(
+          (saved || [])
+            .map((item) => item.messageId)
+            .filter((messageId): messageId is string => Boolean(messageId))
+        )
+      );
     } catch (error) {
       console.error('Error fetching saved posts:', error);
     }
@@ -438,26 +440,21 @@ const Chatroom = () => {
     if (!user?.email) return;
 
     try {
-      const { data: savedData, error: savedError } = await supabase
-        .from('saved_posts')
-        .select('message_id, room_id')
-        .eq('user_email', user.email);
-
-      if (savedError) throw savedError;
-
-      if (savedData && savedData.length > 0) {
-        const messageIds = savedData.map(s => s.message_id);
-        const { data: messages, error: msgError } = await supabase
-          .from('room_messages')
-          .select('*')
-          .in('id', messageIds)
-          .order('created_at', { ascending: false });
-
-        if (msgError) throw msgError;
-        setSavedMessages(messages || []);
-      } else {
-        setSavedMessages([]);
-      }
+      const { savedPosts: saved } = await getSavedChatPosts();
+      const mappedMessages: Message[] = (saved || [])
+        .filter((item) => item.messageId && item.roomId)
+        .map((item) => ({
+          id: item.messageId!,
+          room_id: item.roomId!,
+          author_name: item.authorName || 'Anonymous',
+          author_email: item.authorEmail || '',
+          content: item.content || '',
+          upvotes: Number(item.upvotes || 0),
+          downvotes: Number(item.downvotes || 0),
+          image_url: item.imageUrl,
+          created_at: item.postedAt || item.savedAt || new Date().toISOString(),
+        }));
+      setSavedMessages(mappedMessages);
     } catch (error) {
       console.error('Error fetching saved messages:', error);
     }

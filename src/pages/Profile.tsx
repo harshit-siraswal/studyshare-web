@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import PDFViewer from "@/components/PDFViewer";
 import EditResourceDialog from "@/components/EditResourceDialog";
@@ -29,7 +30,13 @@ import { usePermissions } from "@/hooks/usePermissions";
 import PremiumModal from "@/components/PremiumModal";
 import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
 import VideoPlayer from "@/components/VideoPlayer";
-import { getBranchLabel, normalizeBranchCode } from "@/lib/academicSubjects";
+import {
+  BRANCH_OPTIONS,
+  SEMESTER_OPTIONS,
+  getBranchLabel,
+  getSubjectsForBranchAndSemester,
+  normalizeBranchCode,
+} from "@/lib/academicSubjects";
 
 // TypeScript Interfaces
 interface Contribution {
@@ -77,10 +84,16 @@ interface ProfileUser {
 }
 
 interface SavedPost {
+  id: string;
   roomName: string;
-  message?: string;
-  timestamp?: string;
-  author?: string;
+  roomId: string | null;
+  messageId: string | null;
+  savedAt: string | null;
+  content: string | null;
+  imageUrl: string | null;
+  authorName: string | null;
+  authorEmail: string | null;
+  postedAt: string | null;
 }
 
 interface UserProfile {
@@ -378,9 +391,7 @@ const Profile = () => {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [savedPosts, setSavedPosts] = useState<SavedPost[]>(
-    () => JSON.parse(localStorage.getItem("savedPosts") || "[]")
-  );
+  const [savedPosts, setSavedPosts] = useState<SavedPost[]>([]);
 
   // Supabase state
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -505,7 +516,7 @@ const Profile = () => {
           profile_photo_url:
             resolveProfilePhotoUrl(profile, [authUser.photoURL]) || undefined,
           semester: profile?.semester || "",
-          branch: profile?.branch || "",
+          branch: normalizeBranchCode(profile?.branch) || profile?.branch || "",
           subject: profile?.subject || "",
           role: profile?.role || "student",
           subscription_tier: profile?.subscription_tier,
@@ -520,7 +531,7 @@ const Profile = () => {
           username: resolvedProfile.username || prev.username,
           profilePhoto: resolvedProfile.profile_photo_url || prev.profilePhoto,
           semester: resolvedProfile.semester || "",
-          branch: resolvedProfile.branch || "",
+          branch: normalizeBranchCode(resolvedProfile.branch) || resolvedProfile.branch || "",
           subject: resolvedProfile.subject || "",
         }));
       } catch (error) {
@@ -539,9 +550,10 @@ const Profile = () => {
 
     try {
       // Parallel fetch - reduces load time by 50-70%
-      const [followersData, followingData, contributionsData] = await Promise.all([
+      const [followersData, followingData, contributionsData, savedPostsData] = await Promise.all([
         api.getFollowers(),
         api.getFollowing(),
+        api.getSavedChatPosts(),
         // Fetch contributions from Supabase
         supabase
           .from('resources')
@@ -555,6 +567,7 @@ const Profile = () => {
       setFollowers(followersData.followers);
       setFollowingCount(followingData.following.length);
       setFollowing(followingData.following);
+      setSavedPosts(savedPostsData.savedPosts || []);
 
       // Transform and update contributions
       if (contributionsData.data && !contributionsData.error) {
@@ -905,6 +918,15 @@ const Profile = () => {
   const displayEmail = profileUser.email;
   const displayUsername = profileUser.username;
   const displayBio = profileUser.bio;
+  const normalizedEditBranch = normalizeBranchCode(editForm.branch);
+  const availableProfileSubjects =
+    normalizedEditBranch && editForm.semester
+      ? getSubjectsForBranchAndSemester(normalizedEditBranch, editForm.semester)
+      : [];
+  const profileSubjectOptions =
+    editForm.subject && !availableProfileSubjects.includes(editForm.subject)
+      ? [editForm.subject, ...availableProfileSubjects]
+      : availableProfileSubjects;
   const displaySemester = (activeProfile?.semester || editForm.semester || "").trim();
   const displayBranch = getBranchBadgeLabel(activeProfile?.branch || editForm.branch);
   const displaySubject = (activeProfile?.subject || editForm.subject || "").trim();
@@ -1046,24 +1068,31 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     if (!authUser) return;
 
+    const normalizedDisplayName = editForm.name.trim();
+    const normalizedUsername = editForm.username.trim();
+    const normalizedBio = editForm.bio.trim();
+    const normalizedSemester = editForm.semester.trim();
+    const normalizedBranch = normalizeBranchCode(editForm.branch);
+    const normalizedSubject = editForm.subject.trim();
+
     // Validate username
-    if (!editForm.username || editForm.username.trim().length < 3) {
+    if (!normalizedUsername || normalizedUsername.length < 3) {
       toast.error('Username must be at least 3 characters');
       return;
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(editForm.username)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
       toast.error('Username can only contain letters, numbers, and underscores');
       return;
     }
 
     try {
       // Check if username is taken (via frontend read - allowed by RLS)
-      if (editForm.username !== userProfile?.username) {
+      if (normalizedUsername !== userProfile?.username) {
         const { data: existingUser } = await supabase
           .from('users')
           .select('id')
-          .eq('username', editForm.username)
+          .eq('username', normalizedUsername)
           .maybeSingle();
 
         if (existingUser && existingUser.id !== authUser.uid) {
@@ -1075,25 +1104,34 @@ const Profile = () => {
       console.log('Updating profile via API for user:', authUser.uid);
 
       // Use backend API which bypasses RLS
-      const result = await api.updateProfile({
-        display_name: editForm.name,
-        bio: editForm.bio,
-        username: editForm.username,
-        semester: editForm.semester.trim(),
-        branch: editForm.branch.trim(),
-        subject: editForm.subject.trim(),
-      });
+      const profileUpdates: Partial<UserProfile> = {
+        display_name: normalizedDisplayName,
+        bio: normalizedBio,
+        username: normalizedUsername,
+      };
+
+      if (normalizedSemester) {
+        profileUpdates.semester = normalizedSemester;
+      }
+      if (normalizedBranch) {
+        profileUpdates.branch = normalizedBranch;
+      }
+      if (normalizedSubject) {
+        profileUpdates.subject = normalizedSubject;
+      }
+
+      const result = await api.updateProfile(profileUpdates);
 
       console.log('Update successful:', result);
 
       setUserProfile(prev => prev ? {
         ...prev,
-        display_name: editForm.name,
-        bio: editForm.bio,
-        username: editForm.username,
-        semester: editForm.semester.trim() || undefined,
-        branch: editForm.branch.trim() || undefined,
-        subject: editForm.subject.trim() || undefined,
+        display_name: normalizedDisplayName,
+        bio: normalizedBio || undefined,
+        username: normalizedUsername,
+        semester: normalizedSemester || undefined,
+        branch: normalizedBranch || undefined,
+        subject: normalizedSubject || undefined,
       } : null);
 
       setIsEditing(false);
@@ -1106,12 +1144,7 @@ const Profile = () => {
 
   const handleDeleteContribution = async (id: number | string) => {
     try {
-      const { error } = await supabase
-        .from('resources')
-        .delete()
-        .eq('id', id.toString());
-
-      if (error) throw error;
+      await api.deleteResource(id.toString());
 
       setContributions(prev => prev.filter(c => c.id !== id));
       toast.success('Resource deleted');
@@ -1162,13 +1195,6 @@ const Profile = () => {
       console.error("Logout failed:", error);
       toast.error("Failed to logout. Please try again.");
     }
-  };
-
-  const handleDeletePost = (index: number) => {
-    const updatedPosts = savedPosts.filter((_, i) => i !== index);
-    setSavedPosts(updatedPosts);
-    localStorage.setItem("savedPosts", JSON.stringify(updatedPosts));
-    toast.success("Post removed from saved");
   };
 
   const aiUsedPercent = aiTokenUsage?.budget
@@ -1561,12 +1587,30 @@ const Profile = () => {
                       <p className="text-sm text-muted-foreground mt-1">Posts you save from chat rooms will appear here</p>
                     </div>
                   ) : (
-                    savedPosts.map((saved, index) => (
-                      <Card key={index} className="p-3 sm:p-4">
+                    savedPosts.map((saved) => (
+                      <Card
+                        key={saved.id}
+                        className="p-3 sm:p-4 cursor-pointer transition-colors hover:bg-accent/20"
+                        onClick={() => {
+                          if (saved.roomId && saved.messageId) {
+                            navigate(`/chatroom/${saved.roomId}/post/${saved.messageId}`);
+                          }
+                        }}
+                      >
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                           <span>#{saved.roomName}</span>
+                          {saved.savedAt && (
+                            <span>{new Date(saved.savedAt).toLocaleDateString()}</span>
+                          )}
                         </div>
-                        <p className="text-sm text-foreground">Saved post from {saved.roomName}</p>
+                        <p className="text-sm font-medium text-foreground line-clamp-2">
+                          {saved.content?.trim() || `Saved post from ${saved.roomName}`}
+                        </p>
+                        {saved.authorName && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            by {saved.authorName}
+                          </p>
+                        )}
                       </Card>
                     ))
                   )}
@@ -1766,6 +1810,9 @@ const Profile = () => {
         <DialogContent className="mx-4 max-w-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your public profile details, branch, semester, and primary subject.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -1827,29 +1874,66 @@ const Profile = () => {
 
             <div className="space-y-2">
               <Label>Semester</Label>
-              <Input
+              <Select
                 value={editForm.semester}
-                onChange={(e) => setEditForm(prev => ({ ...prev, semester: e.target.value }))}
-                placeholder="e.g. 5"
-              />
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, semester: value, subject: "" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEMESTER_OPTIONS.map((semester) => (
+                    <SelectItem key={semester.value} value={semester.value}>
+                      {semester.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label>Branch</Label>
-              <Input
-                value={editForm.branch}
-                onChange={(e) => setEditForm(prev => ({ ...prev, branch: e.target.value }))}
-                placeholder="e.g. CSE"
-              />
+              <Select
+                value={normalizedEditBranch}
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, branch: value, subject: "" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      {branch.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Input
+              <Select
                 value={editForm.subject}
-                onChange={(e) => setEditForm(prev => ({ ...prev, subject: e.target.value }))}
-                placeholder="e.g. Data Structures"
-              />
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, subject: value }))}
+                disabled={!normalizedEditBranch || !editForm.semester}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      normalizedEditBranch && editForm.semester
+                        ? "Select subject"
+                        : "Select branch and semester first"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {profileSubjectOptions.map((subject) => (
+                    <SelectItem key={subject} value={subject}>
+                      {subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -1906,6 +1990,9 @@ const Profile = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Followers</DialogTitle>
+            <DialogDescription>
+              People who follow this profile.
+            </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
@@ -1960,6 +2047,9 @@ const Profile = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Following</DialogTitle>
+            <DialogDescription>
+              People and profiles this account follows.
+            </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
@@ -2014,6 +2104,9 @@ const Profile = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Discover People</DialogTitle>
+            <DialogDescription>
+              Search students and faculty profiles across the platform.
+            </DialogDescription>
           </DialogHeader>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

@@ -29,6 +29,7 @@ import {
   deleteChatComment,
   getChatComments,
   getChatRoomInfo,
+  getSavedChatPosts,
   getUserChatVotes,
   toggleSaveChatPost,
   voteChatMessage,
@@ -149,13 +150,10 @@ const ChatPostDetail = () => {
 
       if (user?.email) {
         try {
-          const { data } = await supabase
-            .from("saved_posts")
-            .select("message_id")
-            .eq("user_email", user.email)
-            .eq("message_id", postId)
-            .maybeSingle();
-          setIsSaved(Boolean(data));
+          const { savedPosts } = await getSavedChatPosts();
+          setIsSaved(
+            (savedPosts || []).some((savedPost) => savedPost.messageId === postId)
+          );
         } catch (error) {
           console.error("Failed to fetch saved status:", error);
         }

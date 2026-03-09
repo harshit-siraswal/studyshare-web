@@ -35,22 +35,7 @@ const DEPARTMENTS: DepartmentMeta[] = [
     { value: 'it', label: 'Information Technology', icon: Globe },
 ];
 
-interface Notice {
-    id: string;
-    title: string;
-    content: string;
-    department: string;
-    priority: string;
-    file_url: string | null;
-    file_type: 'pdf' | 'video' | 'image' | null;
-    created_by: string;
-    created_at: string;
-    expires_at: string | null;
-    is_active: boolean;
-    likes: number;
-    comments: number;
-    comments_count?: number;
-}
+type Notice = api.Notice;
 
 const DepartmentProfile = () => {
     const navigate = useNavigate();
@@ -100,31 +85,12 @@ const DepartmentProfile = () => {
     const fetchNotices = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('notices')
-                .select('*')
-                .eq('department', deptId)
-                .eq('is_active', true)
-                .in('college_id', collegeScopes)
-                .order('created_at', { ascending: false });
+            const response = await api.getNotices({
+                collegeId: collegeScopes,
+                department: deptId,
+            });
 
-            if (error) throw error;
-
-            let noticeRows = data || [];
-            if (noticeRows.length === 0) {
-                const { data: globalRows, error: globalError } = await supabase
-                    .from('notices')
-                    .select('*')
-                    .eq('department', deptId)
-                    .eq('is_active', true)
-                    .is('college_id', null)
-                    .order('created_at', { ascending: false });
-                if (!globalError) {
-                    noticeRows = globalRows || [];
-                }
-            }
-
-            const activeNotices = noticeRows
+            const activeNotices = (response.notices || [])
                 .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
                 .map(notice => ({
                     ...notice,

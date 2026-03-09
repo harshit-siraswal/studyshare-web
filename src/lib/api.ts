@@ -850,6 +850,25 @@ export async function toggleSaveChatPost(
     });
 }
 
+export interface SavedChatPost {
+    id: string;
+    roomId: string | null;
+    messageId: string | null;
+    savedAt: string | null;
+    roomName: string;
+    content: string | null;
+    imageUrl: string | null;
+    authorName: string | null;
+    authorEmail: string | null;
+    postedAt: string | null;
+    upvotes: number;
+    downvotes: number;
+}
+
+export async function getSavedChatPosts(): Promise<{ savedPosts: SavedChatPost[] }> {
+    return apiRequest('/api/chat/saved');
+}
+
 export interface ChatComment {
     id: string;
     message_id: string;
@@ -1605,6 +1624,55 @@ export async function createSyllabus(
  */
 export async function deleteSyllabus(id: string): Promise<{ message: string }> {
     return apiRequest(`/api/syllabus/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
+// NOTICES
+// ============================================
+
+export interface Notice {
+    id: string;
+    title: string;
+    content: string;
+    department: string;
+    priority: string;
+    file_url: string | null;
+    file_type: 'pdf' | 'video' | 'image' | null;
+    created_by: string;
+    created_at: string;
+    expires_at: string | null;
+    is_active: boolean;
+    likes: number;
+    comments: number;
+    comments_count?: number;
+    college_id?: string | null;
+}
+
+export async function getNotices(params?: {
+    collegeId?: string | string[] | null;
+    department?: string | null;
+}): Promise<{ notices: Notice[] }> {
+    const query = new URLSearchParams();
+    const collegeIds = Array.isArray(params?.collegeId)
+        ? params?.collegeId
+        : params?.collegeId
+            ? [params.collegeId]
+            : [];
+
+    for (const rawCollegeId of collegeIds) {
+        const collegeId = rawCollegeId?.trim();
+        if (collegeId) {
+            query.append('college_id', collegeId);
+        }
+    }
+
+    const department = params?.department?.trim();
+    if (department) {
+        query.set('department', department);
+    }
+
+    const queryString = query.toString();
+    return apiRequest(`/api/notices${queryString ? `?${queryString}` : ''}`);
 }
 
 // ============================================
