@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
-import { createResource, getResourceUploadUrl } from "@/lib/api";
+import { createResource, getAcademicCatalog, planResourceUpload, type AcademicCatalog } from "@/lib/api";
 import {
   BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
@@ -57,6 +57,31 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setCatalogLoading(true);
+    getAcademicCatalog()
+      .then((data) => {
+        if (active) {
+          setCatalog(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load academic catalog:", error);
+      })
+      .finally(() => {
+        if (active) {
+          setCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,11 +130,8 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     return "application/octet-stream";
   };
 
-  const uploadFileToR2 = async (file: File): Promise<string> => {
+  const uploadFileToR2 = async (file: File, uploadUrl: string, publicUrl: string): Promise<string> => {
     try {
-
-      const { uploadUrl, publicUrl } = await getResourceUploadUrl(file.name);
-
       const fileUrl = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const contentType = getFileContentType(file);
@@ -156,6 +178,14 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     }
   };
 
+  const computeSha256Hex = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(digest))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -192,11 +222,33 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
     try {
       let fileUrl = "";
+      const selectedScope = {
+        branch: formData.branch,
+        semester: formData.semester,
+        subject: formData.subject.trim(),
+      };
+      let fileSha256 = "";
 
       // Upload file to R2 if it's a notes/document
       if (type === "notes" && selectedFile) {
         setUploadProgress(10);
-        fileUrl = await uploadFileToR2(selectedFile);
+        fileSha256 = await computeSha256Hex(selectedFile);
+        const uploadPlan = await planResourceUpload({
+          filename: selectedFile.name,
+          contentType: getFileContentType(selectedFile),
+          sizeBytes: selectedFile.size,
+          fileSha256,
+          type: formData.resourceType,
+          selectedScope,
+        });
+
+        if (uploadPlan.mode === "reuse" && uploadPlan.resourcePreview) {
+          fileUrl = uploadPlan.resourcePreview.file_url || uploadPlan.resourcePreview.filePath || "";
+        } else if (uploadPlan.uploadUrl && uploadPlan.publicUrl) {
+          fileUrl = await uploadFileToR2(selectedFile, uploadPlan.uploadUrl, uploadPlan.publicUrl);
+        } else {
+          throw new Error("Upload plan did not return a usable upload target");
+        }
         setUploadProgress(60);
       }
 
@@ -222,6 +274,8 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
         branch: formData.branch,
         semester: formData.semester,
         subject: formData.subject,
+        selectedScope,
+        fileSha256: type === "notes" ? fileSha256 : undefined,
         recaptchaToken,
       });
 
@@ -278,8 +332,17 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     setUploadProgress(0);
   };
 
+  const currentBranchMode = catalog?.branchModes.find(
+    (mode) => mode.branch === formData.branch && mode.semester === formData.semester
+  )?.mode;
+
   const availableSubjects = formData.branch && formData.semester
-    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    ? (
+      catalog?.offerings
+        .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
+        .map((offering) => offering.subject) ||
+      getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    )
     : [];
 
   return (
@@ -385,22 +448,36 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
               <Label htmlFor="subject">
                 Subject <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.subject}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                disabled={uploading || !formData.branch}
-              >
-                <SelectTrigger id="subject">
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSubjects.map(subject => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {currentBranchMode === "catalog_select" ? (
+                <Select
+                  value={formData.subject}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+                  disabled={uploading || !formData.branch || !formData.semester || catalogLoading}
+                >
+                  <SelectTrigger id="subject">
+                    <SelectValue placeholder={catalogLoading ? "Loading subjects..." : "Select subject"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSubjects.map(subject => (
+                      <SelectItem key={subject} value={subject}>
+                        {subject}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="subject"
+                  placeholder={
+                    formData.branch && formData.semester
+                      ? "Enter subject"
+                      : "Select branch and semester first"
+                  }
+                  value={formData.subject}
+                  onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                  disabled={uploading || !formData.branch || !formData.semester}
+                />
+              )}
             </div>
 
             {/* Chapter */}

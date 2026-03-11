@@ -28,6 +28,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useResources } from "@/hooks/useResources";
 import { BRANCH_OPTIONS, SEMESTER_OPTIONS, getBranchLabel, getSubjectsForBranchAndSemester } from "@/lib/academicSubjects";
+import { getAcademicCatalog, type AcademicCatalog } from "@/lib/api";
 
 type SortOption = "teacher" | "votes" | "recent";
 
@@ -53,6 +54,7 @@ const Study = () => {
     useState<"resources" | "syllabus" | "following" | "bookmarks">("resources");
   const [sortBy, setSortBy] = useState<SortOption>("votes");
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
 
   // React Query: Fetch resources with caching
   const { resources, isLoading: loadingResources, refresh: handleRefresh } = useResources({
@@ -75,6 +77,23 @@ const Study = () => {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    let active = true;
+    getAcademicCatalog()
+      .then((data) => {
+        if (active) {
+          setCatalog(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load academic catalog:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   /* ---------------------------------------------------------------- */
   /* AUTH GUARD (SAFE & STABLE) */
   /* ---------------------------------------------------------------- */
@@ -88,7 +107,15 @@ const Study = () => {
   if (!user) return null;
 
   const availableSubjects = (selectedBranch && selectedBranch !== 'all')
-    ? getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
+    ? (
+      catalog?.offerings
+        .filter((offering) =>
+          offering.branch === selectedBranch &&
+          (selectedSemester === "all" ? true : offering.semester === selectedSemester)
+        )
+        .map((offering) => offering.subject) ||
+      getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
+    )
     : [];
 
   // Filter and sort resources (memoized for performance)

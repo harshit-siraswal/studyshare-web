@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "../supabase";
 import {
   BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
   getSubjectsForBranchAndSemester,
 } from "@/lib/academicSubjects";
+import { getAcademicCatalog, type AcademicCatalog, updateResource as updateResourceApi } from "@/lib/api";
 
 interface Resource {
   id: string;
@@ -35,6 +35,7 @@ interface EditResourceDialogProps {
 
 const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditResourceDialogProps) => {
   const [updating, setUpdating] = useState(false);
+  const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
   const [formData, setFormData] = useState({
     title: resource?.title || "",
     semester: resource?.semester || "",
@@ -46,7 +47,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
   });
 
   // Update form data when resource changes
-  useState(() => {
+  useEffect(() => {
     if (resource) {
       setFormData({
         title: resource.title,
@@ -58,7 +59,24 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
         description: resource.description || "",
       });
     }
-  });
+  }, [resource]);
+
+  useEffect(() => {
+    let active = true;
+    getAcademicCatalog()
+      .then((data) => {
+        if (active) {
+          setCatalog(data);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load academic catalog:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,21 +91,20 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
     setUpdating(true);
 
     try {
-      const { error } = await supabase
-        .from('resources')
-        .update({
-          title: formData.title,
-          semester: formData.semester,
+      await updateResourceApi(resource.id, {
+        title: formData.title,
+        semester: formData.semester,
+        branch: formData.branch,
+        subject: formData.subject,
+        selectedScope: {
           branch: formData.branch,
+          semester: formData.semester,
           subject: formData.subject,
-          chapter: formData.chapter || null,
-          topic: formData.topic || null,
-          description: formData.description || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', resource.id);
-
-      if (error) throw error;
+        },
+        chapter: formData.chapter || undefined,
+        topic: formData.topic || undefined,
+        description: formData.description || undefined,
+      });
 
       toast.success("Resource updated successfully!");
       onSuccess();
@@ -101,7 +118,12 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
   };
 
   const availableSubjects = formData.branch && formData.semester
-    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    ? (
+      catalog?.offerings
+        .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
+        .map((offering) => offering.subject) ||
+      getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    )
     : [];
 
   return (

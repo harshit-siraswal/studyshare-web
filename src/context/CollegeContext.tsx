@@ -88,7 +88,7 @@ const getCollegeFromLocalStorage = (): College | null => {
 };
 
 export const CollegeProvider = ({ children }: { children: ReactNode }) => {
-    const { user } = useAuth();
+    const { user, hasElevatedAccess } = useAuth();
     const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
     const [collegeIdMap, setCollegeIdMap] = useState<Record<string, string>>({});
 
@@ -193,6 +193,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
     // Policy: If user email ends with college domain = FULL access
     // Otherwise = READ-ONLY access
     const accessLevel: AccessLevel = (() => {
+        if (hasElevatedAccess) return 'full';
         if (!user?.email || !selectedCollege) return 'readonly';
 
         const userDomain = user.email.split('@')[1]?.toLowerCase();

@@ -563,13 +563,41 @@ export interface Resource {
     branch?: string;
     semester?: string;
     subject?: string;
+    primaryScope?: {
+        branch: string;
+        semester: string;
+        subject: string;
+    };
+    scopes?: Array<{
+        branch: string;
+        semester: string;
+        subject: string;
+        subjectKey?: string;
+        isPrimary?: boolean;
+        source?: string;
+    }>;
+    chapter?: string | null;
+    topic?: string | null;
     uploadedByEmail: string;
+    uploaded_by_email?: string;
+    uploadedByName?: string | null;
+    uploaded_by_name?: string | null;
     collegeId: string;
+    college_id?: string;
     upvotes: number;
     downvotes: number;
+    status?: string;
     isApproved: boolean;
+    is_approved?: boolean;
+    contributorsCount?: number;
+    isContributor?: boolean;
+    autoLinkedScopeCount?: number;
     createdAt: string;
     updatedAt: string;
+    created_at?: string;
+    updated_at?: string;
+    file_url?: string | null;
+    video_url?: string | null;
 }
 
 export interface CreateResourceInput {
@@ -581,7 +609,13 @@ export interface CreateResourceInput {
     branch?: string;
     semester?: string;
     subject?: string;
-    recaptchaToken: string;
+    selectedScope?: {
+        branch: string;
+        semester: string;
+        subject: string;
+    };
+    fileSha256?: string;
+    recaptchaToken?: string;
 }
 
 export interface PresignedUpload {
@@ -592,14 +626,112 @@ export interface PresignedUpload {
     expiresIn: number;
 }
 
+export interface AcademicCatalog {
+    catalogVersion: string;
+    branchModes: Array<{
+        branch: string;
+        semester: string;
+        mode: 'catalog_select' | 'manual_text';
+    }>;
+    offerings: Array<{
+        branch: string;
+        semester: string;
+        subject: string;
+    }>;
+}
+
+export interface ResourceScopeResolution {
+    selectedScope: {
+        branch: string;
+        semester: string;
+        subject: string;
+        subjectKey?: string;
+    };
+    resolvedScopes: Array<{
+        branch: string;
+        semester: string;
+        subject: string;
+        subjectKey?: string;
+    }>;
+    resolutionMode: 'catalog_auto' | 'selected_only';
+    catalogSource?: string | null;
+    catalogVersion?: string | null;
+}
+
+export interface ResourceUploadPlan extends ResourceScopeResolution {
+    mode: 'reuse' | 'upload';
+    resourceId?: string;
+    resourcePreview?: Resource;
+    uploadUrl?: string;
+    publicUrl?: string;
+    key?: string;
+    contentType?: string;
+    expiresIn?: number;
+}
+
 /**
  * Create a new resource
  */
-export async function createResource(input: CreateResourceInput): Promise<{ message: string; resource: Resource }> {
+export async function createResource(input: CreateResourceInput): Promise<{
+    resource: Resource;
+    created: boolean;
+    reusedExisting: boolean;
+    contributorRecorded: boolean;
+    resolvedScopes: ResourceScopeResolution['resolvedScopes'];
+}> {
     return apiRequest('/api/resources', {
         method: 'POST',
         body: JSON.stringify(input),
     });
+}
+
+export async function getAcademicCatalog(): Promise<AcademicCatalog> {
+    return apiRequest('/api/academics/catalog');
+}
+
+export async function resolveResourceScopes(
+    selectedScope: { branch: string; semester: string; subject: string }
+): Promise<ResourceScopeResolution> {
+    return apiRequest('/api/resources/resolve-scopes', {
+        method: 'POST',
+        body: JSON.stringify({ selectedScope }),
+    });
+}
+
+export async function planResourceUpload(input: {
+    filename: string;
+    contentType?: string;
+    sizeBytes: number;
+    fileSha256: string;
+    type: string;
+    selectedScope: { branch: string; semester: string; subject: string };
+}): Promise<ResourceUploadPlan> {
+    return apiRequest('/api/resources/upload-plan', {
+        method: 'POST',
+        body: JSON.stringify(input),
+    });
+}
+
+export async function listResources(params?: {
+    branch?: string;
+    semester?: string;
+    subject?: string;
+    type?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}): Promise<{ resources: Resource[]; count: number }> {
+    const query = new URLSearchParams();
+    if (params?.branch && params.branch !== 'all') query.set('branch', params.branch);
+    if (params?.semester && params.semester !== 'all') query.set('semester', params.semester);
+    if (params?.subject && params.subject !== 'all') query.set('subject', params.subject);
+    if (params?.type && params.type !== 'all') query.set('type', params.type);
+    if (params?.search?.trim()) query.set('search', params.search.trim());
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+
+    const queryString = query.toString();
+    return apiRequest(`/api/resources${queryString ? `?${queryString}` : ''}`);
 }
 
 /**
@@ -1034,6 +1166,10 @@ export interface UserProfile {
     subscription_tier?: string;
     subscription_end_date?: string;
     ai_budget_inr?: number;
+    role?: string;
+    admin_capabilities?: Record<string, boolean>;
+    scope_all_colleges?: boolean;
+    admin_college_id?: string | null;
 }
 
 export interface AiTokenBalance {

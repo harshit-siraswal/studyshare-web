@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../supabase';
 import { useCollege } from '@/context/CollegeContext';
 import { toast } from 'sonner';
+import { listResources as listResourcesApi, type Resource as ApiResource } from '@/lib/api';
 
 export interface Resource {
     id: string;
@@ -23,6 +23,11 @@ export interface Resource {
     created_at: string;
     status: string;
     college_id: string;
+    primaryScope?: ApiResource['primaryScope'];
+    scopes?: ApiResource['scopes'];
+    contributorsCount?: number;
+    isContributor?: boolean;
+    autoLinkedScopeCount?: number;
 }
 
 interface ResourceFilters {
@@ -35,35 +40,47 @@ async function fetchResources(
     collegeId: string,
     filters: ResourceFilters
 ): Promise<Resource[]> {
-    let query = supabase
-        .from('resources')
-        .select('*')
-        .eq('status', 'approved')
-        .eq('college_id', collegeId)
-        .order('created_at', { ascending: false });
+    const result = await listResourcesApi({
+        semester: filters.semester,
+        branch: filters.branch,
+        subject: filters.subject,
+        limit: 200,
+    });
 
-    // Apply filters (skip if value is 'all')
-    if (filters.semester && filters.semester !== 'all') {
-        query = query.eq('semester', filters.semester);
-    }
-    if (filters.branch && filters.branch !== 'all') {
-        query = query.eq('branch', filters.branch);
-    }
-    if (filters.subject && filters.subject !== 'all') {
-        query = query.eq('subject', filters.subject);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    // Transform data to include upvotes/downvotes and calculate net votes
-    return (data || []).map(resource => ({
-        ...resource,
-        upvotes: resource.upvotes || 0,
-        downvotes: resource.downvotes || 0,
-        votes: (resource.upvotes || 0) - (resource.downvotes || 0),
-    }));
+    return (result.resources || []).map((resource) => {
+        const semester = resource.primaryScope?.semester || resource.semester || '';
+        const branch = resource.primaryScope?.branch || resource.branch || '';
+        const subject = resource.primaryScope?.subject || resource.subject || '';
+        const fileUrl = resource.file_url || resource.filePath || '';
+        const videoUrl = resource.video_url || resource.url || '';
+        const createdAt = resource.createdAt || resource.created_at || '';
+        const uploadedByEmail = resource.uploadedByEmail || resource.uploaded_by_email || '';
+        return {
+            id: resource.id,
+            title: resource.title,
+            description: resource.description || '',
+            type: resource.type as Resource['type'],
+            subject,
+            chapter: resource.chapter || '',
+            semester,
+            branch,
+            file_url: fileUrl,
+            video_url: videoUrl,
+            upvotes: resource.upvotes || 0,
+            downvotes: resource.downvotes || 0,
+            votes: (resource.upvotes || 0) - (resource.downvotes || 0),
+            uploaded_by_name: resource.uploadedByName || resource.uploaded_by_name || '',
+            uploaded_by_email: uploadedByEmail,
+            created_at: createdAt,
+            status: resource.status || (resource.isApproved ? 'approved' : 'pending'),
+            college_id: resource.collegeId || resource.college_id || collegeId,
+            primaryScope: resource.primaryScope,
+            scopes: resource.scopes,
+            contributorsCount: resource.contributorsCount,
+            isContributor: resource.isContributor,
+            autoLinkedScopeCount: resource.autoLinkedScopeCount,
+        };
+    });
 }
 
 /**

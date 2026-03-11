@@ -11,9 +11,31 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isPremium: boolean;
   subscriptionTier: 'free' | 'pro' | 'max';
+  profileRole: string | null;
+  hasElevatedAccess: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function normalizeProfileRole(role: unknown): string | null {
+  if (typeof role !== 'string') return null;
+  const normalized = role.trim().toUpperCase();
+  return normalized || null;
+}
+
+function hasElevatedProfileAccess(profile: any): boolean {
+  const normalizedRole = normalizeProfileRole(profile?.role);
+  if (normalizedRole === 'TEACHER' || normalizedRole === 'ADMIN' || normalizedRole === 'MODERATOR') {
+    return true;
+  }
+
+  const capabilities = profile?.admin_capabilities;
+  if (capabilities && typeof capabilities === 'object') {
+    return Object.values(capabilities).some((value) => value === true);
+  }
+
+  return Boolean(profile?.scope_all_colleges) || Boolean(profile?.admin_college_id);
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -22,6 +44,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [banReason, setBanReason] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false); // [NEW]
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro' | 'max'>('free');
+  const [profileRole, setProfileRole] = useState<string | null>(null);
+  const [hasElevatedAccess, setHasElevatedAccess] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -32,6 +56,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setBanReason(null);
         setIsPremium(false);
         setSubscriptionTier('free');
+        setProfileRole(null);
+        setHasElevatedAccess(false);
         setLoading(false);
         return;
       }
@@ -45,6 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           getMyProfile(),
         ]);
         const userRow = profileResult?.profile;
+        const normalizedRole = normalizeProfileRole(userRow?.role);
 
         if (userInfo.isBanned) {
           setIsBanned(true);
@@ -66,6 +93,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         setSubscriptionTier(tier);
         setIsPremium(tier !== 'free');
+        setProfileRole(normalizedRole);
+        setHasElevatedAccess(hasElevatedProfileAccess(userRow));
       } catch (error) {
         console.error('Error fetching user status:', error);
 
@@ -83,6 +112,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         setIsPremium(false);
         setSubscriptionTier('free');
+        setProfileRole(null);
+        setHasElevatedAccess(false);
       } finally {
         setLoading(false);
       }
@@ -97,10 +128,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setBanReason(null);
     setIsPremium(false);
     setSubscriptionTier('free');
+    setProfileRole(null);
+    setHasElevatedAccess(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isBanned, banReason, logout, isPremium, subscriptionTier }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isBanned,
+        banReason,
+        logout,
+        isPremium,
+        subscriptionTier,
+        profileRole,
+        hasElevatedAccess,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
