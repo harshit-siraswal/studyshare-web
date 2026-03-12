@@ -603,6 +603,20 @@ export interface Resource {
     video_url?: string | null;
 }
 
+export interface VideoTopic {
+    label: string;
+    timestamp: string;
+    startSeconds: number;
+    endSeconds?: number;
+    preview?: string;
+}
+
+export interface VideoTopicResponse {
+    topics: VideoTopic[];
+    status: string;
+    source?: string;
+}
+
 export interface CreateResourceInput {
     title: string;
     type: string;
@@ -780,6 +794,10 @@ export async function deleteResource(resourceId: string): Promise<{ message: str
  */
 export async function getMyResources(): Promise<{ resources: Resource[] }> {
     return apiRequest('/api/resources/mine');
+}
+
+export async function getResourceVideoTopics(resourceId: string): Promise<VideoTopicResponse> {
+    return apiRequest(`/api/resources/${resourceId}/video-topics`);
 }
 
 // ============================================
