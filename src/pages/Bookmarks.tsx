@@ -105,20 +105,21 @@ const Bookmarks = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background flex">
+        <div className="h-screen bg-background flex overflow-hidden">
             <SEO
                 title="Bookmarks"
                 description="Access your saved resources and notices. Your personal collection of study materials and important announcements."
                 noIndex
             />
             {/* Desktop Sidebar */}
-            <div className="hidden md:block shrink-0">
+            <div className="hidden md:block shrink-0 h-screen overflow-hidden">
                 <StudySidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex justify-center">
-                <div className="w-full max-w-4xl border-x border-border min-h-screen">
+            <div className="flex-1 min-w-0 flex justify-center overflow-hidden">
+                <div className="flex h-full w-full max-w-4xl border-x border-border overflow-hidden">
+                    <div className="flex-1 overflow-y-auto">
                     {/* Twitter-style sticky header */}
                     <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
                         <div className="flex items-center gap-4 px-4 py-3">
@@ -312,13 +313,16 @@ const Bookmarks = () => {
                             })
                         )}
                     </div>
+                    </div>
                 </div>
             </div>
 
             {/* Right Sidebar - Desktop only */}
-            <div className="hidden lg:block w-80 shrink-0 p-4 space-y-4">
-                <StudyTimer />
-                <MusicPlayer />
+            <div className="hidden lg:block w-80 shrink-0 border-l border-border/60">
+                <div className="h-screen overflow-y-auto p-4 space-y-4">
+                    <StudyTimer />
+                    <MusicPlayer />
+                </div>
             </div>
 
             {/* Clear All Confirmation Dialog */}

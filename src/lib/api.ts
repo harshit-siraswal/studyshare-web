@@ -8,6 +8,7 @@
 import { auth } from '../firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { getApiBaseUrl } from './runtimeConfig';
+import { isUuid } from './collegeIds';
 
 // Backend URL
 const API_BASE = getApiBaseUrl();
@@ -70,9 +71,9 @@ function getSelectedCollegeHint(): string {
         const candidates = [
             getHeaderString(parsed?.collegeId),
             getHeaderString(parsed?.college_id),
-            getHeaderString(parsed?.domain),
+            getHeaderString(parsed?.id),
         ];
-        return candidates.find((value) => value.length > 0) || '';
+        return candidates.find((value) => value.length > 0 && isUuid(value)) || '';
     } catch {
         return '';
     }
@@ -454,17 +455,19 @@ export async function checkFollowStatus(targetEmail: string): Promise<{
 }
 
 /**
- * Get my followers
+ * Get my followers or the followers of a target user.
  */
-export async function getFollowers(): Promise<{ followers: UserProfile[] }> {
-    return apiRequest('/api/follow/followers');
+export async function getFollowers(targetEmail?: string): Promise<{ followers: UserProfile[] }> {
+    const suffix = targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : '';
+    return apiRequest(`/api/follow/followers${suffix}`);
 }
 
 /**
- * Get people I follow
+ * Get people I follow or the people followed by a target user.
  */
-export async function getFollowing(): Promise<{ following: UserProfile[] }> {
-    return apiRequest('/api/follow/following');
+export async function getFollowing(targetEmail?: string): Promise<{ following: UserProfile[] }> {
+    const suffix = targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : '';
+    return apiRequest(`/api/follow/following${suffix}`);
 }
 
 // ============================================
@@ -685,8 +688,14 @@ export async function createResource(input: CreateResourceInput): Promise<{
     });
 }
 
-export async function getAcademicCatalog(): Promise<AcademicCatalog> {
-    return apiRequest('/api/academics/catalog');
+export async function getAcademicCatalog(collegeId?: string): Promise<AcademicCatalog> {
+    const query = new URLSearchParams();
+    if (collegeId && isUuid(collegeId)) {
+        query.set('college_id', collegeId);
+    }
+
+    const queryString = query.toString();
+    return apiRequest(`/api/academics/catalog${queryString ? `?${queryString}` : ''}`);
 }
 
 export async function resolveResourceScopes(
@@ -713,6 +722,7 @@ export async function planResourceUpload(input: {
 }
 
 export async function listResources(params?: {
+    collegeId?: string;
     branch?: string;
     semester?: string;
     subject?: string;
@@ -722,6 +732,7 @@ export async function listResources(params?: {
     limit?: number;
 }): Promise<{ resources: Resource[]; count: number }> {
     const query = new URLSearchParams();
+    if (params?.collegeId && isUuid(params.collegeId)) query.set('college_id', params.collegeId);
     if (params?.branch && params.branch !== 'all') query.set('branch', params.branch);
     if (params?.semester && params.semester !== 'all') query.set('semester', params.semester);
     if (params?.subject && params.subject !== 'all') query.set('subject', params.subject);
@@ -1480,7 +1491,34 @@ function normalizeUserProfile(raw: any): UserProfile {
  * Get current user's profile
  */
 export async function getMyProfile(): Promise<{ profile: UserProfile }> {
-    const data = await apiRequest<any>('/api/users/profile');
+    const endpoints: Array<() => Promise<any>> = [
+        () => apiRequest<any>('/api/users/profile'),
+        () => apiRequest<any>('/api/auth/me'),
+        () => apiRequest<any>('/api/auth/verify', { method: 'POST' }),
+    ];
+
+    let data: any = null;
+    let lastError: unknown = null;
+
+    for (const fetchProfile of endpoints) {
+        try {
+            data = await fetchProfile();
+            break;
+        } catch (error) {
+            lastError = error;
+            if (error instanceof ApiError && [404, 405].includes(error.status)) {
+                continue;
+            }
+            throw error;
+        }
+    }
+
+    if (!data) {
+        throw lastError instanceof ApiError
+            ? lastError
+            : new ApiError('Failed to load profile', 0, { error: 'profile_unavailable' });
+    }
+
     const profilePayload = (data && typeof data.profile === 'object')
         ? { ...data, ...data.profile }
         : data;

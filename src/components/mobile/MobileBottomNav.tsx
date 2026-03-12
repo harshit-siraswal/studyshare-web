@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { lazy, Suspense, useState } from 'react';
 
 const UploadResourceDialog = lazy(() => import('@/components/UploadResourceDialog'));
+const UploadSyllabusDialog = lazy(() => import('@/components/UploadSyllabusDialog'));
 
 interface NavItem {
     icon: React.ReactNode;
@@ -32,6 +33,9 @@ export function MobileBottomNav() {
     const location = useLocation();
     const navigate = useNavigate();
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const isSyllabusTab =
+        location.pathname === '/study' &&
+        new URLSearchParams(location.search).get('tab') === 'syllabus';
 
     // Hide nav on auth and college selection pages
     if (hiddenRoutes.includes(location.pathname)) {
@@ -85,10 +89,17 @@ export function MobileBottomNav() {
             {/* Upload Dialog triggered by + button */}
             {uploadDialogOpen ? (
                 <Suspense fallback={null}>
-                    <UploadResourceDialog
-                        open={uploadDialogOpen}
-                        onOpenChange={setUploadDialogOpen}
-                    />
+                    {isSyllabusTab ? (
+                        <UploadSyllabusDialog
+                            open={uploadDialogOpen}
+                            onOpenChange={setUploadDialogOpen}
+                        />
+                    ) : (
+                        <UploadResourceDialog
+                            open={uploadDialogOpen}
+                            onOpenChange={setUploadDialogOpen}
+                        />
+                    )}
                 </Suspense>
             ) : null}
         </>

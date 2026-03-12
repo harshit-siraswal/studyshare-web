@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCollege } from '@/context/CollegeContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { listResources as listResourcesApi, type Resource as ApiResource } from '@/lib/api';
 
@@ -41,6 +42,7 @@ async function fetchResources(
     filters: ResourceFilters
 ): Promise<Resource[]> {
     const result = await listResourcesApi({
+        collegeId,
         semester: filters.semester,
         branch: filters.branch,
         subject: filters.subject,
@@ -89,14 +91,16 @@ async function fetchResources(
  */
 export function useResources(filters: ResourceFilters) {
     const { selectedCollegeId } = useCollege();
+    const { user, loading } = useAuth();
     const queryClient = useQueryClient();
     const collegeId = selectedCollegeId;
     const collegeScope = collegeId || 'none';
+    const userScope = user?.uid || 'guest';
 
     const query = useQuery({
-        queryKey: ['resources', collegeScope, filters],
+        queryKey: ['resources', collegeScope, userScope, filters],
         queryFn: () => fetchResources(collegeId as string, filters),
-        enabled: !!collegeId,
+        enabled: !!collegeId && !!user && !loading,
         // Error handling via meta
         meta: {
             errorMessage: 'Failed to load resources',

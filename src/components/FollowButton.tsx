@@ -5,22 +5,24 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UserPlus, Loader2, Clock, UserCheck } from 'lucide-react';
-import { supabase } from '../supabase';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
 import * as api from '@/lib/api';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { getRecaptchaToken } from '@/lib/recaptcha';
+import { cn } from '@/lib/utils';
 
 interface FollowButtonProps {
   targetUserEmail: string;
   targetUserName?: string;
   size?: 'sm' | 'default' | 'lg';
   variant?: 'default' | 'outline' | 'ghost';
+  onStatusChange?: (status: FollowStatus) => void;
+  className?: string;
 }
 
-type FollowStatus = 'not-following' | 'pending' | 'following';
+export type FollowStatus = 'not-following' | 'pending' | 'following';
 
 // Store pending request IDs for cancel functionality
 const pendingRequestIds = new Map<string, string>();
@@ -29,7 +31,9 @@ const FollowButton = ({
   targetUserEmail,
   targetUserName,
   size = 'default',
-  variant = 'default'
+  variant = 'default',
+  onStatusChange,
+  className,
 }: FollowButtonProps) => {
   const [followStatus, setFollowStatus] = useState<FollowStatus>('not-following');
   const [loading, setLoading] = useState(true);
@@ -91,6 +95,7 @@ const FollowButton = ({
         // Unfollow via backend API
         await api.unfollowUser(targetUserEmail);
         setFollowStatus('not-following');
+        onStatusChange?.('not-following');
         toast.success(`Unfollowed ${targetUserName || 'user'}`);
 
       } else if (followStatus === 'pending') {
@@ -101,6 +106,7 @@ const FollowButton = ({
           pendingRequestIds.delete(targetUserEmail);
         }
         setFollowStatus('not-following');
+        onStatusChange?.('not-following');
         toast.success('Follow request cancelled');
 
       } else {
@@ -112,6 +118,7 @@ const FollowButton = ({
         const response = await api.sendFollowRequest(targetUserEmail, recaptchaToken);
         pendingRequestIds.set(targetUserEmail, response.request.id);
         setFollowStatus('pending');
+        onStatusChange?.('pending');
         toast.success(`Follow request sent to ${targetUserName || 'user'}!`);
       }
     } catch (error: any) {
@@ -183,7 +190,10 @@ const FollowButton = ({
       size={size}
       onClick={handleFollowAction}
       disabled={actionLoading}
-      className={followStatus !== 'not-following' ? 'border-slate-600 text-slate-300' : ''}
+      className={cn(
+        followStatus !== 'not-following' ? 'border-slate-600 text-slate-300' : '',
+        className,
+      )}
     >
       {getButtonContent()}
     </Button>

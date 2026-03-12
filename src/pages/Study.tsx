@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, X, Users } from "lucide-react";
+import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, Users } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import StudyTimer from "@/components/StudyTimer";
 import ResourceCard, { ResourceType } from "@/components/ResourceCard";
 import ResourceCardSkeleton from "@/components/ResourceCardSkeleton";
 import UploadResourceDialog from "@/components/UploadResourceDialog";
+import UploadSyllabusDialog from "@/components/UploadSyllabusDialog";
 import SyllabusSection from "@/components/SyllabusSection";
 import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
@@ -37,10 +38,10 @@ const Study = () => {
   /* HOOKS (MUST BE FIRST) */
   /* ---------------------------------------------------------------- */
   const { user, loading } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollege, selectedCollegeId } = useCollege();
   const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -53,7 +54,6 @@ const Study = () => {
   const [searchMode, setSearchMode] =
     useState<"resources" | "syllabus" | "following" | "bookmarks">("resources");
   const [sortBy, setSortBy] = useState<SortOption>("votes");
-  const [showMobileTools, setShowMobileTools] = useState(false);
   const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
 
   // React Query: Fetch resources with caching
@@ -78,8 +78,13 @@ const Study = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!selectedCollegeId) {
+      setCatalog(null);
+      return;
+    }
+
     let active = true;
-    getAcademicCatalog()
+    getAcademicCatalog(selectedCollegeId)
       .then((data) => {
         if (active) {
           setCatalog(data);
@@ -92,7 +97,7 @@ const Study = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCollegeId]);
 
   /* ---------------------------------------------------------------- */
   /* AUTH GUARD (SAFE & STABLE) */
@@ -148,6 +153,19 @@ const Study = () => {
       }
     });
 
+  const handleSearchModeChange = (mode: "resources" | "syllabus" | "following" | "bookmarks") => {
+    setSearchMode(mode);
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (mode === "resources") {
+      nextSearchParams.delete("tab");
+    } else {
+      nextSearchParams.set("tab", mode);
+    }
+
+    setSearchParams(nextSearchParams, { replace: true });
+  };
+
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       <SEO
@@ -188,7 +206,7 @@ const Study = () => {
                 <Button
                   variant={searchMode === "resources" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setSearchMode("resources")}
+                  onClick={() => handleSearchModeChange("resources")}
                   className="text-xs h-8"
                 >
                   <Search className="w-3.5 h-3.5 mr-1.5" />
@@ -197,7 +215,7 @@ const Study = () => {
                 <Button
                   variant={searchMode === "syllabus" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setSearchMode("syllabus")}
+                  onClick={() => handleSearchModeChange("syllabus")}
                   className="text-xs h-8"
                 >
                   <BookOpen className="w-3.5 h-3.5 mr-1.5" />
@@ -208,7 +226,7 @@ const Study = () => {
                   <Button
                     variant={searchMode === "following" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setSearchMode("following")}
+                    onClick={() => handleSearchModeChange("following")}
                     className="text-xs h-8"
                   >
                     <Users className="w-3.5 h-3.5 mr-1.5" />
@@ -238,15 +256,27 @@ const Study = () => {
               {isFullAccess && (
                 <>
                   {/* Upload Button - Desktop only (mobile uses bottom nav) */}
-                  <UploadResourceDialog
-                    trigger={
-                      <Button className="hidden md:flex shrink-0">
-                        <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
-                        <span className="hidden xl:inline">Share Resource</span>
-                        <span className="sr-only xl:hidden">Share Resource</span>
-                      </Button>
-                    }
-                  />
+                  {searchMode === "syllabus" ? (
+                    <UploadSyllabusDialog
+                      trigger={
+                        <Button className="hidden md:flex shrink-0">
+                          <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                          <span className="hidden xl:inline">Upload Syllabus</span>
+                          <span className="sr-only xl:hidden">Upload Syllabus</span>
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <UploadResourceDialog
+                      trigger={
+                        <Button className="hidden md:flex shrink-0">
+                          <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                          <span className="hidden xl:inline">Share Resource</span>
+                          <span className="sr-only xl:hidden">Share Resource</span>
+                        </Button>
+                      }
+                    />
+                  )}
                 </>
               )}
             </div>

@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, Video, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
-import { useAuth } from "@/context/AuthContext";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useCollege } from "@/context/CollegeContext";
 import { createResource, getAcademicCatalog, planResourceUpload, type AcademicCatalog } from "@/lib/api";
 import {
@@ -40,9 +48,9 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { user } = useAuth();
-  const { selectedCollege } = useCollege();
   const { executeRecaptcha } = useGoogleReCaptcha();
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const { selectedCollegeId } = useCollege();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -61,9 +69,15 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
   const [catalogLoading, setCatalogLoading] = useState(false);
 
   useEffect(() => {
+    if (!selectedCollegeId) {
+      setCatalog(null);
+      setCatalogLoading(false);
+      return;
+    }
+
     let active = true;
     setCatalogLoading(true);
-    getAcademicCatalog()
+    getAcademicCatalog(selectedCollegeId)
       .then((data) => {
         if (active) {
           setCatalog(data);
@@ -81,7 +95,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCollegeId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -332,38 +346,28 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
     setUploadProgress(0);
   };
 
-  const currentBranchMode = catalog?.branchModes.find(
-    (mode) => mode.branch === formData.branch && mode.semester === formData.semester
-  )?.mode;
-
   const availableSubjects = formData.branch && formData.semester
-    ? (
-      catalog?.offerings
-        .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
-        .map((offering) => offering.subject) ||
-      getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    ? Array.from(
+      new Set(
+        (
+          catalog?.offerings
+            .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
+            .map((offering) => offering.subject) ||
+          getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+        ).filter(Boolean)
+      )
     )
     : [];
+  const shouldUseSubjectSelect = availableSubjects.length > 0;
+  const handleOpenChange = (nextOpen: boolean) => {
+    setIsOpen(nextOpen);
+    if (!nextOpen) {
+      resetForm();
+    }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(val) => {
-      setIsOpen(val);
-      if (!val) resetForm();
-    }}>
-      {trigger && (
-        <DialogTrigger asChild>
-          {trigger}
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Share a Resource</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Upload notes or suggest a video to help your peers.
-          </p>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-6">
           {/* Type Selection */}
           <Tabs value={type} onValueChange={(v) => setType(v as "notes" | "video")} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -448,7 +452,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
               <Label htmlFor="subject">
                 Subject <span className="text-destructive">*</span>
               </Label>
-              {currentBranchMode === "catalog_select" ? (
+              {shouldUseSubjectSelect ? (
                 <Select
                   value={formData.subject}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
@@ -466,13 +470,13 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
                   </SelectContent>
                 </Select>
               ) : (
-                <Input
-                  id="subject"
-                  placeholder={
-                    formData.branch && formData.semester
-                      ? "Enter subject"
+                  <Input
+                    id="subject"
+                    placeholder={
+                      formData.branch && formData.semester
+                      ? "Select subject"
                       : "Select branch and semester first"
-                  }
+                    }
                   value={formData.subject}
                   onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
                   disabled={uploading || !formData.branch || !formData.semester}
@@ -640,6 +644,46 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
             </Button>
           </div>
         </form>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
+        {trigger && (
+          <DrawerTrigger asChild>
+            {trigger}
+          </DrawerTrigger>
+        )}
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Share a Resource</DrawerTitle>
+            <DrawerDescription>
+              Upload notes or suggest a video to help your peers.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="overflow-y-auto px-4 pb-6">
+            {formContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Share a Resource</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Upload notes or suggest a video to help your peers.
+          </p>
+        </DialogHeader>
+        {formContent}
       </DialogContent>
     </Dialog>
   );

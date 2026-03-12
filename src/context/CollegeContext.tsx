@@ -61,6 +61,16 @@ function domainMatches(userDomain?: string | null, collegeDomain?: string | null
     return user === college || user.endsWith(`.${college}`);
 }
 
+function getStoredCollegeId(parsed: any): string | null {
+    const candidate = typeof parsed?.collegeId === 'string'
+        ? parsed.collegeId
+        : typeof parsed?.college_id === 'string'
+            ? parsed.college_id
+            : '';
+    const trimmed = candidate.trim();
+    return trimmed.length > 0 ? trimmed : null;
+}
+
 // Helper to get college from localStorage (stored by Index.tsx as full object)
 const getCollegeFromLocalStorage = (): College | null => {
     try {
@@ -69,15 +79,16 @@ const getCollegeFromLocalStorage = (): College | null => {
             const parsed = JSON.parse(stored);
             // The Index.tsx stores the full college object with domain
             if (parsed && parsed.domain) {
+                const storedCollegeId = getStoredCollegeId(parsed);
                 // Find matching college from our list or create one
                 const matched = COLLEGES.find(c => c.domain === parsed.domain);
-                if (matched) return matched;
+                if (matched) return { ...matched, collegeId: storedCollegeId || matched.collegeId || null };
                 // If not in our list, create from stored data
                 return {
                     id: parsed.domain,
                     name: parsed.name || 'Unknown College',
                     domain: parsed.domain,
-                    collegeId: parsed.collegeId || null,
+                    collegeId: storedCollegeId,
                 };
             }
         }
@@ -138,10 +149,12 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
 
         if (savedCollege) {
             const domain = normalizeDomain(savedCollege.domain);
-            setSelectedCollege({
+            const hydratedCollege = {
                 ...savedCollege,
                 collegeId: collegeIdMap[domain] || savedCollege.collegeId || null,
-            });
+            };
+            setSelectedCollege(hydratedCollege);
+            localStorage.setItem('selectedCollege', JSON.stringify(hydratedCollege));
             return;
         }
 

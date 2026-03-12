@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useCollege } from "@/context/CollegeContext";
 import {
   BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
@@ -36,6 +37,7 @@ interface EditResourceDialogProps {
 const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditResourceDialogProps) => {
   const [updating, setUpdating] = useState(false);
   const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
+  const { selectedCollegeId } = useCollege();
   const [formData, setFormData] = useState({
     title: resource?.title || "",
     semester: resource?.semester || "",
@@ -62,8 +64,13 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
   }, [resource]);
 
   useEffect(() => {
+    if (!selectedCollegeId) {
+      setCatalog(null);
+      return;
+    }
+
     let active = true;
-    getAcademicCatalog()
+    getAcademicCatalog(selectedCollegeId)
       .then((data) => {
         if (active) {
           setCatalog(data);
@@ -76,7 +83,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCollegeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

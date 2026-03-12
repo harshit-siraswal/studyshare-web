@@ -2,8 +2,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import * as api from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, UserPlus, LogOut, Edit2, Search, Camera, X, Check, MoreVertical, Trash2, Bookmark, Loader2, Sparkles } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, LogOut, Edit2, Search, Camera, X, Check, MoreVertical, Trash2, Bookmark, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,9 +24,6 @@ import FollowButton from "@/components/FollowButton";
 import ImageCropper from "@/components/ImageCropper";
 import { supabase } from "../supabase";
 import { SEO } from "@/components/SEO";
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
-import { getRecaptchaToken } from "@/lib/recaptcha";
-import { usePermissions } from "@/hooks/usePermissions";
 import PremiumModal from "@/components/PremiumModal";
 import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -401,6 +398,10 @@ const Profile = () => {
   const [following, setFollowing] = useState<any[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [viewFollowers, setViewFollowers] = useState<any[]>([]);
+  const [viewFollowing, setViewFollowing] = useState<any[]>([]);
+  const [viewFollowersCount, setViewFollowersCount] = useState(0);
+  const [viewFollowingCount, setViewFollowingCount] = useState(0);
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
   const [showFollowingDialog, setShowFollowingDialog] = useState(false);
   const [viewingOtherProfile, setViewingOtherProfile] = useState<UserProfile | null>(null);
@@ -417,8 +418,6 @@ const Profile = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumModalMode, setPremiumModalMode] = useState<"premium" | "recharge">("premium");
 
-  const { executeRecaptcha } = useGoogleReCaptcha();
-  const { canFollow } = usePermissions();
 
   /* âœï¸ EDIT FORM */
   const [editForm, setEditForm] = useState({
@@ -432,7 +431,6 @@ const Profile = () => {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isFollowingOther, setIsFollowingOther] = useState(false);
 
   /* ðŸ” AUTH GUARD â€” SAFE */
   useEffect(() => {
@@ -460,36 +458,25 @@ const Profile = () => {
           const { data, error } = await supabase
             .from("users")
             .select(USER_PROFILE_SELECT)
-            .eq("id", authUser.uid)
+            .eq("email", authUser.email || "")
             .maybeSingle();
 
           if (error) throw error;
 
           if (!data) {
-            const emailUsername =
-              authUser.email?.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "user";
-
-            const newProfile = {
+            profile = {
               id: authUser.uid,
               email: authUser.email || "",
               display_name: authUser.displayName || authUser.email?.split("@")[0] || "User",
               bio: "",
               profile_photo_url: authUser.photoURL || null,
               college: localStorage.getItem("selectedCollege") || "",
-              username: emailUsername,
+              username:
+                authUser.email?.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "user",
               branch: "",
               semester: "",
               subject: "",
-            };
-
-            const { data: created, error: createError } = await supabase
-              .from("users")
-              .insert([newProfile])
-              .select(USER_PROFILE_SELECT)
-              .single();
-
-            if (createError) throw createError;
-            profile = created as UserProfile;
+            } as UserProfile;
           } else {
             profile = data as UserProfile;
           }
@@ -595,8 +582,35 @@ const Profile = () => {
     }
   };
 
+  const fetchViewedSocialData = async (targetEmail?: string) => {
+    if (!targetEmail) {
+      setViewFollowers([]);
+      setViewFollowing([]);
+      setViewFollowersCount(0);
+      setViewFollowingCount(0);
+      return;
+    }
+
+    try {
+      const [followersData, followingData] = await Promise.all([
+        api.getFollowers(targetEmail),
+        api.getFollowing(targetEmail),
+      ]);
+
+      setViewFollowers(followersData.followers || []);
+      setViewFollowersCount(followersData.followers?.length || 0);
+      setViewFollowing(followingData.following || []);
+      setViewFollowingCount(followingData.following?.length || 0);
+    } catch (error) {
+      console.error('Error fetching viewed profile social data:', error);
+      setViewFollowers([]);
+      setViewFollowing([]);
+      setViewFollowersCount(0);
+      setViewFollowingCount(0);
+    }
+  };
+
   // Aliases for refetching (used by follow button and contribution refresh)
-  const fetchFollowersFollowing = fetchProfileData;
   const fetchContributions = fetchProfileData;
 
   useEffect(() => {
@@ -709,72 +723,15 @@ const Profile = () => {
     }
   }, [showDiscoverDialog, following]);
 
-  // Generic Follow Handler
-  const handleFollowUser = async (targetEmail: string, targetName?: string) => {
-    if (!authUser?.email) {
-      toast.error('Please login to follow users');
-      return;
-    }
-
-    if (!canFollow) {
-      toast.error('Following requires a verified college email account.');
-      return;
-    }
-
-    if (targetEmail === authUser.email) {
-      toast.error('You cannot follow yourself');
-      return;
-    }
-
-    const isAlreadyFollowing = following.some(f => f.email === targetEmail);
-
-    try {
-      if (isAlreadyFollowing) {
-        // Unfollow via backend API
-        await api.unfollowUser(targetEmail);
-
-        // Update local state
-        setFollowing(prev => prev.filter(f => f.email !== targetEmail));
-        setFollowingCount(prev => Math.max(0, prev - 1));
-
-        // If viewing this profile
-        if (viewingOtherProfile?.email === targetEmail) {
-          setIsFollowingOther(false);
-          // Only update followers count if I'm viewing THEIR profile
-          if (isViewingOther) {
-            setFollowersCount(prev => Math.max(0, prev - 1));
-          }
-        }
-
-        toast.success(`Unfollowed ${targetName || 'user'}`);
-      } else {
-        // Follow via backend API
-        const recaptchaToken = await getRecaptchaToken(executeRecaptcha, "follow_request");
-        await api.sendFollowRequest(targetEmail, recaptchaToken);
-
-        // Refresh following list to get full user details
-        // This will also update the `following` state, which is a dependency for `fetchDiscoverUsers`
-        // and will trigger a re-fetch of discover users.
-        fetchFollowersFollowing();
-
-        if (viewingOtherProfile?.email === targetEmail) {
-          setIsFollowingOther(true);
-          if (isViewingOther) {
-            setFollowersCount(prev => prev + 1);
-          }
-        }
-
-        toast.success(`Following ${targetName || 'user'}`);
-        // Backend API handles notification creation automatically
-      }
-    } catch (error: any) {
-      console.error('Follow error:', error);
-      toast.error(error.message || 'Failed to update follow status');
+  const handleFollowStatusChange = () => {
+    void fetchProfileData();
+    if (isViewingOther && viewingOtherProfile?.email) {
+      void fetchViewedSocialData(viewingOtherProfile.email);
     }
   };
 
   useEffect(() => {
-    const checkFollowingStatus = async () => {
+    const fetchViewedProfile = async () => {
       if (!isViewingOther || !authUser?.email || !viewingUsername) {
         // Clear profile data when not viewing others
         setViewingOtherProfile(null);
@@ -802,19 +759,23 @@ const Profile = () => {
           role: otherProfile.role || "student",
         });
 
-        // Check if we're following them via backend API
-        try {
-          const statusResult = await api.checkFollowStatus(otherProfile.email);
-          setIsFollowingOther(statusResult.status === 'following');
-        } catch (err) {
-          console.error('Error checking follow status:', err);
-          setIsFollowingOther(false);
-        }
       }
     };
 
-    checkFollowingStatus();
+    fetchViewedProfile();
   }, [isViewingOther, viewingUsername, authUser]);
+
+  useEffect(() => {
+    if (!isViewingOther || !viewingOtherProfile?.email) {
+      setViewFollowers([]);
+      setViewFollowing([]);
+      setViewFollowersCount(0);
+      setViewFollowingCount(0);
+      return;
+    }
+
+    void fetchViewedSocialData(viewingOtherProfile.email);
+  }, [isViewingOther, viewingOtherProfile?.email]);
 
   // Fetch contributions for viewed user
   useEffect(() => {
@@ -943,6 +904,10 @@ const Profile = () => {
 
   /* ðŸ‘¥ SOCIAL DATA */
   const displayContributions = contributions;
+  const activeFollowers = isViewingOther ? viewFollowers : followers;
+  const activeFollowing = isViewingOther ? viewFollowing : following;
+  const activeFollowersCount = isViewingOther ? viewFollowersCount : followersCount;
+  const activeFollowingCount = isViewingOther ? viewFollowingCount : followingCount;
 
   /* ðŸŽ“ ROLE */
   const isTeacher = ["teacher", "admin", "moderator"].includes(profileUser.role.toLowerCase());
@@ -989,10 +954,6 @@ const Profile = () => {
       console.error('Search error:', error);
       setSearchResults([]);
     }
-  };
-
-  const handleFollow = (userId: number) => {
-    toast.success("Following!");
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1091,11 +1052,11 @@ const Profile = () => {
       if (normalizedUsername !== userProfile?.username) {
         const { data: existingUser } = await supabase
           .from('users')
-          .select('id')
+          .select('id, email')
           .eq('username', normalizedUsername)
           .maybeSingle();
 
-        if (existingUser && existingUser.id !== authUser.uid) {
+        if (existingUser && existingUser.email !== authUser.email) {
           toast.error('Username already taken');
           return;
         }
@@ -1340,25 +1301,14 @@ const Profile = () => {
                       Edit Profile
                     </Button>
                   )}
-                  {isViewingOther && (
-                    <Button
-                      variant={isFollowingOther ? "outline" : "default"}
+                  {isViewingOther && viewingOtherProfile?.email && (
+                    <FollowButton
+                      targetUserEmail={viewingOtherProfile.email}
+                      targetUserName={viewingOtherProfile?.display_name}
                       size="sm"
-                      onClick={() => handleFollowUser(viewingOtherProfile?.email || "", viewingOtherProfile?.display_name)}
                       className="w-full sm:w-auto"
-                    >
-                      {isFollowingOther ? (
-                        <>
-                          <Check className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                          Following
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                          Follow
-                        </>
-                      )}
-                    </Button>
+                      onStatusChange={handleFollowStatusChange}
+                    />
                   )}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-3">{displayEmail}</p>
@@ -1400,13 +1350,13 @@ const Profile = () => {
                       onClick={() => setShowFollowersDialog(true)}
                     >
                       <Users className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                      {followersCount} followers
+                      {activeFollowersCount} followers
                     </button>
                     <button
                       className="text-foreground font-medium hover:underline cursor-pointer"
                       onClick={() => setShowFollowingDialog(true)}
                     >
-                      {followingCount} following
+                      {activeFollowingCount} following
                     </button>
                   </div>
                 </div>
@@ -1807,15 +1757,15 @@ const Profile = () => {
 
       {/* Edit Profile Dialog */}
       < Dialog open={isEditing} onOpenChange={setIsEditing} >
-        <DialogContent className="mx-4 max-w-sm sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="mx-4 flex w-[min(94vw,720px)] max-w-2xl flex-col overflow-hidden rounded-3xl border border-border/70 bg-background/95 p-0 shadow-2xl backdrop-blur sm:mx-0">
+          <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
               Update your public profile details, branch, semester, and primary subject.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="max-h-[min(82vh,760px)] space-y-6 overflow-y-auto px-6 py-5">
             <div className="flex justify-center">
               <div className="relative">
                 <Avatar className="w-24 h-24">
@@ -1843,23 +1793,25 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Your name"
-              />
-            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Your name"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Username</Label>
-              <Input
-                value={editForm.username}
-                onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="username"
-              />
-              <p className="text-xs text-muted-foreground">This is how others can find you</p>
+              <div className="space-y-2">
+                <Label>Username</Label>
+                <Input
+                  value={editForm.username}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="username"
+                />
+                <p className="text-xs text-muted-foreground">This is how others can find you</p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -1872,42 +1824,44 @@ const Profile = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Semester</Label>
-              <Select
-                value={editForm.semester}
-                onValueChange={(value) => setEditForm(prev => ({ ...prev, semester: value, subject: "" }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEMESTER_OPTIONS.map((semester) => (
-                    <SelectItem key={semester.value} value={semester.value}>
-                      {semester.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Semester</Label>
+                <Select
+                  value={editForm.semester}
+                  onValueChange={(value) => setEditForm(prev => ({ ...prev, semester: value, subject: "" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEMESTER_OPTIONS.map((semester) => (
+                      <SelectItem key={semester.value} value={semester.value}>
+                        {semester.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Branch</Label>
-              <Select
-                value={normalizedEditBranch}
-                onValueChange={(value) => setEditForm(prev => ({ ...prev, branch: value, subject: "" }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRANCH_OPTIONS.map((branch) => (
-                    <SelectItem key={branch.value} value={branch.value}>
-                      {branch.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label>Branch</Label>
+                <Select
+                  value={normalizedEditBranch}
+                  onValueChange={(value) => setEditForm(prev => ({ ...prev, branch: value, subject: "" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        {branch.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -1936,12 +1890,12 @@ const Profile = () => {
               </Select>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
+            <div className="flex flex-col-reverse gap-3 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setIsEditing(false)} className="w-full sm:w-auto">
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
-              <Button onClick={handleSaveProfile}>
+              <Button onClick={handleSaveProfile} className="w-full sm:w-auto">
                 <Check className="w-4 h-4 mr-2" />
                 Save Changes
               </Button>
@@ -1996,13 +1950,13 @@ const Profile = () => {
           </DialogHeader>
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
-              {followers.length === 0 ? (
+              {activeFollowers.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground">No followers yet</p>
                 </div>
               ) : (
-                followers.map((follower) => (
+                activeFollowers.map((follower) => (
                   <div
                     key={follower.id}
                     className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors"
@@ -2024,16 +1978,15 @@ const Profile = () => {
                         @{follower.username || follower.email?.split('@')[0]}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={following.some(f => f.email === follower.email) ? "outline" : "default"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFollowUser(follower.email, follower.display_name);
-                      }}
-                    >
-                      {following.some(f => f.email === follower.email) ? "Following" : "Follow"}
-                    </Button>
+                    {follower.email && (
+                      <FollowButton
+                        targetUserEmail={follower.email}
+                        targetUserName={follower.display_name}
+                        size="sm"
+                        variant="default"
+                        onStatusChange={handleFollowStatusChange}
+                      />
+                    )}
                   </div>
                 ))
               )}
@@ -2053,13 +2006,13 @@ const Profile = () => {
           </DialogHeader>
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
-              {following.length === 0 ? (
+              {activeFollowing.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground">Not following anyone yet</p>
                 </div>
               ) : (
-                following.map((followed) => (
+                activeFollowing.map((followed) => (
                   <div
                     key={followed.id}
                     className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors"
@@ -2081,16 +2034,15 @@ const Profile = () => {
                         @{followed.username || followed.email?.split('@')[0]}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline" // Always following in Following list, but allow unfollow
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFollowUser(followed.email, followed.display_name);
-                      }}
-                    >
-                      Following
-                    </Button>
+                    {followed.email && (
+                      <FollowButton
+                        targetUserEmail={followed.email}
+                        targetUserName={followed.display_name}
+                        size="sm"
+                        variant="outline"
+                        onStatusChange={handleFollowStatusChange}
+                      />
+                    )}
                   </div>
                 ))
               )}
@@ -2158,16 +2110,15 @@ const Profile = () => {
                         @{user.username}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={following.some(f => f.email === user.email) ? "outline" : "default"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFollowUser(user.email, user.display_name);
-                      }}
-                    >
-                      {following.some(f => f.email === user.email) ? "Following" : "Follow"}
-                    </Button>
+                    {user.email && (
+                      <FollowButton
+                        targetUserEmail={user.email}
+                        targetUserName={user.display_name}
+                        size="sm"
+                        variant="default"
+                        onStatusChange={handleFollowStatusChange}
+                      />
+                    )}
                   </div>
                 ))}
             </div>
