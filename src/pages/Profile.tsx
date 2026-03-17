@@ -537,7 +537,7 @@ const Profile = () => {
 
     try {
       // Parallel fetch - reduces load time by 50-70%
-      const [followersData, followingData, contributionsData, savedPostsData] = await Promise.all([
+      const [followersData, followingData, savedPostsData, contributionsData] = await Promise.all([
         api.getFollowers(),
         api.getFollowing(),
         api.getSavedChatPosts(),
@@ -546,7 +546,7 @@ const Profile = () => {
           .from('resources')
           .select('*')
           .eq('uploaded_by_email', authUser.email)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
       ]);
 
       // Update followers/following
@@ -576,6 +576,9 @@ const Profile = () => {
           uploaded_by_email: r.uploaded_by_email || authUser?.email || '',
         }));
         setContributions(transformed);
+      } else if (contributionsData.error) {
+        console.error('Error fetching contributions:', contributionsData.error);
+        setContributions([]);
       }
     } catch (error) {
       console.error('Error fetching profile data:', error);
@@ -1122,7 +1125,7 @@ const Profile = () => {
     const { data } = await supabase
       .from('resources')
       .select('*')
-      .eq('uploaded_by', authUser.uid)
+      .eq('uploaded_by_email', authUser.email)
       .order('created_at', { ascending: false });
 
     if (data) {
@@ -1130,7 +1133,7 @@ const Profile = () => {
         id: r.id,
         title: r.title,
         type: r.type,
-        votes: r.votes || 0,
+        votes: (r.upvotes || 0) - (r.downvotes || 0),
         status: r.status || 'pending',
         date: new Date(r.created_at).toLocaleDateString(),
         url: r.video_url || undefined,

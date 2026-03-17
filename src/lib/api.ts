@@ -1558,14 +1558,24 @@ function normalizeAiTokenBalance(raw: any): AiTokenBalance {
  * Tries dedicated AI endpoints first, then falls back to profile.
  */
 export async function getAiTokenBalance(): Promise<AiTokenBalance> {
-    const candidateEndpoints = [
-        '/api/ai/balance',
-        '/api/ai/quota',
-        '/api/users/ai-balance',
-        '/api/users/token-balance',
-    ];
+    // Primary source of truth: user profile (backed by the current backend).
+    const profileResult = await getMyProfile();
+    const balanceFromProfile = normalizeAiTokenBalance(profileResult);
+    if (
+        balanceFromProfile.budget !== undefined ||
+        balanceFromProfile.used !== undefined ||
+        balanceFromProfile.remaining !== undefined
+    ) {
+        return balanceFromProfile;
+    }
 
-    for (const endpoint of candidateEndpoints) {
+    // Optional legacy endpoints (disabled by default to avoid 404 noise).
+    const legacyEndpoints = String(import.meta.env.VITE_LEGACY_AI_BALANCE_ENDPOINTS ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    for (const endpoint of legacyEndpoints) {
         try {
             const data = await apiRequest<any>(endpoint);
             const balance = normalizeAiTokenBalance(data);
@@ -1580,8 +1590,7 @@ export async function getAiTokenBalance(): Promise<AiTokenBalance> {
         }
     }
 
-    const profileResult = await getMyProfile();
-    return normalizeAiTokenBalance(profileResult);
+    return balanceFromProfile;
 }
 
 /**
