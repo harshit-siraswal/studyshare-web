@@ -1472,16 +1472,25 @@ const Profile = () => {
                                       <MoreVertical className="w-4 h-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => {
-                                      setEditingContribution(contribution);
-                                      setEditDialogOpen(true);
-                                    }}>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <DropdownMenuItem
+                                      onSelect={(event) => {
+                                        event.stopPropagation();
+                                        setEditingContribution(contribution);
+                                        setEditDialogOpen(true);
+                                      }}
+                                    >
                                       <Edit2 className="w-4 h-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => handleDeleteContribution(contribution.id)}
+                                      onSelect={(event) => {
+                                        event.stopPropagation();
+                                        handleDeleteContribution(contribution.id);
+                                      }}
                                       className="text-destructive"
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
