@@ -1,7 +1,7 @@
 # StudyShare Website Security Audit (2026-03-05)
 
 ## Scope
-- Target: `d:\StudyspaceProjects\Studyspace`
+- Target: `d:\StudyshareProjects\Studyshare`
 - Type: Static audit (dependency + source review)
 - Date: 2026-03-05
 
@@ -19,7 +19,7 @@
 ### 1) Critical: Vulnerable `jspdf` dependency in production path
 - Severity: Critical
 - Evidence:
-  - [package.json](d:/StudyspaceProjects/Studyspace/package.json:67) uses `jspdf: ^2.5.2`
+  - [package.json](d:/StudyshareProjects/Studyshare/package.json:67) uses `jspdf: ^2.5.2`
   - `npm audit` reports multiple advisories including critical (`GHSA-f8cm-6447-x5h2`) and high (`GHSA-p5xg-68wr-hm3m`, `GHSA-9vjf-qc39-jprp`).
 - Risk:
   - PDF injection / object injection / DoS vectors in PDF generation flows.
@@ -30,9 +30,9 @@
 ### 2) Moderate: `dompurify` flagged vulnerable; used on PPTX HTML rendering flow
 - Severity: Moderate
 - Evidence:
-  - [package.json](d:/StudyspaceProjects/Studyspace/package.json:61) uses `dompurify: ^3.3.1`
-  - Sanitization usage at [DocumentViewer.tsx](d:/StudyspaceProjects/Studyspace/src/components/DocumentViewer.tsx:342)
-  - HTML injection sink at [DocumentViewer.tsx](d:/StudyspaceProjects/Studyspace/src/components/DocumentViewer.tsx:1037)
+  - [package.json](d:/StudyshareProjects/Studyshare/package.json:61) uses `dompurify: ^3.3.1`
+  - Sanitization usage at [DocumentViewer.tsx](d:/StudyshareProjects/Studyshare/src/components/DocumentViewer.tsx:342)
+  - HTML injection sink at [DocumentViewer.tsx](d:/StudyshareProjects/Studyshare/src/components/DocumentViewer.tsx:1037)
   - `npm audit` reports `dompurify <=3.3.1` advisories.
 - Risk:
   - If crafted slide HTML bypasses sanitizer version in use, XSS can occur in document viewer.
@@ -43,7 +43,7 @@
 ### 3) Medium: Missing modern browser hardening headers (CSP/HSTS)
 - Severity: Medium
 - Evidence:
-  - [vercel.json](d:/StudyspaceProjects/Studyspace/vercel.json:6) defines some headers, but no `Content-Security-Policy` and no `Strict-Transport-Security`.
+  - [vercel.json](d:/StudyshareProjects/Studyshare/vercel.json:6) defines some headers, but no `Content-Security-Policy` and no `Strict-Transport-Security`.
 - Risk:
   - XSS blast radius and downgrade/transport hardening are weaker than recommended for production.
 - Recommended fix:
@@ -53,8 +53,8 @@
 ### 4) Medium: Frontend directly accesses Supabase tables (authorization surface drift)
 - Severity: Medium
 - Evidence:
-  - Direct Supabase client import in UI component: [StudySidebar.tsx](d:/StudyspaceProjects/Studyspace/src/components/StudySidebar.tsx:18)
-  - Direct table query from browser: [StudySidebar.tsx](d:/StudyspaceProjects/Studyspace/src/components/StudySidebar.tsx:67)
+  - Direct Supabase client import in UI component: [StudySidebar.tsx](d:/StudyshareProjects/Studyshare/src/components/StudySidebar.tsx:18)
+  - Direct table query from browser: [StudySidebar.tsx](d:/StudyshareProjects/Studyshare/src/components/StudySidebar.tsx:67)
   - Additional direct `.from(...)` usage exists across pages/components.
 - Risk:
   - Security posture depends on perfect RLS and policy hygiene everywhere.
@@ -66,9 +66,9 @@
 ### 5) Informational: Public Firebase/Supabase fallback keys embedded in frontend source
 - Severity: Info
 - Evidence:
-  - Firebase config fallback at [firebase.js](d:/StudyspaceProjects/Studyspace/src/firebase.js:8)
-  - Supabase publishable fallback key at [client.ts](d:/StudyspaceProjects/Studyspace/src/integrations/supabase/client.ts:6)
-  - Additional Supabase fallback key at [supabase.js](d:/StudyspaceProjects/Studyspace/src/supabase.js:5)
+  - Firebase config fallback at [firebase.js](d:/StudyshareProjects/Studyshare/src/firebase.js:8)
+  - Supabase publishable fallback key at [client.ts](d:/StudyshareProjects/Studyshare/src/integrations/supabase/client.ts:6)
+  - Additional Supabase fallback key at [supabase.js](d:/StudyshareProjects/Studyshare/src/supabase.js:5)
   - Detected by built-in scanner (`npm run security:scan`).
 - Risk:
   - These are public-by-design keys, but hardcoded defaults make project targeting easier and reduce environment isolation.

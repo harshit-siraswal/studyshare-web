@@ -9,7 +9,7 @@
 
 **StudyShare**  is a comprehensive, centralized educational web platform engineered for both college students and administrators. The product resolves the chronic fragmentation of college communication by unifying syllabus management, academic resource sharing, sophisticated AI study tools, social networking, and peer-to-peer discourse into a single, cohesive application.
 
-The core pain point solved is the reliance on scattered platforms for academic coordination. By bringing everything under one roof within a premium, "glassmorphism" UI, StudySpace improves collaboration, accelerates learning via AI, and organizes the academic journey.
+The core pain point solved is the reliance on scattered platforms for academic coordination. By bringing everything under one roof within a premium, "glassmorphism" UI, Studyshare improves collaboration, accelerates learning via AI, and organizes the academic journey.
 
 ---
 

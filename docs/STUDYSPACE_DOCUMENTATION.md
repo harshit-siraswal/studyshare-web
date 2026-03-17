@@ -1,8 +1,8 @@
-# MyStudySpace Platform Documentation
+# Studyshare Platform Documentation
 
 **Version:** 2.0  
 **Date:** January 2026  
-**Domain:** mystudyspace.me  
+**Domain:** studyshare.me  
 **Classification:** CONFIDENTIAL - Internal Use Only
 
 ---
@@ -29,7 +29,7 @@
 
 ### Platform Overview
 
-MyStudySpace is a community-driven academic resource sharing platform designed for college students to access, share, and collaborate on study materials. The platform creates a centralized ecosystem for educational content with AI-powered assistance.
+Studyshare is a community-driven academic resource sharing platform designed for college students to access, share, and collaborate on study materials. The platform creates a centralized ecosystem for educational content with AI-powered assistance.
 
 ### Mission
 
@@ -211,7 +211,7 @@ To democratize access to quality study materials by enabling peer-to-peer resour
 
 ### Registration Flow
 
-1. User visits mystudyspace.me
+1. User visits studyshare.me
 2. Selects college from dropdown
 3. Signs up with email or Google OAuth
 4. Email verification sent
@@ -366,4 +366,4 @@ To democratize access to quality study materials by enabling peer-to-peer resour
 **Distribution:** Internal Team Only  
 **Last Updated:** January 15, 2026
 
-© 2026 MyStudySpace. All rights reserved.
+© 2026 Studyshare. All rights reserved.

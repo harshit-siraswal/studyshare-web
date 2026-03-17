@@ -1,4 +1,4 @@
-# Security Report (Studyspace)
+# Security Report (Studyshare)
 
 Date: 2026-02-11
 Scope: web app, admin dashboard, Android app, backend API, and Supabase schema usage.
@@ -8,7 +8,7 @@ Several security gaps come from direct client access to Supabase with the anon k
 
 ## High Severity Findings
 1. Client apps use the Supabase anon key for direct reads/writes across many tables with weak or missing RLS.
-Evidence: `C:\Users\ASUS\Studyspace\src\supabase.js`, `C:\Users\ASUS\Desktop\mystudyspace-app\flutter_application_1\lib\config\app_config.dart`, and extensive `supabase` usage in app code.
+Evidence: `C:\Users\ASUS\Studyshare\src\supabase.js`, `C:\Users\ASUS\Desktop\studyshare-app\flutter_application_1\lib\config\app_config.dart`, and extensive `supabase` usage in app code.
 Impact: Any user can query or mutate exposed tables via PostgREST if RLS is not strict.
 
 2. RLS disabled on sensitive public tables.
@@ -19,7 +19,7 @@ Impact: Data exposure, PII leakage, and unauthorized access to admin-only histor
 Impact: RLS and permissions of the view owner can be used instead of the querying user.
 
 4. Admin verification performed client-side via RPC.
-Evidence: `C:\Users\ASUS\Desktop\admin-studyspace\auth.js` previously called `verify_admin_key` directly.
+Evidence: `C:\Users\ASUS\Desktop\admin-studyshare\auth.js` previously called `verify_admin_key` directly.
 Impact: RPC exposure and privilege escalation risk if RLS is loosened.
 
 ## Medium Severity Findings
@@ -42,7 +42,7 @@ Create per-table policies with consistent naming for read vs write paths.
 Route writes through backend and keep client reads to filtered views or API endpoints.
 
 ## Applied or Planned Fixes
-1. Added `C:\Users\ASUS\Studyspace\SECURITY_FIXES.sql` to:
+1. Added `C:\Users\ASUS\Studyshare\SECURITY_FIXES.sql` to:
 Enable RLS on sensitive tables, add policies, fix view security, move `vector` extension, and set function `search_path`.
 2. Admin login is moving to server-side verification via `/api/admin` instead of RPC.
 

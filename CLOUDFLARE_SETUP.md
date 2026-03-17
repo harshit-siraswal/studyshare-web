@@ -1,4 +1,4 @@
-# Cloudflare Setup for StudySpace Backend
+# Cloudflare Setup for Studyshare Backend
 
 ## Overview
 
@@ -13,7 +13,7 @@ We'll use **Cloudflare Tunnel** to protect your Render backend without needing a
 
 ## Option A: Cloudflare with Custom Domain (Recommended)
 
-If you have a domain (e.g., `api.studyspace.com`):
+If you have a domain (e.g., `api.studyshare.com`):
 
 ### Step 1: Sign Up for Cloudflare
 1. Go to [cloudflare.com](https://cloudflare.com)
@@ -56,7 +56,7 @@ If you don't have a domain, use Cloudflare Workers as a proxy:
 
 ### Step 2: Create Worker
 1. Click **"Create Worker"**
-2. Name it: `studyspace-api`
+2. Name it: `studyshare-api`
 3. Replace the code with:
 
 ```javascript
@@ -91,12 +91,12 @@ export default {
 4. Click **"Save and Deploy"**
 
 ### Step 3: Get Worker URL
-Your worker URL will be: `https://studyspace-api.<your-subdomain>.workers.dev`
+Your worker URL will be: `https://studyshare-api.<your-subdomain>.workers.dev`
 
 ### Step 4: Update Frontend
 Change `VITE_API_URL` to your Worker URL:
 ```env
-VITE_API_URL=https://studyspace-api.<your-subdomain>.workers.dev
+VITE_API_URL=https://studyshare-api.<your-subdomain>.workers.dev
 ```
 
 ### Step 5: Enable Security

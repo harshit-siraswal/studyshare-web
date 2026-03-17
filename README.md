@@ -1,3 +1,6 @@
+## Public Repository Notice
+This repository is intended to be **public**. Do not commit secrets, API keys, or credentials. Use environment variables and `.env.example` files for configuration.
+
 Explanify
 
 📝 Explanify — A student-friendly college portal for syllabus, resources, notices, chatrooms and study-timers.
@@ -15,7 +18,7 @@ This repository contains the **Frontend** (Vite + React + Shadcn UI).
 | Component | Repository |
 |-----------|------------|
 | **Frontend** | This repo ([new](https://github.com/harshit-siraswal/new)) |
-| **Backend** | [studyspace-backend](https://github.com/harshit-siraswal/studyspace-backend) |
+| **Backend** | [studyshare-backend](https://github.com/harshit-siraswal/studyshare-backend) |
 
 🔧 Features
 
@@ -37,4 +40,4 @@ PDF Viewer for Notes — open shared notes as PDF directly in browser for readin
 
 📄 Demo / Live Site
 
-You can check out the live version here: https://mystudyspace.me/
+You can check out the live version here: https://studyshare.me/

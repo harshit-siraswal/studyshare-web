@@ -1,4 +1,4 @@
-# Studyspace Business Overview
+# Studyshare Business Overview
 
 ## 1. Problem Statement
 **Chaos in Academic Communication**
@@ -8,7 +8,7 @@
 -   **Resource Clutter:** Difficulty in finding specific notes, papers, or syllabus info when needed (e.g., during exams).
 
 ## 2. Our Solution
-**Studyspace: A Verified, Structured Academic Ecosystem**
+**Studyshare: A Verified, Structured Academic Ecosystem**
 -   **Verification First:** Access is strictly tied to college domains (e.g., `@kiet.edu`). This ensures a safe, focused environment where every user is a verified student or faculty member.
 -   **Structured Chat Rooms:** Persistent, topic-focused rooms (e.g., "DSA Study Group", "Cultural Fest") that organize discussions rather than losing them in a stream.
 -   **Centralized Resources:** A dedicated repository for notes, syllabus, and papers, searchable and upvoted by the community for quality control.

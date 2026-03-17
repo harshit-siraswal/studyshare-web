@@ -1,4 +1,4 @@
-# Cloudflare Workers - StudySpace Edge Functions
+# Cloudflare Workers - Studyshare Edge Functions
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ Copy the ID and paste it in `wrangler.toml`.
 wrangler deploy
 ```
 
-Your worker will be available at: `https://studyspace-edge.<your-subdomain>.workers.dev`
+Your worker will be available at: `https://studyshare-edge.<your-subdomain>.workers.dev`
 
 ## After Getting Custom Domain
 
