@@ -180,7 +180,7 @@ const SelectCollege = () => {
         if (!college) return;
 
         localStorage.setItem("selectedCollege", JSON.stringify(college));
-        navigate("/auth");
+        navigate("/study");
     };
 
     const handleDownloadApk = async () => {
