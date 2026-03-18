@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { supabase } from '../supabase';
 
 // College configuration
@@ -99,7 +100,8 @@ const getCollegeFromLocalStorage = (): College | null => {
 };
 
 export const CollegeProvider = ({ children }: { children: ReactNode }) => {
-    const { user, hasElevatedAccess } = useAuth();
+    const { user } = useAuth();
+    const { hasElevatedAccess } = useEntitlements();
     const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
     const [collegeIdMap, setCollegeIdMap] = useState<Record<string, string>>({});
 

@@ -19,6 +19,7 @@ import { supabase } from "../supabase";
 import { createChatRoom } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import PremiumModal from "./PremiumModal";
 
 interface CreateChatRoomDialogProps {
@@ -27,8 +28,8 @@ interface CreateChatRoomDialogProps {
 
 const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
   const navigate = useNavigate();
-  // ... inside component
-  const { user, isPremium } = useAuth(); // [MODIFIED]
+  const { user } = useAuth();
+  const { isPremium, isLoading: entitlementsLoading } = useEntitlements();
   const { selectedCollegeId } = useCollege();
   const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
@@ -45,6 +46,11 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
 
     if (!roomName.trim()) {
       toast.error("Please enter a room name");
+      return;
+    }
+
+    if (entitlementsLoading) {
+      toast.info("Checking your plan. Please try again in a moment.");
       return;
     }
 
@@ -183,11 +189,16 @@ const CreateChatRoomDialog = ({ trigger }: CreateChatRoomDialogProps) => {
             </p>
           )}
 
-          <Button onClick={handleCreate} className="w-full" disabled={creating}>
+          <Button onClick={handleCreate} className="w-full" disabled={creating || entitlementsLoading}>
             {creating ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Creating...
+              </>
+            ) : entitlementsLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking plan...
               </>
             ) : (
               "Create Room"
