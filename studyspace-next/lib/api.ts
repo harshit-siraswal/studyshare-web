@@ -756,7 +756,7 @@ export async function listResources(params?: {
     if (params?.limit) query.set('limit', String(params.limit));
 
     const queryString = query.toString();
-    return apiRequest(`/api/resources${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`/api/v2/resources${queryString ? `?${queryString}` : ''}`);
 }
 
 /**
