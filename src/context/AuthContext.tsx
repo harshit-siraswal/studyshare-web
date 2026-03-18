@@ -1,63 +1,88 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { ApiError, getMyProfile, verifyAndGetUser } from "@/lib/api";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
+import { ApiError, UserInfo, getMe } from "@/lib/api";
+
+export interface AuthUser {
+  uid: string;
+  email: string;
+  role: string;
+  collegeDomain: string | null;
+  isCollegeUser: boolean;
+  displayName: string;
+  photoURL: string | null;
+  avatarUrl: string | null;
+  branch: string;
+  semester: string;
+  name: string;
+  isBanned: boolean;
+  banReason: string | null;
+  emailVerified: boolean;
+  reload: () => Promise<void>;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
   isBanned: boolean;
   banReason: string | null;
   logout: () => Promise<void>;
-  isPremium: boolean;
-  subscriptionTier: 'free' | 'pro' | 'max';
-  profileRole: string | null;
-  hasElevatedAccess: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function normalizeProfileRole(role: unknown): string | null {
-  if (typeof role !== 'string') return null;
-  const normalized = role.trim().toUpperCase();
-  return normalized || null;
-}
+function buildAuthUser(
+  firebaseUser: FirebaseUser,
+  me: UserInfo | null = null,
+  overrides: Partial<Pick<AuthUser, "isBanned" | "banReason">> = {},
+): AuthUser {
+  const email = me?.email || firebaseUser.email || "";
+  const displayName =
+    me?.profile?.displayName?.trim() ||
+    firebaseUser.displayName ||
+    email.split("@")[0] ||
+    "User";
+  const avatarUrl =
+    me?.profile?.avatarUrl?.trim() ||
+    firebaseUser.photoURL ||
+    null;
+  const collegeDomain =
+    me?.collegeDomain ??
+    (email.includes("@") ? email.split("@")[1]?.toLowerCase() ?? null : null);
+  const isBanned = overrides.isBanned ?? Boolean(me?.isBanned);
+  const banReason = overrides.banReason ?? me?.banReason ?? null;
 
-function hasElevatedProfileAccess(profile: any): boolean {
-  const normalizedRole = normalizeProfileRole(profile?.role);
-  if (normalizedRole === 'TEACHER' || normalizedRole === 'ADMIN' || normalizedRole === 'MODERATOR') {
-    return true;
-  }
-
-  const capabilities = profile?.admin_capabilities;
-  if (capabilities && typeof capabilities === 'object') {
-    return Object.values(capabilities).some((value) => value === true);
-  }
-
-  return Boolean(profile?.scope_all_colleges) || Boolean(profile?.admin_college_id);
+  return {
+    uid: me?.uid || firebaseUser.uid,
+    email,
+    role: me?.role || "COLLEGE_USER",
+    collegeDomain,
+    isCollegeUser: Boolean(me?.isCollegeUser),
+    displayName,
+    photoURL: avatarUrl,
+    avatarUrl,
+    branch: me?.profile?.branch?.trim() || "",
+    semester: me?.profile?.semester?.trim() || "",
+    name: displayName,
+    isBanned,
+    banReason,
+    emailVerified: firebaseUser.emailVerified,
+    reload: () => firebaseUser.reload(),
+  };
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
-  const [isPremium, setIsPremium] = useState(false); // [NEW]
-  const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro' | 'max'>('free');
-  const [profileRole, setProfileRole] = useState<string | null>(null);
-  const [hasElevatedAccess, setHasElevatedAccess] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-
       if (!firebaseUser) {
+        setUser(null);
         setIsBanned(false);
         setBanReason(null);
-        setIsPremium(false);
-        setSubscriptionTier('free');
-        setProfileRole(null);
-        setHasElevatedAccess(false);
         setLoading(false);
         return;
       }
@@ -65,55 +90,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
 
       try {
-        // Parallel fetch for user info and subscription status
-        const [userInfo, profileResult] = await Promise.all([
-          verifyAndGetUser(),
-          getMyProfile(),
-        ]);
-        const userRow = profileResult?.profile;
-        const normalizedRole = normalizeProfileRole(userRow?.role);
-
-        if (userInfo.isBanned) {
-          setIsBanned(true);
-          setBanReason(userInfo.banReason || 'You have been banned by an administrator');
-        } else {
-          setIsBanned(false);
-          setBanReason(null);
-        }
-
-        // Check subscription validity
-        let tier: 'free' | 'pro' | 'max' = 'free';
-        if (userRow?.subscription_tier && userRow.subscription_tier !== 'free') {
-          const endDate = userRow.subscription_end_date
-            ? new Date(userRow.subscription_end_date)
-            : null;
-          if (!endDate || endDate > new Date()) {
-            tier = userRow.subscription_tier;
-          }
-        }
-        setSubscriptionTier(tier);
-        setIsPremium(tier !== 'free');
-        setProfileRole(normalizedRole);
-        setHasElevatedAccess(hasElevatedProfileAccess(userRow));
+        const me = await getMe();
+        const nextUser = buildAuthUser(firebaseUser, me);
+        setUser(nextUser);
+        setIsBanned(nextUser.isBanned);
+        setBanReason(nextUser.banReason);
       } catch (error) {
-        console.error('Error fetching user status:', error);
+        console.error("Error fetching auth identity:", error);
 
         if (error instanceof ApiError && error.status === 403) {
           const reason =
-            (typeof error.payload?.reason === 'string' && error.payload.reason.trim()) ||
-            (typeof error.payload?.message === 'string' && error.payload.message.trim()) ||
-            'You have been banned by an administrator';
+            (typeof error.payload?.reason === "string" && error.payload.reason.trim()) ||
+            (typeof error.payload?.message === "string" && error.payload.message.trim()) ||
+            "You have been banned by an administrator";
+          const bannedUser = buildAuthUser(firebaseUser, null, {
+            isBanned: true,
+            banReason: reason,
+          });
+          setUser(bannedUser);
           setIsBanned(true);
           setBanReason(reason);
         } else {
+          const fallbackUser = buildAuthUser(firebaseUser);
+          setUser(fallbackUser);
           setIsBanned(false);
           setBanReason(null);
         }
-
-        setIsPremium(false);
-        setSubscriptionTier('free');
-        setProfileRole(null);
-        setHasElevatedAccess(false);
       } finally {
         setLoading(false);
       }
@@ -124,12 +126,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     await signOut(auth);
+    setUser(null);
     setIsBanned(false);
     setBanReason(null);
-    setIsPremium(false);
-    setSubscriptionTier('free');
-    setProfileRole(null);
-    setHasElevatedAccess(false);
   };
 
   return (
@@ -140,10 +139,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isBanned,
         banReason,
         logout,
-        isPremium,
-        subscriptionTier,
-        profileRole,
-        hasElevatedAccess,
       }}
     >
       {children}

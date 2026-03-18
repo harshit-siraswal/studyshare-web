@@ -240,10 +240,12 @@ export interface UserInfo {
     collegeDomain: string | null;
     isCollegeUser: boolean;
     isBanned?: boolean;
-    banReason?: string;
+    banReason?: string | null;
     profile?: {
         displayName?: string;
         avatarUrl?: string;
+        branch?: string;
+        semester?: string;
     };
 }
 
