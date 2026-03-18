@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /study
+Disallow: /bookmarks
+Disallow: /chatroom
+Disallow: /messages
+Disallow: /profile
+Disallow: /notices
+Disallow: /explore
+Disallow: /ai-chat
+
+Sitemap: https://studyshare.in/sitemap.xml
