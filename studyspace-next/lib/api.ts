@@ -880,6 +880,26 @@ export async function deleteAllNotifications(): Promise<{ message: string }> {
 // CHAT ENDPOINTS
 // ============================================
 
+export interface ChatRoomListItem {
+    id: string;
+    name: string;
+    description: string | null;
+    is_private: boolean;
+    member_count: number;
+    created_by: string;
+    created_at: string;
+    expires_at?: string | null;
+    room_code?: string | null;
+    tags?: string[];
+}
+
+export interface ChatPagination {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+}
+
 /**
  * Create a chat room
  */
@@ -895,6 +915,44 @@ export async function createChatRoom(
         method: 'POST',
         body: JSON.stringify({ name, description, isPrivate, collegeId, durationInDays, tags }),
     });
+}
+
+/**
+ * Get paginated chat rooms for the current user / college context
+ */
+export async function getChatRooms(params?: {
+    page?: number;
+    limit?: number;
+    collegeId?: string | null;
+}): Promise<{ rooms: ChatRoomListItem[]; pagination: ChatPagination }> {
+    const query = new URLSearchParams();
+    const page = Number.isFinite(params?.page) && Number(params?.page) > 0 ? Number(params?.page) : 1;
+    const limit = Number.isFinite(params?.limit) && Number(params?.limit) > 0 ? Number(params?.limit) : 20;
+    query.set('page', String(page));
+    query.set('limit', String(limit));
+
+    const collegeId = params?.collegeId?.trim();
+    if (collegeId) {
+        query.set('collegeId', collegeId);
+    }
+
+    const response = await apiRequest<any>(`/api/chat/rooms?${query.toString()}`);
+    const rooms = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.rooms)
+            ? response.rooms
+            : [];
+    const rawPagination = response?.pagination || {};
+
+    return {
+        rooms,
+        pagination: {
+            page: Number(rawPagination.page ?? page) || page,
+            limit: Number(rawPagination.limit ?? limit) || limit,
+            total: Number(rawPagination.total ?? rooms.length) || rooms.length,
+            hasMore: Boolean(rawPagination.hasMore),
+        },
+    };
 }
 
 /**
@@ -1026,8 +1084,33 @@ export interface SavedChatPost {
     downvotes: number;
 }
 
-export async function getSavedChatPosts(): Promise<{ savedPosts: SavedChatPost[] }> {
-    return apiRequest('/api/chat/saved');
+export async function getSavedChatPosts(params?: {
+    page?: number;
+    limit?: number;
+}): Promise<{ savedPosts: SavedChatPost[]; pagination: ChatPagination }> {
+    const query = new URLSearchParams();
+    const page = Number.isFinite(params?.page) && Number(params?.page) > 0 ? Number(params?.page) : 1;
+    const limit = Number.isFinite(params?.limit) && Number(params?.limit) > 0 ? Number(params?.limit) : 20;
+    query.set('page', String(page));
+    query.set('limit', String(limit));
+
+    const response = await apiRequest<any>(`/api/chat/saved?${query.toString()}`);
+    const savedPosts = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.savedPosts)
+            ? response.savedPosts
+            : [];
+    const rawPagination = response?.pagination || {};
+
+    return {
+        savedPosts,
+        pagination: {
+            page: Number(rawPagination.page ?? page) || page,
+            limit: Number(rawPagination.limit ?? limit) || limit,
+            total: Number(rawPagination.total ?? savedPosts.length) || savedPosts.length,
+            hasMore: Boolean(rawPagination.hasMore),
+        },
+    };
 }
 
 export interface ChatComment {
