@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { AdalineNavbar } from "@/components/landing/AdalineNavbar";
-import { LandingScene } from "@/components/LandingScene";
+import { SelectCollegeClient } from "@/components/SelectCollegeClient";
 
 export const metadata: Metadata = {
-  title: "Studyspace - Your Collaborative Study Platform",
-  description: "Join Studyspace to collaborate, share resources, and study smarter.",
+  title: "Select Your College",
+  description: "Choose your college to get started on Studyspace.",
 };
 
 export default function LandingPage() {
-  return (
-    <>
-      <AdalineNavbar />
-      <LandingScene />
-    </>
-  );
+  return <SelectCollegeClient />;
 }
