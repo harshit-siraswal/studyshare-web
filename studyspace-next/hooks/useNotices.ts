@@ -1,21 +1,51 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
 import { useCollege } from '@/context/CollegeContext';
 import { collectCollegeIdScopes } from '@/lib/collegeIds';
 
 export type Notice = api.Notice;
+export type NoticePagination = api.NoticePagination;
 
-async function fetchNotices(scopes: string[]): Promise<Notice[]> {
-    if (scopes.length === 0) return [];
-    const response = await api.getNotices({ collegeId: scopes });
-    return response.notices || [];
+interface UseNoticesOptions {
+    department?: string;
+    page?: number;
+    limit?: number;
+}
+
+async function fetchNotices(scopes: string[], options: Required<UseNoticesOptions>): Promise<{
+    notices: Notice[];
+    pagination: NoticePagination;
+}> {
+    if (scopes.length === 0) {
+        return {
+            notices: [],
+            pagination: {
+                page: options.page,
+                limit: options.limit,
+                total: 0,
+                hasMore: false,
+            },
+        };
+    }
+
+    const response = await api.getNotices({
+        collegeId: scopes,
+        department: options.department,
+        page: options.page,
+        limit: options.limit,
+    });
+
+    return {
+        notices: response.notices || [],
+        pagination: response.pagination,
+    };
 }
 
 /**
  * Custom hook for fetching notices with React Query caching.
- * Filters notices by selected college for data isolation.
+ * Filters notices by selected college for data isolation and supports paginated v2 responses.
  */
-export function useNotices() {
+export function useNotices(options: UseNoticesOptions = {}) {
     const { selectedCollegeId, selectedCollege } = useCollege();
     const queryClient = useQueryClient();
     const collegeScopes = collectCollegeIdScopes(
@@ -23,20 +53,32 @@ export function useNotices() {
         selectedCollege?.collegeId || null
     );
     const collegeScopeKey = collegeScopes.length > 0 ? collegeScopes.join('|') : 'none';
+    const normalizedOptions: Required<UseNoticesOptions> = {
+        department: options.department || '',
+        page: options.page || 1,
+        limit: options.limit || 20,
+    };
 
     const query = useQuery({
-        queryKey: ['notices', collegeScopeKey],
-        queryFn: () => fetchNotices(collegeScopes),
+        queryKey: ['notices', collegeScopeKey, normalizedOptions.department, normalizedOptions.page, normalizedOptions.limit],
+        queryFn: () => fetchNotices(collegeScopes, normalizedOptions),
         enabled: collegeScopes.length > 0,
     });
 
-    // Manual refresh function
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['notices', collegeScopeKey] });
+        queryClient.invalidateQueries({
+            queryKey: ['notices', collegeScopeKey, normalizedOptions.department],
+        });
     };
 
     return {
-        notices: query.data || [],
+        notices: query.data?.notices || [],
+        pagination: query.data?.pagination || {
+            page: normalizedOptions.page,
+            limit: normalizedOptions.limit,
+            total: 0,
+            hasMore: false,
+        },
         isLoading: query.isLoading,
         isError: query.isError,
         error: query.error,
@@ -55,3 +97,4 @@ export function useInvalidateNotices() {
         queryClient.invalidateQueries({ queryKey: ['notices'] });
     };
 }
+

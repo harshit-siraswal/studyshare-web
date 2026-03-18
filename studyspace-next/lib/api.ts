@@ -1849,10 +1849,19 @@ export interface Notice {
     college_id?: string | null;
 }
 
+export interface NoticePagination {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+}
+
 export async function getNotices(params?: {
     collegeId?: string | string[] | null;
     department?: string | null;
-}): Promise<{ notices: Notice[] }> {
+    page?: number;
+    limit?: number;
+}): Promise<{ notices: Notice[]; pagination: NoticePagination }> {
     const query = new URLSearchParams();
     const collegeIds = Array.isArray(params?.collegeId)
         ? params?.collegeId
@@ -1863,7 +1872,7 @@ export async function getNotices(params?: {
     for (const rawCollegeId of collegeIds) {
         const collegeId = rawCollegeId?.trim();
         if (collegeId) {
-            query.append('college_id', collegeId);
+            query.append('collegeId', collegeId);
         }
     }
 
@@ -1872,8 +1881,25 @@ export async function getNotices(params?: {
         query.set('department', department);
     }
 
+    const page = Number.isFinite(params?.page) && Number(params?.page) > 0 ? Number(params?.page) : 1;
+    const limit = Number.isFinite(params?.limit) && Number(params?.limit) > 0 ? Number(params?.limit) : 20;
+    query.set('page', String(page));
+    query.set('limit', String(limit));
+
     const queryString = query.toString();
-    return apiRequest(`/api/notices${queryString ? `?${queryString}` : ''}`);
+    const response = await apiRequest<any>(`/api/v2/notices${queryString ? `?${queryString}` : ''}`);
+    const notices = Array.isArray(response?.notices) ? response.notices : [];
+    const rawPagination = response?.pagination || {};
+
+    return {
+        notices,
+        pagination: {
+            page: Number(rawPagination.page ?? page) || page,
+            limit: Number(rawPagination.limit ?? limit) || limit,
+            total: Number(rawPagination.total ?? notices.length) || notices.length,
+            hasMore: Boolean(rawPagination.hasMore),
+        },
+    };
 }
 
 // ============================================
