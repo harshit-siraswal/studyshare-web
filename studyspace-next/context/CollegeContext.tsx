@@ -5,7 +5,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { supabase } from '../supabase';
 
 // College configuration
 export interface College {
@@ -108,6 +107,7 @@ export const CollegeProvider = ({ children }: { children: ReactNode }) => {
 
         const loadCollegeIds = async () => {
             try {
+                const { supabase } = await import('../supabase');
                 const { data, error } = await supabase
                     .from('colleges')
                     .select('id, domain');

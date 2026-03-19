@@ -25,7 +25,8 @@ import {
 
 import { toast } from "sonner";
 
-import { auth, db } from "../firebase";
+import { auth } from "../lib/firebase-auth";
+import { db } from "../lib/firebase-firestore";
 import {
   GoogleAuthProvider,
   signInWithPopup,

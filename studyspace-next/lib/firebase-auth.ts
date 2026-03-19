@@ -1,7 +1,5 @@
-import { initializeApp } from "firebase/app";
+import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
 // Firebase web config is public-by-design. These defaults keep prod builds alive
 // when host env vars are missing, while still allowing env overrides.
@@ -14,7 +12,7 @@ const DEFAULT_FIREBASE_CONFIG = {
   appId: "1:28032445048:web:025624ffdb03cfd54b1b8d",
 };
 
-const getEnv = (key) => {
+const getEnv = (key: string): string => {
   const value = process.env[key];
   return typeof value === "string" ? value.trim() : "";
 };
@@ -40,11 +38,8 @@ if (missingFirebaseVars.length > 0) {
   );
 }
 
-const app = initializeApp(firebaseConfig);
+export const app: FirebaseApp =
+  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]!;
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-export default app;
 
