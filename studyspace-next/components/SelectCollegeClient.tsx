@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
-import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "next-themes";
 import { openAndroidApkDownload } from "@/lib/apk";
@@ -15,7 +14,11 @@ import { toast } from "sonner";
 
 type CollegeCard = (typeof initialColleges)[number];
 type CollegeCountMap = Record<number, number>;
-const supabaseAny = supabase as any;
+
+const loadSupabase = async () => {
+    const { supabase } = await import("../supabase");
+    return supabase as any;
+};
 
 // All active colleges with online-verified institutional/student domains
 const initialColleges = [
@@ -120,6 +123,7 @@ const SelectCollege = () => {
 
         const fetchUserCounts = async () => {
             try {
+                const supabaseAny = await loadSupabase();
                 const entries = await Promise.all(
                     initialColleges
                         .filter((college) => college.domain)
