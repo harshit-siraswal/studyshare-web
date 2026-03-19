@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowRight, Sparkles, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { openAndroidApkDownload } from "@/lib/apk";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ function Hero() {
   const [titleNumber, setTitleNumber] = useState(0);
   const shouldReduceMotion = useReducedMotion();
   const titles = useMemo(() => ["smarter", "faster", "focused", "together", "exam-ready"], []);
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -87,7 +87,7 @@ function Hero() {
           <Button
             size="lg"
             className="gap-3 bg-primary hover:bg-primary/90 text-primary-foreground border-0 shadow-[0_0_32px_hsl(var(--primary)/0.36)] rounded-full px-8 text-base h-12 transition-all"
-            onClick={() => navigate("/select-college")}
+            onClick={() => router.push("/select-college")}
           >
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
