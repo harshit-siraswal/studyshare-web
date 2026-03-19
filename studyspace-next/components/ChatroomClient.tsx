@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -596,7 +597,14 @@ export function ChatroomClient() {
 
                   {postImage ? (
                     <div className="relative inline-flex overflow-hidden rounded-2xl border border-border/60">
-                      <img src={postImage} alt="Upload preview" className="h-36 w-auto object-cover" />
+                      <Image
+                        src={postImage}
+                        alt="Upload preview"
+                        width={640}
+                        height={360}
+                        sizes="(max-width: 768px) 100vw, 320px"
+                        className="h-36 w-auto object-cover"
+                      />
                       <Button
                         variant="destructive"
                         size="sm"
@@ -855,7 +863,14 @@ export function ChatroomClient() {
         <Dialog open={imageViewer.isOpen} onOpenChange={(open) => !open && setImageViewer({ isOpen: false, url: "" })}>
           <DialogContent className="max-w-4xl p-0">
             <div className="relative">
-              <img src={imageViewer.url} alt="Full size attachment" className="max-h-[90vh] w-full object-contain" />
+              <Image
+                src={imageViewer.url}
+                alt="Full size attachment"
+                width={1600}
+                height={1200}
+                sizes="100vw"
+                className="max-h-[90vh] h-auto w-full object-contain"
+              />
             </div>
           </DialogContent>
         </Dialog>

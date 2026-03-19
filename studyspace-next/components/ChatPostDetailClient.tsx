@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -370,7 +371,14 @@ export function ChatPostDetailClient() {
                   className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-muted/20"
                   onClick={() => setImageViewer({ isOpen: true, url: post.image_url || "" })}
                 >
-                  <img src={post.image_url} alt="Post attachment" className="max-h-[70vh] w-full object-contain" />
+                  <Image
+                    src={post.image_url}
+                    alt="Post attachment"
+                    width={1600}
+                    height={1200}
+                    sizes="100vw"
+                    className="max-h-[70vh] h-auto w-full object-contain"
+                  />
                 </div>
               ) : null}
 
@@ -455,7 +463,14 @@ export function ChatPostDetailClient() {
       <Dialog open={imageViewer.isOpen} onOpenChange={(open) => !open && setImageViewer({ isOpen: false, url: "" })}>
         <DialogContent className="max-w-4xl p-0">
           <div className="relative">
-            <img src={imageViewer.url} alt="Full size attachment" className="max-h-[90vh] w-full object-contain" />
+            <Image
+              src={imageViewer.url}
+              alt="Full size attachment"
+              width={1600}
+              height={1200}
+              sizes="100vw"
+              className="max-h-[90vh] h-auto w-full object-contain"
+            />
           </div>
         </DialogContent>
       </Dialog>
