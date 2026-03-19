@@ -5,7 +5,7 @@
  * instead of direct Supabase calls.
  */
 
-import { auth } from '../firebase';
+import { auth } from './firebase-auth';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { getApiBaseUrl } from './runtimeConfig';
 import { isUuid } from './collegeIds';

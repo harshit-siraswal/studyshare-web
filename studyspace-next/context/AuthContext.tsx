@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "../firebase";
+import { auth } from "../lib/firebase-auth";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { ApiError, getMyProfile, verifyAndGetUser } from "@/lib/api";
 
