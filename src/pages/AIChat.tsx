@@ -29,38 +29,44 @@ const AIChat = () => {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[14%] top-[-12%] h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute bottom-[-18%] right-[-10%] h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
+      </div>
+
       <SEO
         title="AI Chat"
         description="Ask AI questions about your PDFs and study materials for faster revision and exam prep."
         noIndex
       />
 
-      {/* Desktop Sidebar */}
-      <div className={`hidden lg:block transition-all duration-300 ${sidebarOpen ? "w-72" : "w-14"} h-screen overflow-hidden shrink-0`}>
-        <StudySidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <div
+        className={`relative z-10 hidden h-screen overflow-hidden shrink-0 transition-all duration-300 lg:block ${sidebarOpen ? "w-72" : "w-14"}`}
+      >
+        <StudySidebar
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
       </div>
 
-      {/* Mobile Sidebar */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="p-0 w-72">
-          <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        <SheetContent side="left" className="w-72 p-0">
+          <MobileSidebar
+            isOpen={mobileMenuOpen}
+            onClose={() => setMobileMenuOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Header */}
-        <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl">
           <div className="px-3 sm:px-4 md:px-6">
-            <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3">
-              <div className="flex items-center gap-2 shrink-0">
+            <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3">
+              <div className="flex shrink-0 items-center gap-2">
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="lg:hidden"
-                    >
-                      <Menu className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" className="lg:hidden">
+                      <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
                 </Sheet>
@@ -71,32 +77,44 @@ const AIChat = () => {
                   onClick={() => navigate("/study")}
                   title="Back to Resources"
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hidden sm:flex items-center gap-2"
+                  className="hidden items-center gap-2 sm:flex"
                   onClick={() => navigate("/study")}
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="h-4 w-4" />
                   Back to Resources
                 </Button>
               </div>
+
               <div className="min-w-0 text-center">
-                <p className="text-sm font-semibold text-foreground">StudyShare AI</p>
-                <p className="truncate text-xs text-muted-foreground">{collegeLabel}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                  AI Workspace
+                </p>
+                <p className="text-sm font-semibold text-foreground">
+                  StudyShare AI
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {collegeLabel}
+                </p>
               </div>
-              <div className="w-8 sm:w-[132px]" />
+
+              <div className="flex w-8 items-center justify-end sm:w-[148px]">
+                <div className="hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary sm:inline-flex">
+                  Live Trace
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Chat Body */}
-        <div className="flex-1 overflow-hidden px-2 py-2 sm:px-3 sm:py-3 md:px-6">
-          <div className="h-full max-w-5xl mx-auto">
-            <div className="h-full rounded-2xl border border-border/60 bg-card/40">
-              <AIRagChat variant="minimal" className="h-full rounded-2xl" />
+        <div className="flex-1 overflow-hidden px-2 py-2 sm:px-3 sm:py-3 md:px-6 md:pb-6">
+          <div className="mx-auto h-full max-w-6xl">
+            <div className="h-full overflow-hidden rounded-[28px] border border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.08),transparent_35%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.96))] shadow-card">
+              <AIRagChat variant="minimal" className="h-full rounded-[28px]" />
             </div>
           </div>
         </div>
