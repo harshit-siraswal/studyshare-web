@@ -1,20 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 import {
   ArrowUpRight,
   BookOpen,
   Check,
   ChevronDown,
   Copy,
+  FileText,
   Filter,
   Globe2,
   GraduationCap,
   Loader2,
   MessageSquare,
+  Paperclip,
   RefreshCcw,
   Send,
   Sparkles,
   Workflow,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,6 +57,11 @@ interface ChatMessage {
   combinedConfidence?: number;
   liveTitle?: string;
   liveSteps?: AiLiveActivityStep[];
+}
+
+interface ComposerAttachment {
+  id: string;
+  file: File;
 }
 
 const DEFAULT_FILTERS: RagFilters = {
@@ -336,8 +344,12 @@ const AIRagChat = ({
   const [regeneratingMessageIndex, setRegeneratingMessageIndex] = useState<number | null>(null);
   const [copiedConversation, setCopiedConversation] = useState(false);
   const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
+  const [queryMode, setQueryMode] = useState<"notes" | "web">("notes");
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
+  const [activeSourceByMessage, setActiveSourceByMessage] = useState<Record<string, number>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -393,23 +405,32 @@ const AIRagChat = ({
     if (loading) return;
     const q = (presetQuestion || question).trim();
     if (!q) return;
+    const attachmentList = attachments.map((entry) => entry.file.name).slice(0, 5);
+    const askContent = attachmentList.length
+      ? `${q}\n\nAttachment context: ${attachmentList.join(", ")}`
+      : q;
+    const requestFilters: RagFilters = {
+      ...filters,
+      source_type: queryMode === "notes" ? "pdf" : filters.source_type || "both",
+    };
 
     if (!presetQuestion) {
       setQuestion("");
     }
     setExpandedTraceId(null);
-    setMessages((prev) => [...prev, { role: "user", content: q }]);
+    setMessages((prev) => [...prev, { role: "user", content: askContent }]);
     setLoading(true);
 
     try {
-      const response = await queryRag(q, {
+      const response = await queryRag(askContent, {
         collegeId: selectedCollegeId || undefined,
-        allowWeb: true,
-        filters,
-        history: [...getHistoryForRequest(), { role: "user", content: q }],
+        allowWeb: queryMode === "web",
+        filters: requestFilters,
+        history: [...getHistoryForRequest(), { role: "user", content: askContent }],
       });
 
       setMessages((prev) => [...prev, buildAssistantMessage(response)]);
+      setAttachments([]);
     } catch (error: unknown) {
       let message = error instanceof Error ? error.message : "Failed to get AI response.";
       if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
@@ -479,6 +500,34 @@ const AIRagChat = ({
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleAttachFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files || []);
+    if (!selected.length) return;
+
+    setAttachments((prev) => {
+      const next = [...prev];
+      for (const file of selected) {
+        const id = `${file.name}-${file.size}-${file.lastModified}`;
+        const exists = next.some((entry) => entry.id === id);
+        if (!exists) next.push({ id, file });
+      }
+      return next.slice(0, 5);
+    });
+
+    event.target.value = "";
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((entry) => entry.id !== id));
+  };
+
   const latestAssistantIndex = (() => {
     for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
       if (messages[idx].role === "assistant") return idx;
@@ -532,13 +581,16 @@ const AIRagChat = ({
     setMessages(truncatedMessages);
     setLoading(true);
 
-    try {
-      const response = await queryRag(originalQuestion, {
-        collegeId: selectedCollegeId || undefined,
-        allowWeb: true,
-        filters,
-        history: getHistoryForRequest(truncatedMessages),
-      });
+      try {
+        const response = await queryRag(originalQuestion, {
+          collegeId: selectedCollegeId || undefined,
+          allowWeb: queryMode === "web",
+          filters: {
+            ...filters,
+            source_type: queryMode === "notes" ? "pdf" : filters.source_type || "both",
+          },
+          history: getHistoryForRequest(truncatedMessages),
+        });
 
       setMessages((prev) => [...prev, buildAssistantMessage(response)]);
     } catch (error: unknown) {
@@ -1057,49 +1109,75 @@ const AIRagChat = ({
                         <div className="text-xs font-semibold text-muted-foreground">
                           {isMinimal ? "References" : "Sources"}
                         </div>
-                        <div className={cn("grid gap-2", isMinimal ? "grid-cols-1" : "sm:grid-cols-2")}>
-                          {msg.sources.map((s, sidx) => (
-                            <div
-                              key={`${s.file_id}-${sidx}`}
-                              className={cn(
-                                "rounded-xl border p-2 text-xs text-muted-foreground",
-                                isMinimal ? "border-border/50 bg-background" : "border-border/60 bg-background/60"
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {msg.sources.map((s, sidx) => {
+                            const sourceType = (s.source_type || "pdf").toLowerCase();
+                            const isActive = (activeSourceByMessage[messageId] || 0) === sidx;
+                            return (
+                              <button
+                                key={`${s.file_id || s.title}-${sidx}`}
+                                type="button"
+                                onClick={() =>
+                                  setActiveSourceByMessage((prev) => ({
+                                    ...prev,
+                                    [messageId]: sidx,
+                                  }))
+                                }
+                                className={cn(
+                                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] transition",
+                                  isActive
+                                    ? "border-primary/50 bg-primary/10 text-primary"
+                                    : "border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:text-primary"
+                                )}
+                              >
+                                {sourceType === "web" ? (
+                                  <Globe2 className="h-3 w-3" />
+                                ) : (
+                                  <BookOpen className="h-3 w-3" />
+                                )}
+                                <span className="max-w-[180px] truncate">{s.title}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {msg.sources[(activeSourceByMessage[messageId] || 0)] && (
+                          <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+                            <div className="font-medium text-foreground">
+                              {msg.sources[activeSourceByMessage[messageId] || 0].title}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-3">
+                              {msg.sources[activeSourceByMessage[messageId] || 0].pages && (
+                                <span>
+                                  Pages {msg.sources[activeSourceByMessage[messageId] || 0].pages?.start}
+                                  -{msg.sources[activeSourceByMessage[messageId] || 0].pages?.end}
+                                </span>
                               )}
-                            >
-                              <div className="font-medium text-foreground">{s.title}</div>
-                              {s.pages && (
-                                <div className="text-[11px] text-muted-foreground">
-                                  Pages {s.pages.start}-{s.pages.end}
-                                </div>
+                              {msg.sources[activeSourceByMessage[messageId] || 0].timestamp && (
+                                <span>Time {msg.sources[activeSourceByMessage[messageId] || 0].timestamp}</span>
                               )}
-                              {s.timestamp && (
-                                <div className="text-[11px] text-muted-foreground">
-                                  Time {s.timestamp}
-                                </div>
-                              )}
-                              {s.file_url && (
+                              {msg.sources[activeSourceByMessage[messageId] || 0].file_url && (
                                 <a
-                                  href={s.file_url}
+                                  href={msg.sources[activeSourceByMessage[messageId] || 0].file_url || "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                                  className="inline-flex items-center gap-1 text-primary hover:underline"
                                 >
                                   Open source
                                 </a>
                               )}
-                              {s.video_url && (
+                              {msg.sources[activeSourceByMessage[messageId] || 0].video_url && (
                                 <a
-                                  href={s.video_url}
+                                  href={msg.sources[activeSourceByMessage[messageId] || 0].video_url || "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                                  className="inline-flex items-center gap-1 text-primary hover:underline"
                                 >
                                   Open video
                                 </a>
                               )}
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1327,21 +1405,93 @@ const AIRagChat = ({
             </div>
           )}
           <div className="flex items-end gap-2">
-            <Textarea
-              ref={inputRef}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isMinimal ? "Ask from notes, PDFs, or lectures..." : "Ask about any topic in your PDFs or video transcripts..."}
-              className={cn(
-                isCompact
-                  ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
-                  : isMinimal
-                    ? "min-h-[68px] max-h-[180px] resize-none rounded-[22px] border border-border/70 bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
-                    : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
-                isMinimal && "bg-background"
+            <div className="flex w-full flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex items-center rounded-full border border-border/60 bg-background/70 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setQueryMode("notes")}
+                    className={cn(
+                      "rounded-full px-3 py-1 transition",
+                      queryMode === "notes"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-primary"
+                    )}
+                  >
+                    Notes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueryMode("web")}
+                    className={cn(
+                      "rounded-full px-3 py-1 transition",
+                      queryMode === "web"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-primary"
+                    )}
+                  >
+                    Web
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.txt,.md,.doc,.docx,.png,.jpg,.jpeg"
+                    className="hidden"
+                    onChange={handleAttachFiles}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    Attach
+                  </button>
+                </div>
+              </div>
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((attachment) => (
+                    <span
+                      key={attachment.id}
+                      className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground"
+                    >
+                      <FileText className="h-3 w-3 text-primary" />
+                      <span className="max-w-[180px] truncate">{attachment.file.name}</span>
+                      <span className="text-muted-foreground">
+                        {formatFileSize(attachment.file.size)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(attachment.id)}
+                        className="text-muted-foreground transition hover:text-foreground"
+                        aria-label={`Remove ${attachment.file.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
-            />
+              <Textarea
+                ref={inputRef}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isMinimal ? "Ask from notes, PDFs, or lectures..." : "Ask about any topic in your PDFs or video transcripts..."}
+                className={cn(
+                  isCompact
+                    ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                    : isMinimal
+                      ? "min-h-[68px] max-h-[180px] resize-none rounded-[22px] border border-border/70 bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
+                      : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
+                  isMinimal && "bg-background"
+                )}
+              />
+            </div>
             <Button
               onClick={() => void handleAsk()}
               disabled={loading || !question.trim()}
