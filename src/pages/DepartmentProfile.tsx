@@ -1,39 +1,26 @@
 import { useState, useEffect } from "react";
-import type { ElementType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {ArrowLeft, Bell, Building, Users, MessageCircle, Share, FileText, Loader2, Bookmark, Send, Trash2, LayoutGrid, Cpu, Zap, Cog, Building2, PlugZap, Bot, Database, Globe, HelpCircle} from "lucide-react";
-import { CommentThread, CommentData } from "@/components/CommentThread";
+import { ArrowLeft, Bell, Building, Users, MessageCircle, Share, FileText, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
+import { CommentThread } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
 import { useAuth } from "@/context/AuthContext";
+import DepartmentAvatar from "@/components/DepartmentAvatar";
 import ImageViewer from "@/components/ImageViewer";
 import VideoPlayer from "@/components/VideoPlayer";
 import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useCollege } from "@/context/CollegeContext";
 import { collectCollegeIdScopes } from "@/lib/collegeIds";
-
-type DepartmentMeta = { value: string; label: string; icon: ElementType };
-
-const DEPARTMENTS: DepartmentMeta[] = [
-    { value: 'all', label: 'All Departments', icon: LayoutGrid },
-    { value: 'cse', label: 'Computer Science', icon: Cpu },
-    { value: 'ece', label: 'Electronics', icon: Zap },
-    { value: 'me', label: 'Mechanical', icon: Cog },
-    { value: 'ce', label: 'Civil', icon: Building2 },
-    { value: 'eee', label: 'Electrical', icon: PlugZap },
-    { value: 'aiml', label: 'AI & ML', icon: Bot },
-    { value: 'ds', label: 'Data Science', icon: Database },
-    { value: 'it', label: 'Information Technology', icon: Globe },
-];
+import { findDepartmentMeta } from "@/lib/departmentMeta";
 
 type Notice = api.Notice;
 
@@ -47,6 +34,8 @@ const DepartmentProfile = () => {
         selectedCollegeId,
         selectedCollege?.collegeId || null
     );
+    const department = findDepartmentMeta(deptId);
+    const departmentValue = department?.value || "";
 
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -70,86 +59,85 @@ const DepartmentProfile = () => {
 
     // Bookmarks hook
     const { isBookmarked, toggleBookmark } = useBookmarks();
-
-    const department = DEPARTMENTS.find(d => d.value === deptId);
-    const DeptIcon = (department?.icon || Building2) as ElementType;
+    const collegeScopesKey = collegeScopes.join('|');
 
     useEffect(() => {
-        if (deptId && collegeScopes.length > 0) {
-            fetchNotices();
-            checkFollowingStatus();
-            fetchFollowerCount();
-        }
-    }, [deptId, user, collegeId, collegeScopes.join('|')]);
+        if (!departmentValue || collegeScopes.length === 0) return;
 
-    const fetchNotices = async () => {
-        try {
-            setLoading(true);
-            const response = await api.getNotices({
-                collegeId: collegeScopes,
-                department: deptId,
-            });
+        let isCancelled = false;
 
-            const activeNotices = (response.notices || [])
-                .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
-                .map(notice => ({
-                    ...notice,
-                    likes: notice.likes || 0,
-                    comments: notice.comments ?? notice.comments_count ?? 0,
-                    comments_count: notice.comments_count ?? notice.comments ?? 0,
-                }));
+        const loadDepartmentData = async () => {
+            try {
+                setLoading(true);
 
-            setNotices(activeNotices);
-        } catch (error) {
-            console.error('Error fetching notices:', error);
-            toast.error('Failed to load department notices');
-        } finally {
-            setLoading(false);
-        }
-    };
+                const [noticeResponse, followedResponse, followerResponse] = await Promise.all([
+                    api.getNotices({
+                        collegeId: collegeScopes,
+                        department: departmentValue,
+                    }),
+                    user?.email && collegeId
+                        ? api.getFollowedDepartments(collegeId)
+                        : Promise.resolve({ departments: [] as string[] }),
+                    collegeId
+                        ? supabase
+                            .from('department_followers')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('department_id', departmentValue)
+                            .eq('college_id', collegeId)
+                        : Promise.resolve({ count: 0, error: null }),
+                ]);
 
-    const checkFollowingStatus = async () => {
-        if (!user?.email || !deptId || !collegeId) return;
+                if (isCancelled) return;
 
-        try {
-            const response = await api.getFollowedDepartments(collegeId);
-            setIsFollowing(response.departments.includes(deptId));
-        } catch (error) {
-            console.error('Error checking follow status:', error);
-        }
-    };
+                const activeNotices = (noticeResponse.notices || [])
+                    .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
+                    .map(notice => ({
+                        ...notice,
+                        likes: notice.likes || 0,
+                        comments: notice.comments ?? notice.comments_count ?? 0,
+                        comments_count: notice.comments_count ?? notice.comments ?? 0,
+                    }));
 
-    const fetchFollowerCount = async () => {
-        if (!deptId || !collegeId) return;
+                setNotices(activeNotices);
+                setIsFollowing((followedResponse.departments || []).includes(departmentValue));
 
-        try {
-            const { count, error } = await supabase
-                .from('department_followers')
-                .select('*', { count: 'exact', head: true })
-                .eq('department_id', deptId)
-                .eq('college_id', collegeId);
+                if (followerResponse.error) {
+                    throw followerResponse.error;
+                }
+                setFollowerCount(followerResponse.count || 0);
+            } catch (error) {
+                if (!isCancelled) {
+                    console.error('Error loading department profile:', error);
+                    toast.error('Failed to load department notices');
+                }
+            } finally {
+                if (!isCancelled) {
+                    setLoading(false);
+                }
+            }
+        };
 
-            if (error) throw error;
-            setFollowerCount(count || 0);
-        } catch (error) {
-            console.error('Error fetching follower count:', error);
-        }
-    };
+        void loadDepartmentData();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [departmentValue, user?.email, collegeId, collegeScopes, collegeScopesKey]);
 
     const handleFollow = async () => {
-        if (!user?.email || !deptId || !collegeId) {
+        if (!user?.email || !departmentValue || !collegeId) {
             toast.error('Please login to follow departments');
             return;
         }
 
         try {
             if (isFollowing) {
-                await api.unfollowDepartment(deptId, collegeId);
+                await api.unfollowDepartment(departmentValue, collegeId);
                 setIsFollowing(false);
                 setFollowerCount(prev => Math.max(0, prev - 1));
                 toast.success('Unfollowed department');
             } else {
-                await api.followDepartment(deptId, collegeId);
+                await api.followDepartment(departmentValue, collegeId);
                 setIsFollowing(true);
                 setFollowerCount(prev => prev + 1);
                 toast.success('Following department!');
@@ -229,7 +217,9 @@ const DepartmentProfile = () => {
                     text: shareText,
                     url: window.location.href,
                 });
-            } catch { }
+            } catch {
+                // Sharing was dismissed or unavailable in the current context.
+            }
         } else {
             await navigator.clipboard.writeText(shareText);
             toast.success("Copied to clipboard!");
@@ -289,12 +279,12 @@ const DepartmentProfile = () => {
                         <Button variant="ghost" size="icon" onClick={() => navigate('/notices')}>
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
-                        <div className="flex-1">
-                            <h1 className="text-xl font-bold flex items-center gap-2">
-                                <DeptIcon className="w-6 h-6 text-primary" />
-                                {department.label}
-                            </h1>
-                            <p className="text-sm text-muted-foreground">{notices.length} notices</p>
+                        <div className="flex flex-1 items-center gap-3">
+                            <DepartmentAvatar meta={department} size="lg" className="h-11 w-11" />
+                            <div>
+                                <h1 className="text-xl font-bold">{department.label}</h1>
+                                <p className="text-sm text-muted-foreground">{notices.length} notices</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -304,15 +294,16 @@ const DepartmentProfile = () => {
                 {/* Department Header Card */}
                 <Card className="p-6 mb-6">
                     <div className="flex items-start gap-6">
-                        <Avatar className="w-24 h-24">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                                <DeptIcon className="h-9 w-9" />
-                            </AvatarFallback>
-                        </Avatar>
+                        <DepartmentAvatar meta={department} size="hero" />
                         <div className="flex-1">
-                            <h2 className="text-2xl font-bold mb-2">{department.label}</h2>
+                            <div className="mb-2 flex items-center gap-2 flex-wrap">
+                                <h2 className="text-2xl font-bold">{department.label}</h2>
+                                <Badge variant="outline" className={cn("uppercase tracking-wide", department.badgeClassName)}>
+                                    @{department.value}
+                                </Badge>
+                            </div>
                             <p className="text-muted-foreground mb-4">
-                                Official department account for {department.label}
+                                {department.description || `Official department account for ${department.label}`}
                             </p>
                             <div className="flex items-center gap-6 mb-4">
                                 <div className="flex items-center gap-2">
@@ -362,15 +353,13 @@ const DepartmentProfile = () => {
                                     onClick={() => setSelectedNotice(notice)}
                                 >
                                     <div className="flex items-start gap-4">
-                                        <Avatar className="w-12 h-12">
-                                            <AvatarFallback className="bg-primary/10 text-primary">
-                                                <DeptIcon className="h-5 w-5" />
-                                            </AvatarFallback>
-                                        </Avatar>
+                                        <DepartmentAvatar meta={department} size="lg" />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="font-semibold">{department.label}</span>
-                                                <span className="text-muted-foreground text-sm">·</span>
+                                                <Badge variant="outline" className={cn("uppercase tracking-wide", department.badgeClassName)}>
+                                                    @{department.value}
+                                                </Badge>
                                                 <span className="text-muted-foreground text-sm">{formatTimeAgo(notice.created_at)}</span>
                                                 {notice.priority === 'urgent' && (
                                                     <Badge variant="destructive" className="ml-2">Urgent</Badge>
@@ -530,11 +519,7 @@ const DepartmentProfile = () => {
                     {selectedNotice && (
                         <div className="flex flex-col h-full max-h-[90vh]">
                             <div className="p-4 border-b border-border flex items-center gap-3">
-                                <Avatar className="w-10 h-10">
-                                    <AvatarFallback className="bg-primary/10 text-primary">
-                                        <DeptIcon className="h-5 w-5" />
-                                    </AvatarFallback>
-                                </Avatar>
+                                <DepartmentAvatar meta={department} size="md" />
                                 <div>
                                     <h3 className="font-semibold">{department?.label}</h3>
                                     <p className="text-xs text-muted-foreground">{formatTimeAgo(selectedNotice.created_at)}</p>
