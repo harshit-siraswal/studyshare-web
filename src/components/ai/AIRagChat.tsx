@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
+  ArrowUpRight,
   BookOpen,
   Check,
+  ChevronDown,
   Copy,
   Filter,
+  Globe2,
   GraduationCap,
   Loader2,
   MessageSquare,
   RefreshCcw,
   Send,
   Sparkles,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,10 +30,16 @@ import {
   queryRag,
   type RagFilters,
   type RagFollowUpAction,
+  type RagResponse,
   type RagSource,
 } from "@/lib/api";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
+import AILivePlanCard, {
+  type AiAnswerOrigin,
+  type AiLiveActivitySource,
+  type AiLiveActivityStep,
+} from "@/components/ai/AILivePlanCard";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -38,6 +48,12 @@ interface ChatMessage {
   followUps?: RagFollowUpAction[];
   cached?: boolean;
   noLocal?: boolean;
+  answerOrigin?: AiAnswerOrigin;
+  retrievalScore?: number;
+  llmConfidenceScore?: number;
+  combinedConfidence?: number;
+  liveTitle?: string;
+  liveSteps?: AiLiveActivityStep[];
 }
 
 const DEFAULT_FILTERS: RagFilters = {
@@ -50,6 +66,250 @@ const SUGGESTIONS = [
   "Explain stack vs queue with a real-world example.",
   "List key formulas from my notes for quick revision.",
 ];
+
+const LOADING_ACTIVITY_BLUEPRINT = [
+  {
+    id: "retrieve",
+    title: "Searching your materials",
+    description:
+      "Scanning notes, PDFs, and lecture transcripts for the strongest matches.",
+  },
+  {
+    id: "evidence",
+    title: "Checking evidence",
+    description:
+      "Ranking the best passages and validating which sources belong in the answer.",
+  },
+  {
+    id: "answer",
+    title: "Drafting the answer",
+    description:
+      "Turning the retrieved evidence into a clean, study-ready response.",
+  },
+] as const;
+
+const sourceKindFromRagSource = (
+  source: RagSource
+): AiLiveActivitySource["kind"] => {
+  const normalized = (source.source_type || "pdf").trim().toLowerCase();
+  if (normalized === "web") return "web";
+  if (normalized === "youtube" || normalized === "video") return "video";
+  return "notes";
+};
+
+const buildActivitySources = (
+  sources: RagSource[] = [],
+  limit = 4
+): AiLiveActivitySource[] => {
+  const seen = new Set<string>();
+  const activitySources: AiLiveActivitySource[] = [];
+
+  for (const source of sources) {
+    const kind = sourceKindFromRagSource(source);
+    const key = [
+      source.file_id?.trim(),
+      source.title?.trim(),
+      source.pages?.start ?? "",
+      source.timestamp ?? "",
+      kind,
+    ].join("|");
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    activitySources.push({
+      title: source.title,
+      kind,
+      page: source.pages?.start,
+      timestamp: source.timestamp ?? undefined,
+      url:
+        kind === "notes"
+          ? source.file_url
+          : source.video_url || source.file_url,
+      fileId: source.file_id,
+    });
+
+    if (activitySources.length >= limit) break;
+  }
+
+  return activitySources;
+};
+
+const buildLoadingLiveSteps = (activeIndex: number): AiLiveActivityStep[] =>
+  LOADING_ACTIVITY_BLUEPRINT.map((step, index) => {
+    if (index < activeIndex) {
+      return {
+        id: step.id,
+        title: step.title,
+        status: "completed",
+        description: step.description,
+      };
+    }
+    if (index === activeIndex) {
+      return {
+        id: step.id,
+        title: step.title,
+        status: "active",
+        description: step.description,
+      };
+    }
+    return {
+      id: step.id,
+      title: step.title,
+      status: "pending",
+      description: step.description,
+    };
+  });
+
+const buildFailedLiveSteps = (message: string): AiLiveActivityStep[] => [
+  {
+    id: "retrieve",
+    title: "Request interrupted",
+    status: "failed",
+    description: message,
+  },
+  {
+    id: "answer",
+    title: "Response generation",
+    status: "failed",
+    description:
+      "Retry when your connection and token balance are healthy again.",
+  },
+];
+
+const buildLiveAnswerSteps = ({
+  answerOrigin,
+  sources,
+  noLocal,
+}: {
+  answerOrigin?: AiAnswerOrigin;
+  sources: RagSource[];
+  noLocal?: boolean;
+}): AiLiveActivityStep[] => {
+  const activitySources = buildActivitySources(sources);
+  const hasEvidence = activitySources.length > 0;
+
+  const retrievalStatus =
+    answerOrigin === "insufficient_notes"
+      ? hasEvidence
+        ? "warning"
+        : "failed"
+      : answerOrigin
+        ? "completed"
+        : hasEvidence
+          ? "completed"
+          : noLocal
+            ? "failed"
+            : "completed";
+
+  const evidenceStatus =
+    answerOrigin === "web_only"
+      ? "completed"
+      : answerOrigin === "notes_plus_web"
+        ? "completed"
+        : answerOrigin === "insufficient_notes"
+          ? "warning"
+          : hasEvidence
+            ? "completed"
+            : noLocal
+              ? "warning"
+              : "completed";
+
+  const retrievalTitle =
+    answerOrigin === "web_only"
+      ? "Web context retrieved"
+      : answerOrigin === "notes_plus_web"
+        ? "Notes + web context retrieved"
+        : answerOrigin === "insufficient_notes"
+          ? "Limited note grounding"
+          : "Notes retrieval completed";
+
+  const evidenceDescription =
+    answerOrigin === "web_only"
+      ? "Your notes were thin here, so broader web context helped complete the answer."
+      : answerOrigin === "notes_plus_web"
+        ? "Local notes were blended with extra context where coverage was sparse."
+        : answerOrigin === "insufficient_notes"
+          ? "The notes only partially matched, so the answer may be broader than your materials."
+          : "The response stayed anchored to your uploaded materials and citations.";
+
+  return [
+    {
+      id: "retrieve",
+      title: retrievalTitle,
+      status: retrievalStatus,
+      description:
+        answerOrigin === "insufficient_notes"
+          ? "Only a partial grounding match was found in your materials."
+          : "The strongest matching passages were collected before the answer was written.",
+      sources: activitySources,
+    },
+    {
+      id: "evidence",
+      title: "Evidence matched",
+      status: evidenceStatus,
+      description: evidenceDescription,
+    },
+    {
+      id: "answer",
+      title: "Response generation",
+      status: "completed",
+      description:
+        "The final answer is assembled and ready to review or regenerate.",
+    },
+  ];
+};
+
+const buildAssistantMessage = (
+  response: RagResponse,
+  liveTitle = "Tracing your answer"
+): ChatMessage => ({
+  role: "assistant",
+  content: response.answer || "No answer returned.",
+  sources: response.sources || [],
+  followUps: response.follow_ups || [],
+  cached: response.cached,
+  noLocal: response.no_local,
+  answerOrigin: response.answer_origin,
+  retrievalScore: response.retrieval_score,
+  llmConfidenceScore: response.llm_confidence_score,
+  combinedConfidence: response.combined_confidence,
+  liveTitle,
+  liveSteps: buildLiveAnswerSteps({
+    answerOrigin: response.answer_origin,
+    sources: response.sources || [],
+    noLocal: response.no_local,
+  }),
+});
+
+const percentLabel = (value?: number) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  const normalized = value > 1 ? value : value * 100;
+  return `${Math.round(Math.max(0, Math.min(100, normalized)))}%`;
+};
+
+const traceHeadline = (message: ChatMessage) => {
+  if (message.answerOrigin === "notes_only") return "Grounded in your notes";
+  if (message.answerOrigin === "notes_plus_web") return "Notes + web context used";
+  if (message.answerOrigin === "web_only") return "Web fallback used";
+  if (message.answerOrigin === "insufficient_notes" || message.noLocal) {
+    return "Limited grounding";
+  }
+  return "Answer trace ready";
+};
+
+const traceToneClasses = (message: ChatMessage) => {
+  if (message.answerOrigin === "insufficient_notes" || message.noLocal) {
+    return {
+      dot: "bg-amber-400",
+      badge: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+    };
+  }
+  return {
+    dot: "bg-emerald-400",
+    badge: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+  };
+};
 
 const AIRagChat = ({
   className,
@@ -71,9 +331,11 @@ const AIRagChat = ({
   const [filters, setFilters] = useState<RagFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingPlanStep, setLoadingPlanStep] = useState(0);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [regeneratingMessageIndex, setRegeneratingMessageIndex] = useState<number | null>(null);
   const [copiedConversation, setCopiedConversation] = useState(false);
+  const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -82,6 +344,27 @@ const AIRagChat = ({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingPlanStep(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const nextStep = Math.min(
+        LOADING_ACTIVITY_BLUEPRINT.length - 1,
+        Math.floor(elapsed / 1400)
+      );
+      setLoadingPlanStep(nextStep);
+    }, 280);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [loading]);
 
   const getHistoryForRequest = (historyMessages: ChatMessage[] = messages) => {
     return historyMessages.slice(-10).map((msg) => ({
@@ -114,6 +397,7 @@ const AIRagChat = ({
     if (!presetQuestion) {
       setQuestion("");
     }
+    setExpandedTraceId(null);
     setMessages((prev) => [...prev, { role: "user", content: q }]);
     setLoading(true);
 
@@ -125,17 +409,7 @@ const AIRagChat = ({
         history: [...getHistoryForRequest(), { role: "user", content: q }],
       });
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: response.answer || "No answer returned.",
-          sources: response.sources || [],
-          followUps: response.follow_ups || [],
-          cached: response.cached,
-          noLocal: response.no_local,
-        },
-      ]);
+      setMessages((prev) => [...prev, buildAssistantMessage(response)]);
     } catch (error: unknown) {
       let message = error instanceof Error ? error.message : "Failed to get AI response.";
       if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
@@ -146,6 +420,8 @@ const AIRagChat = ({
         {
           role: "assistant",
           content: message,
+          liveTitle: "Tracing your answer",
+          liveSteps: buildFailedLiveSteps(message),
         },
       ]);
     } finally {
@@ -251,6 +527,7 @@ const AIRagChat = ({
     }
 
     const truncatedMessages = messages.slice(0, assistantIndex);
+    setExpandedTraceId(null);
     setRegeneratingMessageIndex(assistantIndex);
     setMessages(truncatedMessages);
     setLoading(true);
@@ -263,17 +540,7 @@ const AIRagChat = ({
         history: getHistoryForRequest(truncatedMessages),
       });
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: response.answer || "No answer returned.",
-          sources: response.sources || [],
-          followUps: response.follow_ups || [],
-          cached: response.cached,
-          noLocal: response.no_local,
-        },
-      ]);
+      setMessages((prev) => [...prev, buildAssistantMessage(response)]);
     } catch (error: unknown) {
       let message = error instanceof Error ? error.message : "Failed to regenerate AI response.";
       if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
@@ -284,6 +551,8 @@ const AIRagChat = ({
         {
           role: "assistant",
           content: message,
+          liveTitle: "Tracing your answer",
+          liveSteps: buildFailedLiveSteps(message),
         },
       ]);
     } finally {
@@ -459,9 +728,37 @@ const AIRagChat = ({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-1 pb-1">
-            <h2 className="text-sm font-semibold text-foreground">StudyShare AI</h2>
-            <p className="max-w-[60%] truncate text-right text-xs text-muted-foreground">{collegeLabel}</p>
+          <div className="rounded-[24px] border border-border/60 bg-background/55 px-4 py-4 shadow-card">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  <Workflow className="h-3.5 w-3.5" />
+                  Live answer trace
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground sm:text-xl">
+                    Ask your notes and watch the answer form
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                    StudyShare now shows a Claude-style live trace while it is
+                    searching, checking evidence, and drafting the response.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-foreground/90">
+                  <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  PDF grounded
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-foreground/90">
+                  <Globe2 className="h-3.5 w-3.5 text-primary" />
+                  Smart fallback
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-muted-foreground">
+                  {collegeLabel}
+                </span>
+              </div>
+            </div>
           </div>
         )
       )}
@@ -471,7 +768,7 @@ const AIRagChat = ({
           className={cn(
             "relative flex-1",
             isMinimal
-              ? "rounded-2xl border border-border/50 bg-background/30"
+              ? "rounded-[26px] border border-border/60 bg-[linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.86))] shadow-card"
               : "rounded-3xl border border-border/60 bg-gradient-to-b from-background/80 via-background/60 to-background/40 shadow-card"
           )}
         >
@@ -494,18 +791,39 @@ const AIRagChat = ({
                   </div>
                 </div>
               ) : isMinimal ? (
-                <div className="mx-auto w-full max-w-2xl rounded-2xl border border-border/60 bg-background/80 p-4 text-center sm:p-5">
-                  <p className="text-sm font-medium text-foreground">How can I help with your studies today?</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Ask from your notes, PDFs, and lectures. I will answer with references.
-                  </p>
-                  <div className="mt-3 flex flex-wrap justify-center gap-2">
-                    {SUGGESTIONS.slice(0, 2).map((suggestion) => (
+                <div className="mx-auto w-full max-w-3xl rounded-[26px] border border-border/60 bg-background/75 p-5 text-left shadow-card sm:p-6">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Ready to trace
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">
+                          What should we solve from your materials?
+                        </p>
+                        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                          Ask from notes, PDFs, or lectures. The live trace will
+                          appear while the answer is being built, then collapse
+                          once the output is ready.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="hidden rounded-[24px] border border-border/60 bg-background/60 p-4 sm:flex sm:items-center sm:justify-center">
+                      <BrandMark
+                        size={88}
+                        className="drop-shadow-[0_14px_30px_rgba(0,0,0,0.25)]"
+                        alt="StudyShare AI"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((suggestion) => (
                       <button
                         key={`minimal-${suggestion}`}
                         type="button"
                         onClick={() => handleSuggestion(suggestion)}
-                        className="rounded-full border border-border/60 bg-background px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                        className="rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
                       >
                         {suggestion}
                       </button>
@@ -550,6 +868,15 @@ const AIRagChat = ({
               const messageId = `${msg.role}-${idx}`;
               const canRegenerate = msg.role === "assistant" && idx === latestAssistantIndex;
               const isRegenerating = regeneratingMessageIndex === idx;
+              const traceExpanded = expandedTraceId === messageId;
+              const completedSteps =
+                msg.liveSteps?.filter((step) => step.status === "completed").length ?? 0;
+              const totalSteps = msg.liveSteps?.length ?? 0;
+              const grounding = percentLabel(msg.retrievalScore);
+              const confidence = percentLabel(
+                msg.combinedConfidence ?? msg.llmConfidenceScore
+              );
+              const traceTone = traceToneClasses(msg);
               return (
                 <div key={`${msg.role}-${idx}`} className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
                   <div
@@ -557,13 +884,101 @@ const AIRagChat = ({
                       "text-sm",
                       isMinimal
                         ? isUser
-                          ? "max-w-[88%] rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-foreground"
-                          : "w-full max-w-full px-1 py-1 text-foreground"
+                          ? "max-w-[88%] rounded-[26px] border border-primary/20 bg-primary/10 px-4 py-3 text-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
+                          : "w-full max-w-full rounded-[26px] border border-border/60 bg-card/55 px-4 py-4 text-foreground shadow-card"
                         : "w-full max-w-[90%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[80%]",
                       !isMinimal && isUser && "bg-gradient-primary text-primary-foreground shadow-glow",
                       !isMinimal && !isUser && "border border-border/60 bg-card/70 text-foreground"
                     )}
                   >
+                    {!isUser && isMinimal && msg.liveSteps?.length ? (
+                      <div className="mb-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedTraceId((prev) =>
+                              prev === messageId ? null : messageId
+                            )
+                          }
+                          className="w-full rounded-[22px] border border-border/60 bg-background/65 px-3.5 py-3 text-left transition hover:border-primary/40"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-start gap-3">
+                              <span
+                                className={cn(
+                                  "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
+                                  traceExpanded ? "bg-primary" : traceTone.dot
+                                )}
+                              />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                  Live trace
+                                </p>
+                                <p className="mt-1 text-sm font-medium text-foreground">
+                                  {traceHeadline(msg)}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {completedSteps
+                                    ? `${completedSteps}/${totalSteps} steps completed`
+                                    : "Tap to inspect how the answer was built."}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {msg.cached ? (
+                                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+                                  Cached
+                                </span>
+                              ) : null}
+                              {grounding ? (
+                                <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-medium text-foreground/90">
+                                  Grounding {grounding}
+                                </span>
+                              ) : null}
+                              {confidence ? (
+                                <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-medium text-foreground/90">
+                                  Confidence {confidence}
+                                </span>
+                              ) : null}
+                              <span
+                                className={cn(
+                                  "rounded-full border px-3 py-1 text-[11px] font-medium",
+                                  traceTone.badge
+                                )}
+                              >
+                                {msg.answerOrigin === "insufficient_notes" || msg.noLocal
+                                  ? "Needs review"
+                                  : "Answer ready"}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                                {traceExpanded ? "Hide details" : "Show details"}
+                                <ChevronDown
+                                  className={cn(
+                                    "h-4 w-4 transition-transform",
+                                    traceExpanded && "rotate-180"
+                                  )}
+                                />
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+
+                        {traceExpanded ? (
+                          <AILivePlanCard
+                            title={msg.liveTitle || "Tracing your answer"}
+                            steps={msg.liveSteps || []}
+                            answerOrigin={msg.answerOrigin}
+                            metrics={{
+                              retrievalScore: msg.retrievalScore,
+                              confidenceScore:
+                                msg.combinedConfidence ?? msg.llmConfidenceScore,
+                            }}
+                            className="mt-3"
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     {!isUser && !isMinimal && (
                       <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                         <Sparkles className="h-3 w-3 text-primary" />
@@ -720,9 +1135,26 @@ const AIRagChat = ({
 
             {loading && (
               isMinimal ? (
-                <div className="flex items-center gap-2 px-1 py-1 text-sm text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                  Thinking...
+                <div className="space-y-3">
+                  <AILivePlanCard
+                    title="Tracing your answer"
+                    steps={buildLoadingLiveSteps(loadingPlanStep)}
+                    isRunning
+                  />
+                  <div className="rounded-[24px] border border-border/60 bg-card/45 px-4 py-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <BrandLoader size={64} label="Drafting answer" compact />
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          <Workflow className="h-3.5 w-3.5 text-primary" />
+                          Live trace in motion
+                        </div>
+                        <p className="text-sm text-foreground">
+                          StudyShare is searching your sources and assembling a grounded answer right now.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 px-4 py-4 text-sm shadow-card">
@@ -748,10 +1180,33 @@ const AIRagChat = ({
         <div
           className={cn(
             "border border-border/60 p-3",
-            isMinimal ? "rounded-2xl bg-background/95 p-2.5 sm:p-3" : "rounded-2xl bg-card/70 shadow-card"
+            isMinimal ? "rounded-[26px] bg-background/95 p-3 shadow-card" : "rounded-2xl bg-card/70 shadow-card"
           )}
         >
-          {!isMinimal && (
+          {isMinimal ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={`chip-${suggestion}`}
+                    type="button"
+                    onClick={() => handleSuggestion(suggestion)}
+                    className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+              >
+                <Filter className="h-3 w-3" />
+                Filters
+              </button>
+            </div>
+          ) : (
             <div className="flex flex-wrap gap-2 pb-3">
               {SUGGESTIONS.map((suggestion) => (
                 <button
@@ -785,7 +1240,7 @@ const AIRagChat = ({
               </div>
             </div>
           )}
-          {!isCompact && !isMinimal && showFilters && (
+          {!isCompact && showFilters && (
             <div className="mb-3 grid gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:grid-cols-2">
               <label className="text-xs text-muted-foreground">
                 Semester
@@ -877,12 +1332,12 @@ const AIRagChat = ({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isMinimal ? "Message StudyShare AI..." : "Ask about any topic in your PDFs or video transcripts..."}
+              placeholder={isMinimal ? "Ask from notes, PDFs, or lectures..." : "Ask about any topic in your PDFs or video transcripts..."}
               className={cn(
                 isCompact
                   ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
                   : isMinimal
-                    ? "min-h-[60px] max-h-[180px] resize-none rounded-2xl border border-border/70 bg-background px-3 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
+                    ? "min-h-[68px] max-h-[180px] resize-none rounded-[22px] border border-border/70 bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
                     : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                 isMinimal && "bg-background"
               )}
@@ -891,10 +1346,10 @@ const AIRagChat = ({
               onClick={() => void handleAsk()}
               disabled={loading || !question.trim()}
               className={cn(
-                isMinimal ? "h-10 w-10 shrink-0 rounded-xl transition" : "h-12 w-12 rounded-2xl transition",
                 isMinimal
-                  ? "bg-primary text-primary-foreground hover:shadow-hover"
-                  : "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
+                  ? "h-11 shrink-0 rounded-[18px] px-4 transition sm:px-5"
+                  : "h-12 w-12 rounded-2xl transition",
+                "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
                 loading && "animate-pulse"
               )}
             >
@@ -902,9 +1357,15 @@ const AIRagChat = ({
             </Button>
           </div>
           {isSimpleMinimal && (
-            <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-              Press Enter to send, Shift + Enter for a new line.
-            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+              <p className="text-[11px] text-muted-foreground">
+                Press Enter to send, Shift + Enter for a new line.
+              </p>
+              <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <ArrowUpRight className="h-3 w-3 text-primary" />
+                Live trace auto-collapses after the answer is ready
+              </p>
+            </div>
           )}
         </div>
       </div>

@@ -1703,7 +1703,7 @@ export async function getAiFlashcards(
 export interface RagSource {
     file_id: string;
     title: string;
-    source_type?: 'pdf' | 'youtube';
+    source_type?: 'pdf' | 'youtube' | 'web' | 'video';
     pages?: { start: number; end: number };
     timestamp?: string;
     score?: number;
@@ -1748,6 +1748,7 @@ export interface RagResponse {
     answer: string;
     sources: RagSource[];
     follow_ups?: RagFollowUpAction[];
+    answer_origin?: 'notes_only' | 'notes_plus_web' | 'web_only' | 'insufficient_notes';
     cached: boolean;
     no_local: boolean;
     top_score: number;
@@ -1756,6 +1757,9 @@ export interface RagResponse {
     model: string;
     intent?: 'qa' | 'summary' | 'comparison' | 'definition';
     applied_filters?: RagFilters;
+    retrieval_score?: number;
+    llm_confidence_score?: number;
+    combined_confidence?: number;
 }
 
 export async function queryRag(
