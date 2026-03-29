@@ -262,13 +262,15 @@ function BottomNavPreview({
   return (
     <div className="absolute inset-x-3 bottom-3 z-20">
       <div className="relative rounded-[22px] border border-white/12 bg-[rgba(9,11,17,0.94)] px-2 pb-2 pt-2 shadow-[0_22px_46px_rgba(0,0,0,0.42)] backdrop-blur-2xl">
-        <FramerMotion.div
-          className="absolute left-1/2 top-0 grid h-[38px] w-[38px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#7fb6ff]/18 bg-[#2f6dff] text-white shadow-[0_8px_24px_rgba(47,109,255,0.65)]"
-          animate={reduceMotion ? undefined : { y: [0, -2, 0], scale: [1, 1.04, 1] }}
-          transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-        </FramerMotion.div>
+        <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[50%]">
+          <FramerMotion.div
+            className="grid h-[38px] w-[38px] place-items-center rounded-full border border-[#7fb6ff]/18 bg-[#2f6dff] text-white shadow-[0_8px_24px_rgba(47,109,255,0.65)]"
+            animate={reduceMotion ? undefined : { y: [0, -3, 0], scale: [1, 1.04, 1] }}
+            transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          </FramerMotion.div>
+        </div>
         <div className="grid grid-cols-[1fr_1fr_52px_1fr_1fr] items-end gap-x-1 text-[9px] font-medium text-white/72">
           <NavItem item={bottomNavItems[0]} activeTab={activeTab} />
           <NavItem item={bottomNavItems[1]} activeTab={activeTab} />
