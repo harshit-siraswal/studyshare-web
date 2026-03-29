@@ -21,17 +21,22 @@ const missingFirebaseVars = Object.entries(firebaseConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
+let app = null;
+let auth = null;
+let db = null;
+let storage = null;
+
 if (missingFirebaseVars.length > 0) {
-  throw new Error(
+  console.error(
     `[Firebase] Missing required config entries: ${missingFirebaseVars.join(", ")}. ` +
       "Set VITE_FIREBASE_* environment variables before starting the app."
   );
+} else {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
 }
 
-const app = initializeApp(firebaseConfig);
-
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
+export { auth, db, storage };
 export default app;
