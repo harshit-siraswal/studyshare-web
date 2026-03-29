@@ -5,28 +5,29 @@ import { motion as Motion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
   Bell,
   BookOpen,
   Download,
   FileText,
   House,
-  Layers3,
   Megaphone,
   MessagesSquare,
+  Moon,
   Phone,
   Plus,
   Search,
   ShieldCheck,
   Sparkles,
+  Sun,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { SEO } from "@/components/SEO";
+import { useTheme } from "@/hooks/useTheme";
 import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
 import { cn } from "@/lib/utils";
 
@@ -48,97 +49,111 @@ type ShowcaseScene = {
 const showcaseScenes: ShowcaseScene[] = [
   {
     id: "ai-chat",
-    eyebrow: "AI studio",
-    title: "A live plan that collapses when the answer is ready.",
+    eyebrow: "AI assistant",
+    title: "Ask from notes, attachments, and the web in one mobile flow.",
     description:
-      "The mobile AI surface keeps the working trace visible while the model is thinking, then folds it away so the final response stays calm and easy to read.",
+      "StudyShare AI can work from class notes, uploaded PDFs or images, and web fallback when local material is not enough. The mobile assistant keeps live activity visible while the answer is being prepared.",
     image: "/images/superdesign/mobile/studyshare-ai-chat-mobile-reproduction.png",
     navTab: 0,
     fabMode: "add",
-    note: "Reasoning stays visible during generation, then closes cleanly.",
-    badges: ["Live plan", "Collapsed trace", "Clean final answer"],
-    metric: "AI flow",
+    note: "Notes-first answers with live activity and sources.",
+    badges: ["Notes mode", "Web mode", "Attachments"],
+    metric: "AI help",
   },
   {
-    id: "study-surface",
-    eyebrow: "Study surface",
-    title: "Notes, PDFs, and semester utilities with more breathing room.",
+    id: "study-feed",
+    eyebrow: "Study feed",
+    title: "Semester-wise notes, PYQs, videos, and downloads stay in one feed.",
     description:
-      "The app becomes a study companion rather than a chat shell: resources, reading surfaces, and quick actions stay close without feeling cluttered.",
+      "The main study surface is built around semester, branch, subject, and type filters, with sort options like recent, most upvoted, and teacher-led material.",
     image: "/images/superdesign/mobile/studyshare-mobile-study-screen.png",
     navTab: 0,
     fabMode: "add",
-    note: "One-handed browsing stays fast while the app still feels premium.",
-    badges: ["Resources", "PDFs", "Study flow"],
-    metric: "Campus work",
+    note: "Built for daily study, not just one-off browsing.",
+    badges: ["Notes", "PYQs", "Videos", "Downloads"],
+    metric: "Resources",
   },
   {
     id: "rooms",
     eyebrow: "Campus rooms",
-    title: "Rooms switch the footer into a search posture instead of pretending otherwise.",
+    title: "Discover public rooms and move into college communities quickly.",
     description:
-      "This screen mirrors the Flutter shell correctly: Home, Rooms, Notices, and Profile stay anchored while the center action becomes search for discovery.",
+      "Students can browse open rooms, search communities, and join private spaces by code when needed, all without leaving the same app shell.",
     image: "/images/superdesign/mobile/studyshare-rooms-mobile.png",
     navTab: 1,
     fabMode: "search",
-    note: "The center button changes with context, not just with styling.",
-    badges: ["Rooms", "Search-first", "Correct footer"],
-    metric: "Discovery",
+    note: "Rooms use a real search-first footer state.",
+    badges: ["Discover rooms", "Join by code", "Community posts"],
+    metric: "Community",
   },
   {
     id: "notices",
-    eyebrow: "Notices",
-    title: "Announcement-heavy screens that still feel editorial and readable.",
+    eyebrow: "Department notices",
+    title: "Official updates are organized like a usable campus news feed.",
     description:
-      "Deadlines, notices, and updates need hierarchy. The gallery keeps the content legible and lets the footers and overlays stay out of the way.",
+      "Notice feeds are grouped under department handles, and students can search updates or narrow them with date filters when deadlines pile up.",
     image: "/images/superdesign/mobile/studyshare-notices-feed.png",
     navTab: 2,
     fabMode: "add",
-    note: "Important updates stay scannable, even on a small screen.",
-    badges: ["Notices", "Deadlines", "Readable hierarchy"],
-    metric: "Updates",
+    note: "Search and date filters make notice feeds practical.",
+    badges: ["Departments", "Date filters", "Official handles"],
+    metric: "Notices",
   },
   {
-    id: "profile",
-    eyebrow: "Profile",
-    title: "A steadier profile and inbox surface for alerts, follows, and identity.",
+    id: "attendance",
+    eyebrow: "Attendance",
+    title: "KIET students can sync attendance and spot risk earlier.",
     description:
-      "The app still feels like a single system when the user moves from AI to rooms to alerts. The footer stays stable and the app identity stays consistent.",
-    image: "/images/superdesign/mobile/studyshare-notifications.png",
-    navTab: 3,
+      "StudyShare stores attendance snapshots, supports day-wise drilldown, and highlights low-attendance risk for colleges where the ERP connection is available.",
+    image: "/images/superdesign/mobile/studyshare-premium-attendance-ui.png",
+    navTab: 0,
     fabMode: "add",
-    note: "Profile and notifications keep the same visual language.",
-    badges: ["Notifications", "Identity", "Consistent shell"],
-    metric: "Signals",
+    note: "Attendance is integrated where the college workflow supports it.",
+    badges: ["KIET sync", "Low attendance alerts", "Day-wise view"],
+    metric: "Attendance",
   },
 ];
 
-const featureCards = [
+const productHighlights = [
   {
     icon: Sparkles,
-    title: "Motion-led presentation",
+    title: "AI grounded in study material",
     copy:
-      "The page now moves like a product film. Screens crossfade, the copy breathes, and the gallery shifts automatically so the mobile app feels alive.",
+      "The assistant can answer from notes, attachments, and web fallback while keeping a visible live activity trail on mobile.",
   },
   {
-    icon: Layers3,
-    title: "Correct mobile footer",
+    icon: BookOpen,
+    title: "Semester-wise resource discovery",
     copy:
-      "The bottom navigation matches the real Flutter app: Home, Rooms, Notices, and Profile, with a center action that changes between add and search.",
+      "Students can browse notes, PYQs, videos, and downloads with filters for semester, branch, subject, and sort preference.",
   },
   {
-    icon: Download,
-    title: "Smaller APK download",
+    icon: Megaphone,
+    title: "Department-first updates",
     copy:
-      "The website now links the published arm64 split build instead of the 100+ MB universal APK, so the install is lighter and faster to share.",
+      "Official notices are easier to trust and revisit because they are tied to department accounts, search, and date filtering.",
   },
   {
-    icon: ShieldCheck,
-    title: "Campus-first identity",
+    icon: MessagesSquare,
+    title: "College rooms and community threads",
     copy:
-      "The app keeps college resources, AI help, notices, and rooms in one place so it feels like a real study product instead of a thin demo.",
+      "Public rooms, join-by-code spaces, and discussion posts keep the app useful beyond files and announcements.",
   },
 ] as const;
+
+const marqueeChips = [
+  "Notes",
+  "PYQs",
+  "Syllabus",
+  "PDF viewer",
+  "AI chat",
+  "Attachments",
+  "Rooms",
+  "Department notices",
+  "Attendance",
+  "Bookmarks",
+  "Smaller APK",
+];
 
 const bottomNavItems = [
   { label: "Home", icon: House, index: 0 },
@@ -147,30 +162,27 @@ const bottomNavItems = [
   { label: "Profile", icon: UserRound, index: 3 },
 ] as const;
 
-const marqueeChips = [
-  "Live plan",
-  "Collapsed trace",
-  "Correct footer",
-  "Rooms",
-  "Notices",
-  "Profile",
-  "Notes",
-  "Smaller APK",
-  "Study flow",
-];
-
 function MarqueeRow({
+  items,
+  isDark,
   reverse = false,
   reduceMotion,
-  items,
 }: {
+  items: string[];
+  isDark: boolean;
   reverse?: boolean;
   reduceMotion: boolean;
-  items: string[];
 }) {
   const loopItems = [...items, ...items, ...items];
   return (
-    <div className="overflow-hidden rounded-full border border-black/8 bg-white/85 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur">
+    <div
+      className={cn(
+        "overflow-hidden rounded-full border px-3 py-3 backdrop-blur",
+        isDark
+          ? "border-white/10 bg-white/5 shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
+          : "border-black/8 bg-white/85 shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+      )}
+    >
       <Motion.div
         className="flex w-max items-center gap-2"
         animate={
@@ -183,12 +195,47 @@ function MarqueeRow({
         {loopItems.map((item, index) => (
           <span
             key={`${item}-${index}`}
-            className="rounded-full border border-black/8 bg-[#f7f3ea] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-700"
+            className={cn(
+              "rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em]",
+              isDark
+                ? "border-white/10 bg-[#0f172a]/80 text-slate-200"
+                : "border-black/8 bg-[#f7f3ea] text-slate-700"
+            )}
           >
             {item}
           </span>
         ))}
       </Motion.div>
+    </div>
+  );
+}
+
+function StageCard({
+  label,
+  title,
+  copy,
+  isDark,
+}: {
+  label: string;
+  title: string;
+  copy: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      data-stage-card
+      className={cn(
+        "rounded-[26px] border p-4 backdrop-blur",
+        isDark
+          ? "border-white/10 bg-white/6 shadow-[0_16px_34px_rgba(0,0,0,0.22)]"
+          : "border-black/8 bg-white/85 shadow-[0_16px_34px_rgba(15,23,42,0.06)]"
+      )}
+    >
+      <p className={cn("text-[10px] font-semibold uppercase tracking-[0.26em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+        {label}
+      </p>
+      <h3 className={cn("mt-2 text-base font-semibold", isDark ? "text-white" : "text-slate-950")}>{title}</h3>
+      <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-300/78" : "text-slate-600")}>{copy}</p>
     </div>
   );
 }
@@ -200,11 +247,11 @@ function NavItem({
   item: (typeof bottomNavItems)[number];
   activeTab: NavTab;
 }) {
-  const isActive = activeTab === item.index;
+  const isActive = item.index === activeTab;
   const Icon = item.icon;
   return (
     <div className="flex flex-col items-center justify-end gap-1.5 py-1 text-center">
-      <FramerMotion.div animate={{ scale: isActive ? 1.1 : 1, y: isActive ? -1 : 0 }} transition={{ duration: 0.18 }}>
+      <FramerMotion.div animate={{ scale: isActive ? 1.08 : 1, y: isActive ? -1 : 0 }} transition={{ duration: 0.18 }}>
         <Icon className={cn("h-5 w-5", isActive ? "text-[#0f766e]" : "text-white/60")} />
       </FramerMotion.div>
       <span className={cn("text-[10px]", isActive ? "text-[#0f766e]" : "text-white/64")}>{item.label}</span>
@@ -246,18 +293,19 @@ function BottomNavPreview({
 function PhoneFrame({
   scene,
   reduceMotion,
-  compact = false,
+  isDark,
 }: {
   scene: ShowcaseScene;
   reduceMotion: boolean;
-  compact?: boolean;
+  isDark: boolean;
 }) {
   return (
     <FramerMotion.div
-      animate={reduceMotion ? undefined : { y: compact ? [0, -6, 0] : [0, -12, 0] }}
-      transition={{ duration: compact ? 7.5 : 6.2, repeat: Infinity, ease: "easeInOut" }}
+      animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
+      transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+      className="mx-auto w-full max-w-[342px]"
     >
-      <div className={cn("relative mx-auto rounded-[38px] border border-black/8 bg-black p-2.5 shadow-[0_34px_70px_rgba(15,23,42,0.26)]", compact ? "w-[252px] opacity-85 saturate-75" : "w-full max-w-[352px]")}>
+      <div className="relative rounded-[38px] border border-black/8 bg-black p-2.5 shadow-[0_34px_70px_rgba(15,23,42,0.28)]">
         <div className="absolute left-1/2 top-3 z-10 h-1.5 w-24 -translate-x-1/2 rounded-full bg-white/14" />
         <div className="relative overflow-hidden rounded-[30px] bg-[#050505]">
           <AnimatePresence mode="wait">
@@ -265,344 +313,391 @@ function PhoneFrame({
               key={scene.id}
               src={scene.image}
               alt={scene.title}
-              className={cn("w-full object-cover object-top", compact ? "h-[458px]" : "h-[600px]")}
-              initial={{ opacity: 0, y: reduceMotion ? 0 : 16, scale: 1.02 }}
+              className="h-[610px] w-full object-cover object-top"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 18, scale: 1.02 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: reduceMotion ? 0 : -12, scale: 0.99 }}
-              transition={{ duration: reduceMotion ? 0.12 : 0.42 }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.4 }}
               loading="lazy"
             />
           </AnimatePresence>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_38%),linear-gradient(180deg,rgba(0,0,0,0.08),transparent_20%,rgba(0,0,0,0.55))]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/76 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/92 to-transparent" />
-          <div className="pointer-events-none absolute left-4 top-4 right-4 z-10 flex items-center justify-between gap-3">
-            <div className="rounded-full border border-white/12 bg-black/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/80 backdrop-blur-md">
-              StudyShare mobile
-            </div>
-            <div className="rounded-full border border-white/12 bg-black/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/74 backdrop-blur-md">
-              v{ANDROID_APP_VERSION}
-            </div>
-          </div>
+
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_38%),linear-gradient(180deg,rgba(0,0,0,0.02),transparent_32%,rgba(0,0,0,0.34))]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/22 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/88 via-black/32 to-transparent" />
+
           <BottomNavPreview activeTab={scene.navTab} fabMode={scene.fabMode} reduceMotion={reduceMotion} />
         </div>
       </div>
-      {!compact ? (
-        <div className="mt-4 max-w-[352px] px-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#0f766e]">{scene.eyebrow}</p>
-          <h3 className="mt-2 text-lg font-semibold text-slate-950">{scene.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{scene.description}</p>
-        </div>
-      ) : null}
+
+      <div
+        className={cn(
+          "mt-4 rounded-[28px] border p-4 backdrop-blur",
+          isDark
+            ? "border-white/10 bg-white/6 shadow-[0_16px_34px_rgba(0,0,0,0.24)]"
+            : "border-black/8 bg-white/92 shadow-[0_16px_34px_rgba(15,23,42,0.07)]"
+        )}
+      >
+        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.24em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+          {scene.eyebrow}
+        </p>
+        <h3 className={cn("mt-2 text-xl font-semibold", isDark ? "text-white" : "text-slate-950")}>{scene.title}</h3>
+        <p className={cn("mt-3 text-sm leading-6", isDark ? "text-slate-300/78" : "text-slate-600")}>{scene.description}</p>
+      </div>
     </FramerMotion.div>
   );
 }
 
-function FeatureCard({
+function HighlightCard({
   icon: Icon,
   title,
   copy,
-  delay = 0,
+  isDark,
+  delay,
   reduceMotion,
 }: {
   icon: LucideIcon;
   title: string;
   copy: string;
-  delay?: number;
+  isDark: boolean;
+  delay: number;
   reduceMotion: boolean;
 }) {
   return (
     <FramerMotion.div
-      className="group rounded-[28px] border border-black/8 bg-white/85 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors hover:border-[#0f766e]/25 hover:bg-white"
       initial={{ opacity: 0, y: reduceMotion ? 0 : 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduceMotion ? 0.12 : 0.32, delay }}
-      whileHover={reduceMotion ? undefined : { y: -4, rotate: -0.25 }}
+      transition={{ duration: reduceMotion ? 0.12 : 0.3, delay }}
+      whileHover={reduceMotion ? undefined : { y: -4 }}
+      className={cn(
+        "rounded-[28px] border p-5 backdrop-blur-xl",
+        isDark
+          ? "border-white/10 bg-white/6 shadow-[0_18px_40px_rgba(0,0,0,0.22)]"
+          : "border-black/8 bg-white/85 shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
+      )}
     >
       <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#0f766e]/12 text-[#0f766e]">
+        <div className={cn("grid h-11 w-11 place-items-center rounded-2xl", isDark ? "bg-[#7ce7d4]/12 text-[#7ce7d4]" : "bg-[#0f766e]/12 text-[#0f766e]")}>
           <Icon className="h-5 w-5" />
         </div>
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-slate-950">{title}</h3>
+        <div>
+          <h3 className={cn("text-base font-semibold", isDark ? "text-white" : "text-slate-950")}>{title}</h3>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">StudyShare mobile</p>
         </div>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{copy}</p>
+      <p className={cn("mt-4 text-sm leading-6", isDark ? "text-slate-300/76" : "text-slate-600")}>{copy}</p>
     </FramerMotion.div>
   );
 }
 
 const MobileApp = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const reduceMotion = Boolean(useReducedMotion());
-  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
+  const isDark = theme === "dark";
+  const [activeSceneIndex, setActiveSceneIndex] = useState(1);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const title = `StudyShare Android App v${ANDROID_APP_VERSION}`;
 
   useEffect(() => {
     if (reduceMotion) return;
     const interval = window.setInterval(() => {
       setActiveSceneIndex((current) => (current + 1) % showcaseScenes.length);
-    }, 4200);
+    }, 4300);
     return () => window.clearInterval(interval);
   }, [reduceMotion]);
 
   useEffect(() => {
     if (reduceMotion || !stageRef.current) return;
-    const orbitTargets = stageRef.current.querySelectorAll<HTMLElement>("[data-orbit]");
-    const chips = stageRef.current.querySelectorAll<HTMLElement>("[data-chip]");
-    const orbitAnimation = animate(orbitTargets, {
-      y: [0, -12, 0],
-      rotate: [-2, 2, -1],
-      scale: [1, 1.05, 1],
-      delay: stagger(85, { from: "center" }),
-      duration: 4200,
-      ease: "inOutSine",
-      loop: true,
-      alternate: true,
-    });
-    const chipAnimation = animate(chips, {
-      y: [10, 0],
-      opacity: [0, 1],
-      delay: stagger(60, { from: "center" }),
-      duration: 520,
-      ease: "out(3)",
-    });
+    const stageCards = stageRef.current.querySelectorAll<HTMLElement>("[data-stage-card]");
+    const sceneChips = stageRef.current.querySelectorAll<HTMLElement>("[data-scene-chip]");
+    const stageAnimation = stageCards.length
+      ? animate(stageCards, {
+          y: [10, 0],
+          opacity: [0, 1],
+          delay: stagger(70),
+          duration: 520,
+          ease: "out(3)",
+        })
+      : null;
+    const chipAnimation = sceneChips.length
+      ? animate(sceneChips, {
+          y: [12, 0],
+          opacity: [0, 1],
+          delay: stagger(45, { from: "center" }),
+          duration: 420,
+          ease: "out(3)",
+        })
+      : null;
     return () => {
-      orbitAnimation.revert();
-      chipAnimation.revert();
+      stageAnimation?.revert();
+      chipAnimation?.revert();
     };
   }, [activeSceneIndex, reduceMotion]);
 
   const activeScene = showcaseScenes[activeSceneIndex];
-  const previousScene = showcaseScenes[(activeSceneIndex + showcaseScenes.length - 1) % showcaseScenes.length];
-  const nextScene = showcaseScenes[(activeSceneIndex + 1) % showcaseScenes.length];
-
-  const handleDownload = async () => {
-    const opened = await openAndroidApkDownload();
-    if (!opened) toast.error("APK download is temporarily unavailable. Please contact support.");
-  };
-
   const sceneLabels = useMemo(
     () => showcaseScenes.map((scene, index) => ({ id: scene.id, label: scene.eyebrow, index })),
     []
   );
 
+  const handleDownload = async () => {
+    const opened = await openAndroidApkDownload();
+    if (!opened) {
+      toast.error("APK download is temporarily unavailable. Please contact support.");
+    }
+  };
+
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f5efe4] text-slate-950">
+    <div className={cn("min-h-screen overflow-hidden transition-colors", isDark ? "bg-[#071019] text-[#f5f7fb]" : "bg-[#f5efe4] text-slate-950")}>
       <SEO
         title="StudyShare Android App"
-        description="Explore the StudyShare Android app in a motion-led mobile gallery and download the smaller split APK."
+        description="See what the StudyShare Android app offers, switch between light and dark mode, and download the smaller split APK."
         noIndex
       />
 
       <div className="pointer-events-none fixed inset-0">
         <Motion.div
-          className="absolute left-[4%] top-[6%] h-[22rem] w-[22rem] rounded-full bg-[#0f766e]/10 blur-3xl"
+          className={cn("absolute left-[4%] top-[6%] h-[22rem] w-[22rem] rounded-full blur-3xl", isDark ? "bg-[#0f766e]/20" : "bg-[#0f766e]/10")}
           animate={reduceMotion ? undefined : { x: [0, 18, 0], y: [0, -20, 0], scale: [1, 1.08, 1] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         />
         <Motion.div
-          className="absolute right-[2%] top-[14%] h-[18rem] w-[18rem] rounded-full bg-[#f59e0b]/10 blur-3xl"
+          className={cn("absolute right-[2%] top-[14%] h-[18rem] w-[18rem] rounded-full blur-3xl", isDark ? "bg-[#2563eb]/16" : "bg-[#f59e0b]/10")}
           animate={reduceMotion ? undefined : { x: [0, -14, 0], y: [0, 16, 0], scale: [1, 1.05, 1] }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
         />
         <Motion.div
-          className="absolute bottom-[-6rem] left-[18%] h-[24rem] w-[24rem] rounded-full bg-[#d97706]/8 blur-3xl"
+          className={cn("absolute bottom-[-6rem] left-[18%] h-[24rem] w-[24rem] rounded-full blur-3xl", isDark ? "bg-[#7c3aed]/14" : "bg-[#d97706]/8")}
           animate={reduceMotion ? undefined : { x: [0, 12, 0], y: [0, -10, 0], scale: [1, 1.04, 1] }}
           transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.8),_transparent_24%),radial-gradient(circle_at_80%_20%,rgba(15,118,110,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.5),rgba(245,239,228,0.75))]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px)] bg-[size:72px_72px] opacity-[0.18]" />
+        <div
+          className={cn(
+            "absolute inset-0",
+            isDark
+              ? "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_22%),radial-gradient(circle_at_80%_20%,rgba(15,118,110,0.12),transparent_30%),linear-gradient(180deg,rgba(8,15,25,0.9),rgba(7,16,25,0.98))]"
+              : "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.82),_transparent_24%),radial-gradient(circle_at_80%_20%,rgba(15,118,110,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.5),rgba(245,239,228,0.75))]"
+          )}
+        />
+        <div
+          className={cn(
+            "absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px)] bg-[size:72px_72px]",
+            isDark ? "opacity-[0.12]" : "opacity-[0.18]"
+          )}
+        />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 py-5 md:px-6 md:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate(-1)}
-            className="border-black/10 bg-white/70 text-slate-900 shadow-sm hover:bg-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => navigate(-1)}
+              className={cn(
+                isDark
+                  ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
+                  : "border-black/10 bg-white/70 text-slate-900 hover:bg-white"
+              )}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <Button
+              variant="outline"
+              onClick={toggleTheme}
+              className={cn(
+                isDark
+                  ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
+                  : "border-black/10 bg-white/70 text-slate-900 hover:bg-white"
+              )}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDark ? "Light mode" : "Dark mode"}
+            </Button>
+          </div>
+
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
               onClick={() => navigate("/select-college")}
-              className="border-black/10 bg-white/70 text-slate-900 shadow-sm hover:bg-white"
+              className={cn(
+                isDark
+                  ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
+                  : "border-black/10 bg-white/70 text-slate-900 hover:bg-white"
+              )}
             >
               <ArrowRight className="h-4 w-4" />
               College page
             </Button>
-            <Button onClick={() => void handleDownload()} className="bg-slate-950 text-white hover:bg-slate-800">
+            <Button
+              onClick={() => void handleDownload()}
+              className={cn(isDark ? "bg-[#7ce7d4] text-slate-950 hover:bg-[#9af3e3]" : "bg-slate-950 text-white hover:bg-slate-800")}
+            >
               <Download className="h-4 w-4" />
               Download smaller APK
             </Button>
           </div>
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-[38px] border border-black/8 bg-white/72 shadow-[0_28px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
-          <div className="grid gap-8 p-5 md:p-7 xl:grid-cols-[0.96fr_1.04fr] xl:gap-10 xl:p-8">
+        <section
+          className={cn(
+            "mt-6 overflow-hidden rounded-[38px] border backdrop-blur-2xl",
+            isDark
+              ? "border-white/10 bg-white/5 shadow-[0_28px_90px_rgba(0,0,0,0.3)]"
+              : "border-black/8 bg-white/72 shadow-[0_28px_90px_rgba(15,23,42,0.12)]"
+          )}
+        >
+          <div className="grid gap-8 p-5 md:p-7 xl:grid-cols-[0.94fr_1.06fr] xl:gap-10 xl:p-8">
             <FramerMotion.div
               initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: reduceMotion ? 0.12 : 0.45 }}
-              className="flex flex-col justify-center"
+              className="flex flex-col justify-start pt-3 md:pt-5 xl:pt-6"
             >
-              <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0f766e] shadow-sm">
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] shadow-sm",
+                  isDark ? "border-white/12 bg-white/6 text-[#7ce7d4]" : "border-black/8 bg-white/75 text-[#0f766e]"
+                )}
+              >
                 <Phone className="h-3.5 w-3.5" />
-                Android app gallery
+                Android app
               </div>
 
-              <h1 className="mt-4 max-w-2xl font-editorial text-5xl leading-[0.96] tracking-tight text-slate-950 md:text-6xl xl:text-7xl">
-                StudyShare, staged like a moving magazine spread.
+              <h1 className={cn("mt-4 max-w-3xl font-editorial text-5xl leading-[0.96] tracking-tight md:text-6xl xl:text-7xl", isDark ? "text-white" : "text-slate-950")}>
+                One app for notes, PYQs, notices, rooms, attendance, and AI help.
               </h1>
 
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-                This page is intentionally different from the rest of the site:
-                softer paper tones, sharper typography, moving phone frames, and
-                a gallery that walks through the Android app instead of showing
-                a fixed screenshot wall. The download button points to the
-                smaller split APK.
+              <p className={cn("mt-4 max-w-2xl text-base leading-7 md:text-lg", isDark ? "text-slate-300/82" : "text-slate-600")}>
+                StudyShare is the student workspace for your college. Browse semester-wise resources, open PDFs, follow department notices, discover rooms, track attendance where supported, and ask the AI assistant using your notes, files, or the web.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button onClick={() => void handleDownload()} className="bg-slate-950 text-white hover:bg-slate-800">
+                <Button
+                  onClick={() => void handleDownload()}
+                  className={cn(isDark ? "bg-[#7ce7d4] text-slate-950 hover:bg-[#9af3e3]" : "bg-slate-950 text-white hover:bg-slate-800")}
+                >
                   <Download className="h-4 w-4" />
                   Download smaller APK
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => navigate("/select-college")}
-                  className="border-black/10 bg-white/75 text-slate-900 shadow-sm hover:bg-white"
+                  className={cn(
+                    isDark
+                      ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
+                      : "border-black/10 bg-white/75 text-slate-900 hover:bg-white"
+                  )}
                 >
                   Choose college
                 </Button>
               </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-3xl border border-black/8 bg-[#f8f4ec] p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-                    Smaller split build
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    The website now reflects {title} and links the published arm64
-                    release asset instead of the larger universal APK.
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-black/8 bg-[#f8f4ec] p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-                    Correct footer
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Home, Rooms, Notices, and Profile are pinned to the bottom
-                    bar, and the center action changes with the active screen.
-                  </p>
-                </div>
-              </div>
             </FramerMotion.div>
 
             <div ref={stageRef} className="relative">
-              <div className="pointer-events-none absolute inset-0 rounded-[34px] bg-[radial-gradient(circle_at_center,_rgba(15,118,110,0.12),_transparent_42%),radial-gradient(circle_at_top,_rgba(245,158,11,0.09),_transparent_38%)]" />
-
-              <div className="relative min-h-[760px] overflow-hidden rounded-[34px] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.2))] p-4 md:p-6">
-                <Motion.div
-                  className="absolute left-1/2 top-7 h-[88%] w-[88%] -translate-x-1/2 rounded-full bg-[#0f766e]/10 blur-3xl"
-                  animate={reduceMotion ? undefined : { scale: [1, 1.09, 1] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                />
-
-                <div className="absolute left-6 top-7 hidden max-w-[190px] gap-3 xl:flex xl:flex-col">
-                  <Motion.div
-                    data-orbit
-                    className="rounded-[26px] border border-black/8 bg-white/88 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.07)] backdrop-blur"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Version</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">{ANDROID_APP_VERSION}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">smaller split APK</p>
-                  </Motion.div>
-                  <Motion.div
-                    data-orbit
-                    className="rounded-[26px] border border-black/8 bg-[#0f766e]/10 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.07)] backdrop-blur"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#0f766e]">Live plan</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
-                      The AI answer flow keeps the working trace visible, then
-                      folds it away after the response lands.
-                    </p>
-                  </Motion.div>
+              <div
+                className={cn(
+                  "rounded-[34px] border p-4 md:p-6",
+                  isDark
+                    ? "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
+                    : "border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.2))]"
+                )}
+              >
+                <div className="grid gap-3 md:grid-cols-3">
+                  <StageCard
+                    isDark={isDark}
+                    label="AI assistant"
+                    title="Notes, web, and attachments"
+                    copy="The assistant can answer from uploaded study material and expand to web fallback only when needed."
+                  />
+                  <StageCard
+                    isDark={isDark}
+                    label="Study feed"
+                    title="Notes, PYQs, videos, downloads"
+                    copy="Semester, branch, subject, type, and sort filters keep the feed relevant instead of generic."
+                  />
+                  <StageCard
+                    isDark={isDark}
+                    label="College workflows"
+                    title="Notices, rooms, attendance"
+                    copy="Department updates, room discovery, and KIET attendance live in the same product instead of separate tools."
+                  />
                 </div>
 
-                <div className="absolute right-6 top-10 hidden max-w-[190px] gap-3 xl:flex xl:flex-col">
-                  <Motion.div
-                    data-orbit
-                    className="rounded-[26px] border border-black/8 bg-white/88 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.07)] backdrop-blur"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Footer</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-950">{activeScene.navTab === 1 ? "Search" : "Add"}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">center action changes by screen</p>
-                  </Motion.div>
-                  <Motion.div
-                    data-orbit
-                    className="rounded-[26px] border border-black/8 bg-[#f59e0b]/12 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.07)] backdrop-blur"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#b45309]">APK</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
-                      The website download resolves to the smaller arm64 release.
-                    </p>
-                  </Motion.div>
-                </div>
+                <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+                  <div className="space-y-4">
+                    <Card className={cn("border p-5 backdrop-blur-xl", isDark ? "border-white/10 bg-white/6" : "border-black/8 bg-white/90")}>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.24em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+                            {activeScene.eyebrow}
+                          </p>
+                          <h2 className={cn("mt-2 text-2xl font-semibold", isDark ? "text-white" : "text-slate-950")}>{activeScene.title}</h2>
+                        </div>
+                        <div className={cn("rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em]", isDark ? "border-[#7ce7d4]/18 bg-[#7ce7d4]/10 text-[#7ce7d4]" : "border-[#0f766e]/15 bg-[#0f766e]/8 text-[#0f766e]")}>
+                          {activeScene.metric}
+                        </div>
+                      </div>
+                      <p className={cn("mt-4 text-sm leading-7", isDark ? "text-slate-300/78" : "text-slate-600")}>{activeScene.description}</p>
+                      <p className={cn("mt-4 text-sm font-medium", isDark ? "text-slate-200" : "text-slate-700")}>{activeScene.note}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {activeScene.badges.map((badge) => (
+                          <span
+                            key={badge}
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 text-[11px] font-medium",
+                              isDark ? "border-white/10 bg-white/5 text-slate-200" : "border-black/8 bg-[#f7f3ea] text-slate-700"
+                            )}
+                          >
+                            {badge}
+                          </span>
+                        ))}
+                      </div>
+                    </Card>
 
-                <div className="relative z-20 mx-auto flex max-w-[382px] flex-col items-center">
-                  <FramerMotion.div className="hidden xl:block xl:absolute xl:left-[-18px] xl:top-24">
-                    <PhoneFrame scene={previousScene} reduceMotion={reduceMotion} compact />
-                  </FramerMotion.div>
-                  <FramerMotion.div className="hidden xl:block xl:absolute xl:right-[-18px] xl:top-[4.5rem]">
-                    <PhoneFrame scene={nextScene} reduceMotion={reduceMotion} compact />
-                  </FramerMotion.div>
-
-                  <FramerMotion.div
-                    className="relative z-20 mx-auto max-w-[382px]"
-                    animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
-                    transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <PhoneFrame scene={activeScene} reduceMotion={reduceMotion} />
-                  </FramerMotion.div>
-
-                  <div className="mt-5 w-full max-w-[382px] rounded-[30px] border border-black/8 bg-white/92 p-4 shadow-[0_18px_34px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[#0f766e]/15 bg-[#0f766e]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-                        {activeScene.eyebrow}
-                      </span>
-                      <span className="text-xs text-slate-400">{activeScene.note}</span>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <StageCard
+                        isDark={isDark}
+                        label="Version"
+                        title={`v${ANDROID_APP_VERSION}`}
+                        copy="Modern Android phones can use the lighter arm64 build, so installing StudyShare does not require the heavier universal package."
+                      />
+                      <StageCard
+                        isDark={isDark}
+                        label="Navigation"
+                        title="Home, Rooms, Notices, Profile"
+                        copy="The main shell keeps study, community, notice, and account surfaces close, while the center action adapts to the screen you are in."
+                      />
                     </div>
-                    <h2 className="mt-3 text-xl font-semibold text-slate-950">{activeScene.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{activeScene.description}</p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {sceneLabels.map((scene) => {
+                        const isActive = scene.index === activeSceneIndex;
+                        return (
+                          <button
+                            key={scene.id}
+                            type="button"
+                            data-scene-chip
+                            onClick={() => setActiveSceneIndex(scene.index)}
+                            className={cn(
+                              "rounded-full border px-3 py-2 text-xs font-medium transition-all",
+                              isActive
+                                ? isDark
+                                  ? "border-[#7ce7d4]/25 bg-[#7ce7d4]/10 text-[#7ce7d4]"
+                                  : "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]"
+                                : isDark
+                                  ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
+                                  : "border-black/8 bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900"
+                            )}
+                          >
+                            {scene.index + 1}. {scene.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <div className="mt-4 flex w-full flex-wrap justify-center gap-2">
-                    {sceneLabels.map((scene) => {
-                      const isActive = scene.index === activeSceneIndex;
-                      return (
-                        <button
-                          key={scene.id}
-                          type="button"
-                          onClick={() => setActiveSceneIndex(scene.index)}
-                          data-chip
-                          className={cn(
-                            "rounded-full border px-3 py-2 text-xs font-medium transition-all",
-                            isActive
-                              ? "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]"
-                              : "border-black/8 bg-white/80 text-slate-600 hover:border-black/16 hover:bg-white hover:text-slate-900"
-                          )}
-                        >
-                          {scene.index + 1}. {scene.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <PhoneFrame scene={activeScene} reduceMotion={reduceMotion} isDark={isDark} />
                 </div>
               </div>
             </div>
@@ -610,77 +705,110 @@ const MobileApp = () => {
         </section>
 
         <section className="mt-6 space-y-3">
-          <MarqueeRow reduceMotion={reduceMotion} items={marqueeChips} />
-          <MarqueeRow reduceMotion={reduceMotion} items={[...marqueeChips].reverse()} reverse />
+          <MarqueeRow items={marqueeChips} isDark={isDark} reduceMotion={reduceMotion} />
+          <MarqueeRow items={[...marqueeChips].reverse()} isDark={isDark} reverse reduceMotion={reduceMotion} />
         </section>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {featureCards.map((card, index) => (
-            <FeatureCard
+          {productHighlights.map((card, index) => (
+            <HighlightCard
               key={card.title}
               icon={card.icon}
               title={card.title}
               copy={card.copy}
+              isDark={isDark}
               delay={index * 0.06}
               reduceMotion={reduceMotion}
             />
           ))}
         </section>
 
-        <section className="mt-8 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-          <Card className="border-black/8 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.1)] backdrop-blur-xl md:p-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#0f766e]">Why this version moves</p>
-            <h2 className="mt-3 max-w-3xl text-2xl font-bold text-slate-950 md:text-3xl">
-              The gallery now behaves like a launch story instead of a screenshot dump.
-            </h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-              We kept the real Android captures from the app project, but turned
-              them into an editorial flow with staggered motion, animated phone
-              frames, and a footer overlay that fixes the bottom-nav mismatch.
-              The result feels closer to a product campaign page than a raw
-              asset board.
+        <section className="mt-8 grid gap-5 xl:grid-cols-[1.04fr_0.96fr]">
+          <Card className={cn("border p-6 backdrop-blur-xl md:p-7", isDark ? "border-white/10 bg-white/6" : "border-black/8 bg-white/85")}>
+            <p className={cn("text-xs font-semibold uppercase tracking-[0.28em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+              What students use it for
             </p>
+            <h2 className={cn("mt-3 text-2xl font-bold md:text-3xl", isDark ? "text-white" : "text-slate-950")}>
+              StudyShare is built around actual college workflows, not a single flashy feature.
+            </h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-black/8 bg-[#f8f4ec] p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <BadgeCheck className="h-4 w-4 text-[#0f766e]" />
-                  Live plan experience
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  The AI chat preview keeps the live plan visible while the
-                  model is working, then collapses it once the response is ready.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-black/8 bg-[#f8f4ec] p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <Layers3 className="h-4 w-4 text-[#0f766e]" />
-                  Footer fidelity
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  The bottom bar now mirrors the real Flutter layout and stops
-                  the screenshots from showing the wrong navigation state.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,244,236,0.95))] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.1)] backdrop-blur-xl md:p-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#0f766e]">What the APK includes</p>
-            <div className="mt-4 space-y-3">
               {[
-                { icon: BookOpen, title: "Study material", copy: "Notes, PDFs, and reading surfaces for semester work." },
-                { icon: Bell, title: "Notices and alerts", copy: "Updates stay readable and easy to scan on mobile." },
-                { icon: MessagesSquare, title: "Rooms and discovery", copy: "Community spaces keep the app useful between classes." },
-                { icon: FileText, title: "Attendance and utilities", copy: "The app supports the study workflow beyond chat alone." },
+                {
+                  icon: Sparkles,
+                  title: "AI for study tasks",
+                  copy: "Ask from notes, generate follow-up answers, and keep source-aware responses on mobile.",
+                },
+                {
+                  icon: FileText,
+                  title: "Daily academic material",
+                  copy: "Open PDFs, browse notes and PYQs, and move through semester-wise resources without leaving the app.",
+                },
+                {
+                  icon: Bell,
+                  title: "Department updates",
+                  copy: "Track official notices, search older updates, and filter by date when deadlines are close.",
+                },
+                {
+                  icon: ShieldCheck,
+                  title: "Campus-specific utilities",
+                  copy: "Attendance support for KIET and college-aware access flows keep the app rooted in how students actually use it on campus.",
+                },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.title} className="rounded-2xl border border-black/8 bg-white/80 p-4">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      <Icon className="h-4 w-4 text-[#0f766e]" />
+                  <div
+                    key={item.title}
+                    className={cn("rounded-2xl border p-4", isDark ? "border-white/10 bg-[#0f172a]/70" : "border-black/8 bg-[#f8f4ec]")}
+                  >
+                    <p className={cn("flex items-center gap-2 text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>
+                      <Icon className={cn("h-4 w-4", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")} />
                       {item.title}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.copy}</p>
+                    <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-300/76" : "text-slate-600")}>{item.copy}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className={cn("border p-6 backdrop-blur-xl md:p-7", isDark ? "border-white/10 bg-white/6" : "border-black/8 bg-white/85")}>
+            <p className={cn("text-xs font-semibold uppercase tracking-[0.28em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+              Inside the app
+            </p>
+            <div className="mt-4 space-y-3">
+              {[
+                {
+                  icon: BookOpen,
+                  title: "Resource tabs that match study habits",
+                  copy: "For You, Following, and Syllabus flows keep teacher uploads and relevant material easier to reach.",
+                },
+                {
+                  icon: MessagesSquare,
+                  title: "Rooms that feel like student spaces",
+                  copy: "Discover public rooms, search communities, and join private groups by code when you need a focused discussion space.",
+                },
+                {
+                  icon: Megaphone,
+                  title: "Notice feeds with real structure",
+                  copy: "Department accounts, search, and date windows make the notice screen useful after the first glance too.",
+                },
+                {
+                  icon: ShieldCheck,
+                  title: "A lighter Android install",
+                  copy: "Most modern devices can use the smaller arm64 build, which keeps the download leaner without changing the StudyShare experience inside the app.",
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className={cn("rounded-2xl border p-4", isDark ? "border-white/10 bg-[#0f172a]/70" : "border-black/8 bg-[#f8f4ec]")}
+                  >
+                    <p className={cn("flex items-center gap-2 text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>
+                      <Icon className={cn("h-4 w-4", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")} />
+                      {item.title}
+                    </p>
+                    <p className={cn("mt-2 text-sm leading-6", isDark ? "text-slate-300/76" : "text-slate-600")}>{item.copy}</p>
                   </div>
                 );
               })}
@@ -689,29 +817,36 @@ const MobileApp = () => {
         </section>
 
         <section className="mt-8">
-          <Card className="border-[#0f766e]/18 bg-[#0f766e]/10 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl md:p-7">
+          <Card className={cn("border p-6 backdrop-blur-xl md:p-7", isDark ? "border-[#7ce7d4]/18 bg-[#7ce7d4]/10" : "border-[#0f766e]/18 bg-[#0f766e]/10")}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#0f766e]">Ready to install</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">
-                  Download the smaller split APK that the page now showcases.
+                <p className={cn("text-xs font-semibold uppercase tracking-[0.28em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+                  Ready to install
+                </p>
+                <h2 className={cn("mt-2 text-2xl font-bold md:text-3xl", isDark ? "text-white" : "text-slate-950")}>
+                  Install the lighter Android build for modern phones.
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-                  The website now points to the published arm64 release asset,
-                  so the download is lighter than the old universal APK and
-                  matches the version shown above.
+                <p className={cn("mt-3 max-w-2xl text-sm leading-7 md:text-base", isDark ? "text-slate-300/78" : "text-slate-600")}>
+                  Open semester-wise resources, department notices, rooms, attendance, and AI help in one student app, then keep the lighter build on your phone for day-to-day use.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant="outline"
                   onClick={() => navigate("/select-college")}
-                  className="border-black/10 bg-white/80 text-slate-900 hover:bg-white"
+                  className={cn(
+                    isDark
+                      ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
+                      : "border-black/10 bg-white/80 text-slate-900 hover:bg-white"
+                  )}
                 >
                   <ArrowRight className="h-4 w-4" />
                   College page
                 </Button>
-                <Button onClick={() => void handleDownload()} className="bg-slate-950 text-white hover:bg-slate-800">
+                <Button
+                  onClick={() => void handleDownload()}
+                  className={cn(isDark ? "bg-[#7ce7d4] text-slate-950 hover:bg-[#9af3e3]" : "bg-slate-950 text-white hover:bg-slate-800")}
+                >
                   <Download className="h-4 w-4" />
                   Download smaller APK
                 </Button>

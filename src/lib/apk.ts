@@ -1,5 +1,4 @@
-const DEFAULT_APK_URL =
-  "https://github.com/harshit-siraswal/studyshare-web/releases/download/android-app-v1.0.1/app-arm64-v8a-release.apk";
+const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
 const DEFAULT_ANDROID_APP_VERSION = "1.0.1 (Build 2)";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
