@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { ArrowLeft, Download, Smartphone, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -6,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
 import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
-import { cn } from "@/lib/utils";
 
 type ShowcaseItem = {
   id: string;
@@ -80,7 +78,7 @@ const PhoneFrame = ({ item }: { item: ShowcaseItem }) => {
 
 const MobileApp = () => {
   const navigate = useNavigate();
-  const title = useMemo(() => `StudyShare Android App · v${ANDROID_APP_VERSION}`, []);
+  const title = `StudyShare Android App v${ANDROID_APP_VERSION}`;
 
   const handleDownload = async () => {
     const opened = await openAndroidApkDownload();
