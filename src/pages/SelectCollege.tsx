@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon } from "lucide-react";
+import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon, Smartphone } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
-import { openAndroidApkDownload } from "@/lib/apk";
+import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
 import { toast } from "sonner";
 
 type CollegeCard = (typeof initialColleges)[number];
@@ -221,6 +221,15 @@ const SelectCollege = () => {
                         type="button"
                         variant="outline"
                         size="sm"
+                        onClick={() => navigate("/mobile-app")}
+                    >
+                        <Smartphone className="h-4 w-4" />
+                        App Gallery
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={toggleTheme}
                         className="bg-card/70 backdrop-blur-sm"
                     >
@@ -234,7 +243,7 @@ const SelectCollege = () => {
                         onClick={handleDownloadApk}
                     >
                         <Download className="h-4 w-4" />
-                        Download APK
+                        Download v{ANDROID_APP_VERSION}
                     </Button>
                 </div>
 

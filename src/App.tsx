@@ -59,6 +59,7 @@ const loadBookmarks = () => import("./pages/Bookmarks");
 const loadAIChat = () => import("./pages/AIChat");
 const loadBlog = () => import("./pages/Blog");
 const loadBlogPost = () => import("./pages/BlogPost");
+const loadMobileApp = () => import("./pages/MobileApp");
 const loadNotFound = () => import("./pages/NotFound");
 const loadMobileBottomNav = () => import("@/components/mobile/MobileBottomNav");
 
@@ -77,6 +78,7 @@ const Bookmarks = createLazyPage(loadBookmarks, "bookmarks");
 const AIChat = createLazyPage(loadAIChat, "ai-chat");
 const Blog = createLazyPage(loadBlog, "blog");
 const BlogPost = createLazyPage(loadBlogPost, "blog-post");
+const MobileApp = createLazyPage(loadMobileApp, "mobile-app");
 const NotFound = createLazyPage(loadNotFound, "not-found");
 const MobileBottomNav = lazy(loadMobileBottomNav);
 
@@ -125,6 +127,7 @@ const AppRoutes = () => {
       <Route path="/select-college" element={<SelectCollege />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
+      <Route path="/mobile-app" element={<MobileApp />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
       <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
