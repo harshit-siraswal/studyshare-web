@@ -17,16 +17,19 @@ if (!SUPABASE_URL) missingSupabaseVars.push('VITE_SUPABASE_URL');
 if (!SUPABASE_PUBLISHABLE_KEY) missingSupabaseVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
 
 if (missingSupabaseVars.length > 0) {
-  throw new Error(
+  console.error(
     `[Supabase] Missing required config entries: ${missingSupabaseVars.join(', ')}. ` +
       'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in environment variables.'
   );
 }
 
+const finalUrl = SUPABASE_URL || 'https://placeholder.supabase.co';
+const finalKey = SUPABASE_PUBLISHABLE_KEY || 'placeholder.key';
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(finalUrl, finalKey, {
   auth: {
     // StudyShare uses Firebase Auth for browser sessions. Keep the Supabase client stateless
     // so it never persists tokens into localStorage where an XSS issue could exfiltrate them.
