@@ -1,4 +1,5 @@
 {
+    "installCommand": "npm install --legacy-peer-deps",
     "env": {
         "VITE_API_URL": "/backend",
         "VITE_SITE_URL": "https://studyshare.in"
