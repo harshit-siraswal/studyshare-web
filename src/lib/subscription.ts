@@ -37,9 +37,8 @@ declare global {
     }
 }
 
-// Razorpay Key ID is public by design (safe for frontend). Keep a hard fallback
-// so production does not break when Vercel env is accidentally missing.
-const FALLBACK_RAZORPAY_KEY_ID = 'rzp_live_S9IWIDxf81JDDM';
+// Razorpay Key ID is public by design (safe for frontend), but must come
+// from environment or backend order response, never from hardcoded source.
 
 export interface PremiumPlan {
     id: string;
@@ -126,7 +125,6 @@ export class SubscriptionService {
             order?.keyId,
             order?.razorpay_key_id,
             order?.razorpayKeyId,
-            FALLBACK_RAZORPAY_KEY_ID,
         ];
 
         for (const candidate of candidates) {

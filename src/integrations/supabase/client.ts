@@ -2,29 +2,24 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const DEFAULT_SUPABASE_URL = 'https://iayuwsvguwfqjgjsvjiy.supabase.co';
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV3c3ZndXdmcWpnanN2aml5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTE5MTEsImV4cCI6MjA4MTYyNzkxMX0.EQhiq-yv9QLBNL_kmT5P59AZPykQkEZwbNbilxquYOA';
-
 const getEnv = (key: string): string => {
   const env = import.meta.env as Record<string, string | undefined>;
   return (env[key] || '').trim();
 };
 
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || DEFAULT_SUPABASE_URL;
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
 const SUPABASE_PUBLISHABLE_KEY =
   getEnv('VITE_SUPABASE_PUBLISHABLE_KEY') ||
-  getEnv('VITE_SUPABASE_ANON_KEY') ||
-  DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+  getEnv('VITE_SUPABASE_ANON_KEY');
 
 const missingSupabaseVars: string[] = [];
 if (!SUPABASE_URL) missingSupabaseVars.push('VITE_SUPABASE_URL');
 if (!SUPABASE_PUBLISHABLE_KEY) missingSupabaseVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
 
 if (missingSupabaseVars.length > 0) {
-  console.warn(
-    `[Supabase] Missing config entries after fallbacks: ${missingSupabaseVars.join(', ')}. ` +
-      'Supabase features may not work until env vars are configured.'
+  throw new Error(
+    `[Supabase] Missing required config entries: ${missingSupabaseVars.join(', ')}. ` +
+      'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in environment variables.'
   );
 }
 

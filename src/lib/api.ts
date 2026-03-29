@@ -54,31 +54,6 @@ export function formatAiTokenQuotaMessage(payload: AiTokenQuotaErrorPayload): st
     return parts.join(' ');
 }
 
-function getHeaderString(value: unknown): string {
-    if (typeof value === 'string') return value.trim();
-    if (Array.isArray(value)) {
-        const first = value.find((item) => typeof item === 'string' && item.trim().length > 0);
-        return typeof first === 'string' ? first.trim() : '';
-    }
-    return '';
-}
-
-function getSelectedCollegeHint(): string {
-    try {
-        const raw = localStorage.getItem('selectedCollege');
-        if (!raw) return '';
-        const parsed = JSON.parse(raw);
-        const candidates = [
-            getHeaderString(parsed?.collegeId),
-            getHeaderString(parsed?.college_id),
-            getHeaderString(parsed?.id),
-        ];
-        return candidates.find((value) => value.length > 0 && isUuid(value)) || '';
-    } catch {
-        return '';
-    }
-}
-
 /**
  * Get current user's Firebase ID token
  */
@@ -158,7 +133,6 @@ async function apiRequest<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const selectedCollegeHint = getSelectedCollegeHint();
     const createHeaders = (token: string | null) => {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -167,9 +141,6 @@ async function apiRequest<T>(
 
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
-        }
-        if (selectedCollegeHint) {
-            headers['X-College-Id'] = selectedCollegeHint;
         }
         return headers;
     };
