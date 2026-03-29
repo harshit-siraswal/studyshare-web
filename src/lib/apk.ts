@@ -1,4 +1,5 @@
 const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_ANDROID_APP_VERSION = "1.0.1 (Build 2)";
 const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
 const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
@@ -87,6 +88,10 @@ async function resolveConfiguredApkUrl(): Promise<string | null> {
 }
 
 export const ANDROID_APK_URL = configuredPrimaryApkUrl || DEFAULT_APK_URL;
+export const ANDROID_APP_VERSION =
+  (typeof import.meta.env.VITE_ANDROID_APP_VERSION === "string" &&
+  import.meta.env.VITE_ANDROID_APP_VERSION.trim()) ||
+  DEFAULT_ANDROID_APP_VERSION;
 
 export async function resolveAndroidApkDownloadUrl(): Promise<string | null> {
   if (STATIC_APK_CANDIDATE_URLS.length > 0) {

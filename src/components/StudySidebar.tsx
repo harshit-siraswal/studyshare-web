@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Bookmark, MessageSquare, Bell, ChevronDown, ChevronRight, Hash, Users, LogOut,
-  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search, Sparkles, Moon, Sun
+  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search, Sparkles, Moon, Sun, Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -254,11 +254,24 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                   >
                     <Sparkles className="w-5 h-5" />
                   </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">AI Chat</TooltipContent>
-            </Tooltip>
+                </TooltipTrigger>
+                <TooltipContent side="right">AI Chat</TooltipContent>
+              </Tooltip>
 
-          </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate("/mobile-app")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Smartphone className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Android App</TooltipContent>
+              </Tooltip>
+            </div>
 
             <div className="mt-auto flex flex-col items-center gap-1 px-2 pt-2">
               <Tooltip>
@@ -419,6 +432,18 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             >
               <Sparkles className="w-4 h-4" />
               <span>AI Chat</span>
+            </Button>
+          </div>
+
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground justify-start"
+              onClick={() => navigate("/mobile-app")}
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Android App</span>
+              <ExternalLink className="w-3 h-3 ml-auto" />
             </Button>
           </div>
         </div>
