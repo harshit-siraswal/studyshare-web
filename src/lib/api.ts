@@ -58,6 +58,7 @@ export function formatAiTokenQuotaMessage(payload: AiTokenQuotaErrorPayload): st
  * Get current user's Firebase ID token
  */
 async function waitForAuthUser(timeoutMs = 2000): Promise<FirebaseUser | null> {
+    if (!auth) return null;
     if (auth.currentUser) return auth.currentUser;
 
     return new Promise((resolve) => {
@@ -85,6 +86,7 @@ async function waitForAuthUser(timeoutMs = 2000): Promise<FirebaseUser | null> {
 }
 
 async function getAuthToken(forceRefresh = false): Promise<string | null> {
+    if (!auth) return null;
     const user = auth.currentUser ?? await waitForAuthUser();
     if (!user) return null;
 

@@ -78,6 +78,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [banReason, setBanReason] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
@@ -125,7 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const logout = async () => {
-    await signOut(auth);
+    if (auth) {
+      await signOut(auth);
+    }
     setUser(null);
     setIsBanned(false);
     setBanReason(null);
