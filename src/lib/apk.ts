@@ -1,4 +1,5 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_APK_URL =
+  "https://github.com/harshit-siraswal/studyshare-web/releases/latest/download/studyshare-android.apk";
 const DEFAULT_ANDROID_APP_VERSION = "1.0.1 (Build 2)";
 const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
 const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
