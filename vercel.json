@@ -50,7 +50,7 @@
         },
         {
             "source": "/((?!.*\\.).*)",
-            "destination": "/index.html"
+            "destination": "/index.html?v=1514adf"
         }
     ]
 }
