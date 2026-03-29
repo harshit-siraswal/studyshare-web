@@ -262,7 +262,7 @@ function BottomNavPreview({
   return (
     <div className="absolute inset-x-3 bottom-3 z-20">
       <div className="relative rounded-[22px] border border-white/12 bg-[rgba(9,11,17,0.94)] px-2 pb-2 pt-2 shadow-[0_22px_46px_rgba(0,0,0,0.42)] backdrop-blur-2xl">
-        <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[50%]">
+        <div className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/3">
           <FramerMotion.div
             className="grid h-[38px] w-[38px] place-items-center rounded-full border border-[#7fb6ff]/18 bg-[#2f6dff] text-white shadow-[0_8px_24px_rgba(47,109,255,0.65)]"
             animate={reduceMotion ? undefined : { y: [0, -3, 0], scale: [1, 1.04, 1] }}
@@ -320,21 +320,6 @@ function PhoneFrame({
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-black via-black/94 to-transparent" />
           <BottomNavPreview activeTab={scene.navTab} reduceMotion={reduceMotion} />
         </div>
-      </div>
-
-      <div
-        className={cn(
-          "mt-4 rounded-[28px] border p-4 backdrop-blur",
-          isDark
-            ? "border-white/10 bg-white/6 shadow-[0_16px_34px_rgba(0,0,0,0.24)]"
-            : "border-black/8 bg-white/92 shadow-[0_16px_34px_rgba(15,23,42,0.07)]"
-        )}
-      >
-        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.24em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
-          {scene.eyebrow}
-        </p>
-        <h3 className={cn("mt-2 text-xl font-semibold", isDark ? "text-white" : "text-slate-950")}>{scene.title}</h3>
-        <p className={cn("mt-3 text-sm leading-6", isDark ? "text-slate-300/78" : "text-slate-600")}>{scene.description}</p>
       </div>
     </FramerMotion.div>
   );
@@ -586,59 +571,57 @@ const MobileApp = () => {
               </div>
             </FramerMotion.div>
 
-            <div ref={stageRef} className="relative mt-4">
-              {/* Scene indicator */}
-              <div className="mb-4 flex items-center justify-center gap-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em]",
-                    isDark
-                      ? "border-[#7ce7d4]/20 bg-[#7ce7d4]/10 text-[#7ce7d4]"
-                      : "border-[#0f766e]/18 bg-[#0f766e]/8 text-[#0f766e]"
-                  )}
-                >
-                  <span
+            <div ref={stageRef} className="relative mt-8">
+              <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16 xl:gap-24">
+                {/* Side Card & Selectors */}
+                <div className="order-2 flex w-full max-w-lg flex-col items-center text-center lg:order-1 lg:items-start lg:text-left">
+                  <div
                     className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      isDark ? "bg-[#7ce7d4]" : "bg-[#0f766e]"
+                      "rounded-[28px] border p-6 backdrop-blur md:p-8",
+                      isDark
+                        ? "border-white/10 bg-white/6 shadow-[0_16px_34px_rgba(0,0,0,0.24)]"
+                        : "border-black/8 bg-white/92 shadow-[0_16px_34px_rgba(15,23,42,0.07)]"
                     )}
-                  />
-                  {activeScene.eyebrow} — {activeScene.title}
-                </span>
-              </div>
+                  >
+                    <p className={cn("text-[11px] font-semibold uppercase tracking-[0.26em]", isDark ? "text-[#7ce7d4]" : "text-[#0f766e]")}>
+                      {activeScene.eyebrow}
+                    </p>
+                    <h3 className={cn("mt-3 text-2xl font-bold md:text-3xl", isDark ? "text-white" : "text-slate-950")}>{activeScene.title}</h3>
+                    <p className={cn("mt-4 text-base leading-7 md:text-lg md:leading-8", isDark ? "text-slate-300/80" : "text-slate-600")}>{activeScene.description}</p>
+                  </div>
 
-              {/* Phone frame centred */}
-              <div className="flex justify-center">
-                <div className="w-full max-w-[320px] sm:max-w-[340px]">
+                  {/* Scene selector chips */}
+                  <div className="mt-8 flex flex-wrap justify-center gap-2 lg:justify-start">
+                    {sceneLabels.map((scene) => {
+                      const isActive = scene.index === activeSceneIndex;
+                      return (
+                        <button
+                          key={scene.id}
+                          type="button"
+                          data-scene-chip
+                          onClick={() => setActiveSceneIndex(scene.index)}
+                          className={cn(
+                            "rounded-full border px-3.5 py-2 text-[13px] font-medium transition-all hover:scale-105 active:scale-95",
+                            isActive
+                              ? isDark
+                                ? "border-[#7ce7d4]/30 bg-[#7ce7d4]/10 text-[#7ce7d4] shadow-[0_0_12px_rgba(124,231,212,0.15)]"
+                                : "border-[#0f766e]/30 bg-[#0f766e]/10 text-[#0f766e] shadow-[0_0_12px_rgba(15,118,110,0.15)]"
+                              : isDark
+                                ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                                : "border-black/8 bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900"
+                          )}
+                        >
+                          {scene.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Phone mockup */}
+                <div className="order-1 w-full max-w-[312px] shrink-0 sm:max-w-[324px] lg:order-2 xl:max-w-[340px]">
                   <PhoneFrame scene={activeScene} reduceMotion={reduceMotion} isDark={isDark} />
                 </div>
-              </div>
-
-              {/* Scene selector chips */}
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {sceneLabels.map((scene) => {
-                  const isActive = scene.index === activeSceneIndex;
-                  return (
-                    <button
-                      key={scene.id}
-                      type="button"
-                      data-scene-chip
-                      onClick={() => setActiveSceneIndex(scene.index)}
-                      className={cn(
-                        "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
-                        isActive
-                          ? isDark
-                            ? "border-[#7ce7d4]/25 bg-[#7ce7d4]/10 text-[#7ce7d4]"
-                            : "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]"
-                          : isDark
-                            ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
-                            : "border-black/8 bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900"
-                      )}
-                    >
-                      {scene.index + 1}. {scene.label}
-                    </button>
-                  );
-                })}
               </div>
             </div>
           </div>
