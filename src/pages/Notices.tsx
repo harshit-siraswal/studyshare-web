@@ -1,19 +1,16 @@
 import { useState, useEffect } from "react";
-import type { ElementType } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MessageCircle, Share, Search,
-  Bell, FileText, Play, Bookmark, Send, Loader2, Trash2, X,
-  LayoutGrid, Cpu, Zap, Cog, Building2, PlugZap, Bot, Database, Globe, HelpCircle
+  FileText, Play, Bookmark, Send, Loader2, Trash2, X,
 } from "lucide-react";
-import { CommentThread, CommentData } from "@/components/CommentThread";
+import { CommentThread } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -26,28 +23,17 @@ import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useNotices, Notice } from "@/hooks/useNotices";
 import { useCollege } from "@/context/CollegeContext";
+import DepartmentAvatar from "@/components/DepartmentAvatar";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
+import { getDepartmentList, getDepartmentMeta } from "@/lib/departmentMeta";
 
-// --- Constants ---
-type DepartmentMeta = { value: string; label: string; icon: ElementType };
-
-const DEPARTMENTS: DepartmentMeta[] = [
-  { value: 'all', label: 'All Departments', icon: LayoutGrid },
-  { value: 'cse', label: 'Computer Science', icon: Cpu },
-  { value: 'ece', label: 'Electronics', icon: Zap },
-  { value: 'me', label: 'Mechanical', icon: Cog },
-  { value: 'ce', label: 'Civil', icon: Building2 },
-  { value: 'eee', label: 'Electrical', icon: PlugZap },
-  { value: 'aiml', label: 'AI & ML', icon: Bot },
-  { value: 'ds', label: 'Data Science', icon: Database },
-  { value: 'it', label: 'Information Technology', icon: Globe },
-];
+const DEPARTMENTS = getDepartmentList(true);
+const normalizeDepartmentValue = (value?: string | null) => getDepartmentMeta(value).value;
 
 
 const Notices = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
 
   // React Query: Fetch notices with caching
@@ -87,50 +73,63 @@ const Notices = () => {
       setFollowedDeptIds([]);
       return;
     }
-    fetchFollowedDepartments();
+    if (!collegeId) return;
+
+    let isCancelled = false;
+
+    const loadFollowedDepartments = async () => {
+      try {
+        const response = await api.getFollowedDepartments(collegeId);
+        if (isCancelled) return;
+        setFollowedDeptIds(
+          (response.departments || [])
+            .map((departmentId) => normalizeDepartmentValue(departmentId))
+            .filter(Boolean)
+        );
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Error fetching followed departments:', error);
+        }
+      }
+    };
+
+    void loadFollowedDepartments();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [user?.email, collegeId]);
 
   // Auto-fetch comments when notice modal opens
   useEffect(() => {
-    if (selectedNotice && !comments[selectedNotice.id]) {
-      toggleComments(selectedNotice.id);
-    }
-  }, [selectedNotice]);
+    if (!selectedNotice?.id || comments[selectedNotice.id]) return;
 
-  const fetchFollowedDepartments = async () => {
-    if (!user?.email || !collegeId) return;
-    try {
-      const response = await api.getFollowedDepartments(collegeId);
-      setFollowedDeptIds(response.departments);
-    } catch (error) {
-      console.error('Error fetching followed departments:', error);
-    }
-  };
+    let isCancelled = false;
+    setLoadingComments(selectedNotice.id);
 
-  const handleFollowDept = async (deptId: string) => {
-    if (!user?.email) {
-      toast.error("Login to follow departments");
-      return;
-    }
-    if (!collegeId) {
-      toast.error("College context is not available yet");
-      return;
-    }
-
-    try {
-      if (followedDeptIds.includes(deptId)) {
-        await api.unfollowDepartment(deptId, collegeId);
-        setFollowedDeptIds(prev => prev.filter(id => id !== deptId));
-        toast.success(`Unfollowed`);
-      } else {
-        await api.followDepartment(deptId, collegeId);
-        setFollowedDeptIds(prev => [...prev, deptId]);
-        toast.success(`Following`);
+    const loadNoticeComments = async () => {
+      try {
+        const { comments: fetchedComments } = await api.getNoticeComments(selectedNotice.id);
+        if (isCancelled) return;
+        setComments(prev => ({ ...prev, [selectedNotice.id]: fetchedComments }));
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to fetch comments:', error);
+          toast.error('Failed to load comments');
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingComments(null);
+        }
       }
-    } catch (error) {
-      toast.error("Failed to update follow status");
-    }
-  };
+    };
+
+    void loadNoticeComments();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedNotice?.id, comments]);
 
 
 
@@ -201,7 +200,7 @@ const Notices = () => {
   };
 
   const getDeptInfo = (deptCode: string) => {
-    return DEPARTMENTS.find(d => d.value === deptCode) || { label: 'Unknown', icon: HelpCircle, value: deptCode };
+    return getDepartmentMeta(deptCode);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -222,8 +221,13 @@ const Notices = () => {
   };
 
   // Filter notices by tab and search
+  const followedDepartmentSet = new Set(followedDeptIds);
   const displayedNotices = notices
-    .filter(n => activeTab === 'following' ? followedDeptIds.includes(n.department) : true)
+    .filter((notice) => (
+      activeTab === 'following'
+        ? followedDepartmentSet.has(normalizeDepartmentValue(notice.department))
+        : true
+    ))
     .filter(n => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
@@ -257,15 +261,10 @@ const Notices = () => {
             <h2 className="font-bold text-xl px-2">Who to follow</h2>
             <div className="space-y-3">
               {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, showAllDepts ? undefined : 5).map(dept => {
-                const DeptIcon = dept.icon;
                 return (
                   <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-border/50">
-                        <AvatarFallback className="bg-background">
-                          <DeptIcon className="h-4 w-4 text-muted-foreground" />
-                        </AvatarFallback>
-                      </Avatar>
+                      <DepartmentAvatar meta={dept} size="md" className="border-border/50" />
                       <div className="leading-tight">
                         <div className="font-bold hover:underline">{dept.label}</div>
                         <div className="text-muted-foreground text-sm">@{dept.value}</div>
@@ -399,7 +398,6 @@ const Notices = () => {
             ) : (
               displayedNotices.map((notice) => {
                 const dept = getDeptInfo(notice.department);
-                const DeptIcon = dept.icon;
                 const draft = commentDrafts[notice.id] || '';
                 const isPosting = !!postingByNotice[notice.id];
                 const commentCount = (comments[notice.id]?.length ?? notice.comments ?? 0);
@@ -411,22 +409,29 @@ const Notices = () => {
                   >
                     <div className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-emerald-400/70 via-primary/40 to-transparent opacity-0 transition group-hover:opacity-100" />
                     <div className="flex gap-2 sm:gap-3">
-                      <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}>
-                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 border border-border">
-                          <AvatarFallback className="bg-secondary">
-                            <DeptIcon className="h-4 w-4 text-muted-foreground" />
-                          </AvatarFallback>
-                        </Avatar>
+                      <div className="shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/department/${dept.value}`); }}>
+                        <DepartmentAvatar
+                          meta={dept}
+                          size="md"
+                          className="h-8 w-8 sm:h-10 sm:w-10"
+                          iconClassName="sm:h-4 sm:w-4"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className="font-semibold hover:underline cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/department/${notice.department}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/department/${dept.value}`); }}
                           >
                             {dept.label}
                           </span>
-                          <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] uppercase tracking-wide",
+                              dept.badgeClassName
+                            )}
+                          >
                             @{dept.value}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
@@ -594,7 +599,6 @@ const Notices = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
           {selectedNotice && (() => {
             const dept = getDeptInfo(selectedNotice.department);
-            const DeptIcon = dept.icon;
             return (
               <div className="flex flex-col h-full">
                 {/* Modal Header */}
@@ -614,17 +618,22 @@ const Notices = () => {
                   <div className="p-4">
                     {/* Notice Header */}
                     <div className="flex gap-3 mb-4">
-                      <Avatar className="w-12 h-12 border border-border cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${selectedNotice.department}`); }}>
-                        <AvatarFallback className="bg-secondary">
-                          <DeptIcon className="h-5 w-5 text-muted-foreground" />
-                        </AvatarFallback>
-                      </Avatar>
+                      <DepartmentAvatar
+                        meta={dept}
+                        size="lg"
+                        className="cursor-pointer"
+                      />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold hover:underline cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${selectedNotice.department}`); }}>
+                          <span className="font-bold hover:underline cursor-pointer" onClick={() => { setSelectedNotice(null); navigate(`/department/${dept.value}`); }}>
                             {dept.label}
                           </span>
-                          <span className="text-muted-foreground">@{dept.value}</span>
+                          <Badge
+                            variant="outline"
+                            className={cn("uppercase tracking-wide", dept.badgeClassName)}
+                          >
+                            @{dept.value}
+                          </Badge>
                           {selectedNotice.priority === 'urgent' && <Badge variant="destructive" className="ml-2">Urgent</Badge>}
                         </div>
                         <span className="text-muted-foreground text-sm">{formatTimeAgo(selectedNotice.created_at)}</span>

@@ -2,7 +2,7 @@
 // Slide-in drawer menu for mobile
 
 import { useState, useEffect } from 'react';
-import { X, Moon, Sun, LogOut, FileText, BookOpenCheck, Users, Search, Download, Sparkles } from 'lucide-react';
+import { X, Moon, Sun, LogOut, FileText, BookOpenCheck, Users, Search, Download, Sparkles, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +25,7 @@ const menuItems = [
     { icon: BookOpenCheck, label: 'Syllabus', path: '/study?tab=syllabus' },
     { icon: Users, label: 'Following', path: '/study?tab=following' },
     { icon: Sparkles, label: 'AI Chat', path: '/ai-chat' },
+    { icon: Smartphone, label: 'Android App', path: '/mobile-app' },
     { icon: Search, label: 'Explore Students', path: '/explore' },
 ];
 

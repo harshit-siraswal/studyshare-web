@@ -40,6 +40,7 @@ import { SEO } from "@/components/SEO";
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading, isBanned, banReason, logout } = useAuth();
+  const firebaseUser = auth.currentUser;
 
   const [isLogin, setIsLogin] = useState(true);
   const [verificationPending, setVerificationPending] = useState(false);
@@ -66,22 +67,22 @@ const Auth = () => {
       }
 
       // Google auth users are auto-verified, email/password users need to verify
-      if (user.emailVerified) {
+      if (firebaseUser?.emailVerified) {
         navigate("/study", { replace: true });
       } else {
         // User exists but email not verified - show verification pending
         setVerificationPending(true);
       }
     }
-  }, [user, loading, isBanned, navigate]);
+  }, [user, loading, isBanned, navigate, firebaseUser?.emailVerified]);
 
   // Handle resend verification email
   const handleResendVerification = async () => {
-    if (!user) return;
+    if (!firebaseUser) return;
 
     setResendingEmail(true);
     try {
-      await sendEmailVerification(user);
+      await sendEmailVerification(firebaseUser);
       toast.success("Verification email sent! Check your inbox.");
     } catch (error: any) {
       console.error("Resend error:", error);
@@ -97,11 +98,11 @@ const Auth = () => {
 
   // Refresh user to check if verified
   const handleCheckVerification = async () => {
-    if (!user) return;
+    if (!firebaseUser) return;
 
     try {
-      await user.reload();
-      if (user.emailVerified) {
+      await firebaseUser.reload();
+      if (auth.currentUser?.emailVerified) {
         toast.success("Email verified! Redirecting...");
         navigate("/study", { replace: true });
       } else {
@@ -226,7 +227,7 @@ const Auth = () => {
   };
 
   // Show verification pending UI if user exists but email not verified
-  if (verificationPending && user && !user.emailVerified) {
+  if (verificationPending && user && !firebaseUser?.emailVerified) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
         <SEO
