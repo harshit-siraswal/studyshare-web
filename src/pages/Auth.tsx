@@ -40,7 +40,7 @@ import { SEO } from "@/components/SEO";
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading, isBanned, banReason, logout } = useAuth();
-  const firebaseUser = auth.currentUser;
+  const firebaseUser = auth?.currentUser;
 
   const [isLogin, setIsLogin] = useState(true);
   const [verificationPending, setVerificationPending] = useState(false);
@@ -102,7 +102,7 @@ const Auth = () => {
 
     try {
       await firebaseUser.reload();
-      if (auth.currentUser?.emailVerified) {
+      if (auth?.currentUser?.emailVerified) {
         toast.success("Email verified! Redirecting...");
         navigate("/study", { replace: true });
       } else {
@@ -277,7 +277,7 @@ const Auth = () => {
                 <Button
                   variant="link"
                   onClick={async () => {
-                    await auth.signOut();
+                    if (auth) await auth.signOut();
                     setVerificationPending(false);
                   }}
                   className="text-muted-foreground"
