@@ -4,6 +4,13 @@
         "VITE_API_URL": "/backend",
         "VITE_SITE_URL": "https://studyshare.in"
     },
+    "redirects": [
+        {
+            "source": "/security-policy",
+            "destination": "/security-policy.html",
+            "permanent": true
+        }
+    ],
     "headers": [
         {
             "source": "/(.*)",

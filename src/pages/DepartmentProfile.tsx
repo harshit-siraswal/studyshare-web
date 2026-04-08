@@ -20,7 +20,7 @@ import * as api from "@/lib/api";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useCollege } from "@/context/CollegeContext";
 import { collectCollegeIdScopes } from "@/lib/collegeIds";
-import { findDepartmentMeta } from "@/lib/departmentMeta";
+import { getDepartmentMeta } from "@/lib/departmentMeta";
 
 type Notice = api.Notice;
 
@@ -34,8 +34,8 @@ const DepartmentProfile = () => {
         selectedCollegeId,
         selectedCollege?.collegeId || null
     );
-    const department = findDepartmentMeta(deptId);
-    const departmentValue = department?.value || "";
+    const departmentValue = (deptId || "").trim().toLowerCase();
+    const department = departmentValue ? getDepartmentMeta(deptId) : undefined;
 
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);

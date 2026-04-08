@@ -1,0 +1,5 @@
+Contact: mailto:security@studyshare.in
+Expires: 2027-04-02T00:00:00Z
+Preferred-Languages: en
+Policy: https://studyshare.in/security-policy
+Canonical: https://studyshare.in/.well-known/security.txt

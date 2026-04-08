@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyShare Vulnerability Disclosure Policy</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, #0f172a 55%, #020617 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 64px 20px;
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(14px);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+    }
+    p, li { color: var(--text); }
+    .lead { color: var(--muted); font-size: 1.05rem; }
+    .pill {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #7dd3fc;
+      font-size: 0.9rem;
+      border: 1px solid rgba(125, 211, 252, 0.18);
+    }
+    h2 { margin-top: 28px; margin-bottom: 8px; font-size: 1.25rem; }
+    ul { margin: 0; padding-left: 20px; }
+    a { color: var(--accent); }
+    code {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Vulnerability Disclosure Policy</h1>
+      <p class="lead">
+        StudyShare welcomes responsible security reports. If you believe you have found a vulnerability,
+        report it privately so we can review and fix it quickly.
+      </p>
+
+      <div class="pill">Contact: security@studyshare.in</div>
+
+      <h2>How to report</h2>
+      <ul>
+        <li>Email <a href="mailto:security@studyshare.in">security@studyshare.in</a> with a clear description of the issue.</li>
+        <li>Include reproduction steps, affected URLs, and any proof-of-concept details that help us validate the finding.</li>
+        <li>Please avoid exposing user data, modifying records, or disrupting service availability.</li>
+      </ul>
+
+      <h2>What we expect</h2>
+      <ul>
+        <li>Do not publicly disclose the issue before we have had a reasonable chance to respond and fix it.</li>
+        <li>Use the least invasive test possible to demonstrate impact.</li>
+        <li>Only access your own data or data explicitly provided for testing.</li>
+      </ul>
+
+      <h2>Response target</h2>
+      <p>
+        We aim to acknowledge valid reports within 3 business days and will coordinate on remediation
+        progress after that.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
