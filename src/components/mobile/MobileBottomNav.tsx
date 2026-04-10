@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
 ];
 
 // Routes where bottom nav should be hidden
-const hiddenRoutes = ['/', '/select-college', '/auth'];
+const hiddenRoutes = ['/', '/select-college', '/auth', '/mobile-app'];
 
 export function MobileBottomNav() {
     const location = useLocation();

@@ -88,7 +88,8 @@ const isLightweightPublicPath = (pathname: string) =>
   pathname === "/" ||
   pathname === "/select-college" ||
   pathname === "/blog" ||
-  pathname.startsWith("/blog/");
+  pathname.startsWith("/blog/") ||
+  pathname === "/mobile-app";
 
 const preloadRouteModules = () => {
   [
