@@ -14,13 +14,15 @@ import VideoPlayer from "@/components/VideoPlayer";
 import PDFViewer from "@/components/PDFViewer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getDepartmentMeta } from "@/lib/departmentMeta";
+import { getDepartmentList, getDepartmentMeta } from "@/lib/departmentMeta";
 import * as api from "@/lib/api";
 import { useNotices } from "@/hooks/useNotices";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import NoticeContent from "@/components/notices/NoticeContent";
 import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+
+const WHO_TO_FOLLOW_DEPARTMENTS = getDepartmentList(false);
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -198,166 +200,203 @@ const NoticePost = () => {
   const department = getDepartmentMeta(getEffectiveNoticeDepartment(notice));
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="h-screen overflow-hidden bg-background text-foreground flex justify-center">
       <SEO
         title={notice.title || "Notice"}
         description="Detailed notice post with comments and attachments."
         noIndex
       />
 
-      <div className="mx-auto min-h-screen w-full max-w-[780px] border-x border-border/50">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/50 bg-background/95 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate("/notices")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold">Post</h1>
-            <p className="text-xs text-muted-foreground">Notice details</p>
-          </div>
-        </header>
-
-        <article className="border-b border-border/50 px-4 py-4">
-          <div className="flex gap-3">
-            <DepartmentAvatar meta={department} size="lg" className="h-10 w-10" iconClassName="h-4 w-4" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-foreground">{department.label}</span>
-                <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", department.badgeClassName)}>
-                  {department.handle}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
-                {notice.priority === "urgent" ? (
-                  <Badge variant="destructive" className="h-5 text-[10px]">Urgent</Badge>
-                ) : null}
-              </div>
-
-              {notice.title ? <h2 className="mt-2 text-xl font-semibold leading-snug">{notice.title}</h2> : null}
-
-              <NoticeContent content={notice.content} className="mt-3 text-[15px] leading-7" />
-
-              {notice.file_url ? (
-                <div className="mt-4 overflow-hidden rounded-2xl border border-border/60">
-                  {notice.file_type === "image" ? (
-                    <img
-                      src={notice.file_url}
-                      alt="Notice attachment"
-                      className="max-h-[560px] w-full cursor-pointer object-contain bg-black/80"
-                      onClick={() =>
-                        setImageViewer({
-                          isOpen: true,
-                          url: notice.file_url || "",
-                          title: notice.title || "Notice image",
-                        })
-                      }
-                    />
-                  ) : null}
-
-                  {notice.file_type === "video" ? (
-                    <div
-                      className="relative flex h-72 cursor-pointer items-center justify-center bg-black"
-                      onClick={() =>
-                        setVideoPlayer({
-                          isOpen: true,
-                          url: notice.file_url || "",
-                          title: notice.title || "Notice video",
-                        })
-                      }
-                    >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                        <Play className="ml-0.5 h-7 w-7 fill-white text-white" />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {notice.file_type === "pdf" ? (
-                    <div className="flex items-center gap-3 bg-secondary/20 p-4">
-                      <FileText className="h-8 w-8 text-primary" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">PDF Attachment</p>
-                        <p className="text-xs text-muted-foreground">Open it inside StudyShare</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setPdfViewer({
-                            isOpen: true,
-                            url: notice.file_url || "",
-                            title: notice.title || "Notice PDF",
-                          })
-                        }
-                      >
-                        Open PDF
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="mt-4 flex items-center justify-between text-muted-foreground">
-                <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 text-muted-foreground">
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="text-xs font-medium">{comments.length || notice.comments || 0}</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn("gap-2 rounded-full px-2 hover:text-primary", isBookmarked(notice.id) && "text-primary")}
-                  onClick={() => toggleBookmark(notice.id, "notice")}
+      <div className="h-full w-full max-w-[1200px] flex px-2 sm:px-0">
+        <aside className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto border-r border-border/50">
+          <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
+            <h2 className="font-bold text-xl px-2">Who to follow</h2>
+            <div className="space-y-3">
+              {WHO_TO_FOLLOW_DEPARTMENTS.map((dept) => (
+                <div
+                  key={dept.value}
+                  className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors"
+                  onClick={() => navigate(`/department/${dept.value}`)}
                 >
-                  <Bookmark className={cn("h-4 w-4", isBookmarked(notice.id) && "fill-current")} />
-                  <span className="text-xs font-medium">Save</span>
-                </Button>
-
-                <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 hover:text-green-600" onClick={() => void handleShare()}>
-                  <Share className="h-4 w-4" />
-                  <span className="text-xs font-medium">Share</span>
-                </Button>
-              </div>
+                  <div className="flex items-center gap-3">
+                    <DepartmentAvatar meta={dept} size="md" className="border-border/50" />
+                    <div className="leading-tight">
+                      <div className="font-bold hover:underline">{dept.label}</div>
+                      <div className="text-muted-foreground text-sm">{dept.handle}</div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="rounded-full font-bold h-8 w-20"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/department/${dept.value}`);
+                    }}
+                  >
+                    View
+                  </Button>
+                </div>
+              ))}
             </div>
-          </div>
-        </article>
+          </Card>
+        </aside>
 
-        <section className="px-4 py-4">
-          <div className="mb-4 flex gap-2">
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                {user?.email?.charAt(0).toUpperCase() || "?"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-1 gap-2">
-              <Input
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="Post your reply"
-                className="h-9"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void handleReply(draft);
-                  }
-                }}
-              />
-              <Button size="icon" className="h-9 w-9" onClick={() => void handleReply(draft)} disabled={!draft.trim() || posting}>
-                {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        <main className="flex-1 min-w-0 h-screen overflow-y-auto">
+          <div className="mx-auto min-h-full w-full max-w-[780px] border-x border-border/50">
+            <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/50 bg-background/95 px-4 py-3 backdrop-blur">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate("/notices")}>
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-            </div>
-          </div>
+              <div>
+                <h1 className="text-lg font-semibold">Post</h1>
+                <p className="text-xs text-muted-foreground">Notice details</p>
+              </div>
+            </header>
 
-          {loadingComments ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <CommentThread
-              comments={comments}
-              currentUserEmail={user?.email}
-              onReply={(content, parentId) => handleReply(content, parentId)}
-              onDelete={handleDeleteComment}
-            />
-          )}
-        </section>
+            <article className="border-b border-border/50 px-4 py-4">
+              <div className="flex gap-3">
+                <DepartmentAvatar meta={department} size="lg" className="h-10 w-10" iconClassName="h-4 w-4" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-foreground">{department.label}</span>
+                    <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", department.badgeClassName)}>
+                      {department.handle}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
+                    {notice.priority === "urgent" ? (
+                      <Badge variant="destructive" className="h-5 text-[10px]">Urgent</Badge>
+                    ) : null}
+                  </div>
+
+                  {notice.title ? <h2 className="mt-2 text-xl font-semibold leading-snug">{notice.title}</h2> : null}
+
+                  <NoticeContent content={notice.content} className="mt-3 text-[15px] leading-7" />
+
+                  {notice.file_url ? (
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-border/60">
+                      {notice.file_type === "image" ? (
+                        <img
+                          src={notice.file_url}
+                          alt="Notice attachment"
+                          className="max-h-[560px] w-full cursor-pointer object-contain bg-black/80"
+                          onClick={() =>
+                            setImageViewer({
+                              isOpen: true,
+                              url: notice.file_url || "",
+                              title: notice.title || "Notice image",
+                            })
+                          }
+                        />
+                      ) : null}
+
+                      {notice.file_type === "video" ? (
+                        <div
+                          className="relative flex h-72 cursor-pointer items-center justify-center bg-black"
+                          onClick={() =>
+                            setVideoPlayer({
+                              isOpen: true,
+                              url: notice.file_url || "",
+                              title: notice.title || "Notice video",
+                            })
+                          }
+                        >
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                            <Play className="ml-0.5 h-7 w-7 fill-white text-white" />
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {notice.file_type === "pdf" ? (
+                        <div className="flex items-center gap-3 bg-secondary/20 p-4">
+                          <FileText className="h-8 w-8 text-primary" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">PDF Attachment</p>
+                            <p className="text-xs text-muted-foreground">Open it inside StudyShare</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setPdfViewer({
+                                isOpen: true,
+                                url: notice.file_url || "",
+                                title: notice.title || "Notice PDF",
+                              })
+                            }
+                          >
+                            Open PDF
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex items-center justify-between text-muted-foreground">
+                    <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 text-muted-foreground">
+                      <MessageCircle className="h-4 w-4" />
+                      <span className="text-xs font-medium">{comments.length || notice.comments || 0}</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("gap-2 rounded-full px-2 hover:text-primary", isBookmarked(notice.id) && "text-primary")}
+                      onClick={() => toggleBookmark(notice.id, "notice")}
+                    >
+                      <Bookmark className={cn("h-4 w-4", isBookmarked(notice.id) && "fill-current")} />
+                      <span className="text-xs font-medium">Save</span>
+                    </Button>
+
+                    <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 hover:text-green-600" onClick={() => void handleShare()}>
+                      <Share className="h-4 w-4" />
+                      <span className="text-xs font-medium">Share</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <section className="px-4 py-4">
+              <div className="mb-4 flex gap-2">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    {user?.email?.charAt(0).toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder="Post your reply"
+                    className="h-9"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleReply(draft);
+                      }
+                    }}
+                  />
+                  <Button size="icon" className="h-9 w-9" onClick={() => void handleReply(draft)} disabled={!draft.trim() || posting}>
+                    {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {loadingComments ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <CommentThread
+                  comments={comments}
+                  currentUserEmail={user?.email}
+                  onReply={(content, parentId) => handleReply(content, parentId)}
+                  onDelete={handleDeleteComment}
+                />
+              )}
+            </section>
+          </div>
+        </main>
       </div>
 
       <ImageViewer

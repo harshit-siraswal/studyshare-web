@@ -249,13 +249,13 @@ const Notices = () => {
   const modalPosting = selectedNotice ? !!postingByNotice[selectedNotice.id] : false;
 
   return (
-    <div className="min-h-screen-safe bg-background text-foreground flex justify-center">
+    <div className="h-screen overflow-hidden bg-background text-foreground flex justify-center">
       <SEO
         title="Notices"
         description="Stay updated with the latest announcements and notices from your college departments."
         noIndex
       />
-      <div className="w-full max-w-[1200px] flex px-2 sm:px-0">
+      <div className="h-full w-full max-w-[1200px] flex px-2 sm:px-0">
 
         {/* --- LEFT SIDEBAR (Who to follow) --- */}
         <div className="hidden lg:block w-[350px] p-4 sticky top-0 h-screen overflow-y-auto border-r border-border/50">
@@ -288,7 +288,7 @@ const Notices = () => {
         </div>
 
         {/* --- MIDDLE COLUMN (Feed) --- */}
-        <main className="flex-1 min-w-0 w-full max-w-[750px]">
+        <main className="flex-1 min-w-0 w-full max-w-[750px] h-screen overflow-y-auto">
           {/* Header / Tabs with Back Button */}
           <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50">
             {/* Back button row (always visible) */}
