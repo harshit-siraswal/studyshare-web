@@ -133,6 +133,20 @@ const LOADING_ACTIVITY_BLUEPRINT = [
   },
 ] as const;
 
+const ShimmerThinking = ({ label = "Thinking through your notes" }: { label?: string }) => (
+  <div className="space-y-2 text-muted-foreground">
+    <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.18em]">
+      <Sparkles className="h-3 w-3 text-primary" />
+      {label}
+    </div>
+    <div className="space-y-1.5">
+      <div className="h-2.5 w-36 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.24),rgba(255,255,255,0.06))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
+      <div className="h-2.5 w-52 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.24),rgba(255,255,255,0.06))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
+      <div className="h-2.5 w-44 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.24),rgba(255,255,255,0.06))] bg-[length:200%_100%] animate-shimmer motion-reduce:animate-none" />
+    </div>
+  </div>
+);
+
 const sourceKindFromRagSource = (
   source: RagSource
 ): AiLiveActivitySource["kind"] => {
@@ -1127,10 +1141,7 @@ const AIRagChat = ({
                       onOpenSource={openTraceSourceInApp}
                     />
                   ) : (
-                    <div className="inline-flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Thinking...
-                    </div>
+                    <ShimmerThinking />
                   )}
                 </div>
               </div>
