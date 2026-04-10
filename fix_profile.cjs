@@ -35,26 +35,36 @@ const replacements = {
 const stats = {};
 
 for (const [bad, good] of Object.entries(replacements)) {
-  if (content.includes(bad)) {
-    const parts = content.split(bad);
-    const count = parts.length - 1;
-    content = parts.join(good);
-    stats[bad] = count;
+  const parts = content.split(bad);
+  const count = parts.length - 1;
+  stats[bad] = count;
+  if (count > 0) {
     totalReplacements += count;
+    content = content.replaceAll ? content.replaceAll(bad, good) : parts.join(good);
   }
 }
 
 if (totalReplacements > 0) {
   const backup = file + '.bak';
-  fs.writeFileSync(backup, originalContent, 'utf8');
-  console.log(`Created backup at: ${backup}`);
-  
-  fs.writeFileSync(file, content, 'utf8');
-  console.log(`Successfully updated ${file}`);
-  
-  console.log('-- Replacement Summary --');
-  for (const [bad, count] of Object.entries(stats)) {
-    console.log(`Replaced ${count} instance(s) of: ${bad}`);
+  try {
+    fs.writeFileSync(backup, originalContent, 'utf8');
+    console.log(`Created backup at: ${backup}`);
+    
+    fs.writeFileSync(file, content, 'utf8');
+    console.log(`Successfully updated ${file}`);
+    
+    console.log('-- Replacement Summary --');
+    for (const [bad, count] of Object.entries(stats)) {
+      console.log(`Replaced ${count} instance(s) of: ${bad}`);
+    }
+  } catch (err) {
+    console.error(`Write operation failed: ${err.message}`);
+    try {
+      fs.writeFileSync(file, originalContent, 'utf8');
+      console.log('Successfully rolled back to original file content.');
+    } catch (e) {
+      console.error(`Failed to rollback to original file: ${e.message}`);
+    }
   }
 } else {
   console.log('No replacements needed. File unchanged.');

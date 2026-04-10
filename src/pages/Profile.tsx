@@ -930,11 +930,15 @@ const Profile = () => {
     }
 
     try {
+      // Escape SQL LIKE wildcards
+      const escapeLike = (str: string) => str.replace(/[\\%_]/g, '\\$&');
+      const escapedQuery = escapeLike(query);
+
       // Search users from database
       const { data, error } = await supabase
         .from('users_safe')
         .select('id, email, display_name, username, profile_photo_url, college')
-        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .or(`username.ilike.%${escapedQuery}%,display_name.ilike.%${escapedQuery}%`)
         .limit(10);
 
       if (error) throw error;

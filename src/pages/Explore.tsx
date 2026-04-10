@@ -54,11 +54,13 @@ const Explore = () => {
         try {
             // FIX: Filter by email domain to show only same-college users
             const domain = selectedCollege.domain;
+            const escapeLike = (str: string) => str.replace(/[\\%_]/g, '\\$&');
+            const escapedDomain = escapeLike(domain);
 
             const { data, error } = await supabase
                 .from('users_safe')
                 .select('id, email, display_name, username, profile_photo_url, college, bio')
-                .ilike('email', `%@${domain}`) // Only users with matching domain
+                .ilike('email', `%@${escapedDomain}`) // Only users with matching domain
                 .order('display_name', { ascending: true })
                 .order('id', { ascending: true })
                 .limit(50);
