@@ -56,9 +56,11 @@ const Explore = () => {
             const domain = selectedCollege.domain;
 
             const { data, error } = await supabase
-                .from('users')
+                .from('users_safe')
                 .select('id, email, display_name, username, profile_photo_url, college, bio')
                 .ilike('email', `%@${domain}`) // Only users with matching domain
+                .order('display_name', { ascending: true })
+                .order('id', { ascending: true })
                 .limit(50);
 
             if (error) throw error;

@@ -374,11 +374,11 @@ const Profile = () => {
   const { username: viewingUsername } = useParams();
   const isViewingOther = !!viewingUsername;
 
-  /* ðŸ” AUTH */
+  /* === AUTH === */
   const { user: authUser, loading, logout } = useAuth();
   const { selectedCollege } = useCollege();
 
-  /* ðŸ§  STATE */
+  /* === STATE === */
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -419,7 +419,7 @@ const Profile = () => {
   const [premiumModalMode, setPremiumModalMode] = useState<"premium" | "recharge">("premium");
 
 
-  /* âœï¸ EDIT FORM */
+  /* === EDIT FORM === */
   const [editForm, setEditForm] = useState({
     name: authUser?.displayName || "",
     bio: "",
@@ -432,7 +432,7 @@ const Profile = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* ðŸ” AUTH GUARD â€” SAFE */
+  /* === AUTH GUARD - SAFE === */
   useEffect(() => {
     if (!loading && !authUser) {
       navigate("/auth", { replace: true });
@@ -456,7 +456,7 @@ const Profile = () => {
 
         if (!profile) {
           const { data, error } = await supabase
-            .from("users")
+            .from("users_safe")
             .select(USER_PROFILE_SELECT)
             .eq("email", authUser.email || "")
             .maybeSingle();
@@ -626,7 +626,7 @@ const Profile = () => {
 
       try {
         const profileResult = await api.getMyProfile();
-        const profile = profileResult?.profile || {};
+        const profile = (profileResult?.profile || {}) as Partial<UserProfile>;
         setUserProfile(prev => ({
           ...(prev ?? {}),
           ...profile,
@@ -634,9 +634,9 @@ const Profile = () => {
             prev?.profile_photo_url,
             authUser.photoURL,
           ]) || undefined,
-        }));
+        } as UserProfile));
         const balance = await api.getAiTokenBalance();
-        const snapshot = buildAiTokenBudgetSnapshot(profile);
+        const snapshot = buildAiTokenBudgetSnapshot(profile as Record<string, unknown>);
         const budgetFromApi = toSafeInt(balance.budget ?? profile.ai_token_budget);
         const usedFromApi = toSafeInt(balance.used ?? profile.ai_token_used);
         const remainingFromApi = toSafeInt(balance.remaining ?? profile.ai_token_remaining);
@@ -701,7 +701,7 @@ const Profile = () => {
     try {
       // Fetch users from the same college, excluding current user
       const { data: allUsersData, error } = await supabase
-        .from('users')
+        .from('users_safe')
         .select(DISCOVER_USER_SELECT)
         .neq('email', authUser.email)
         .order('created_at', { ascending: false })
@@ -741,20 +741,19 @@ const Profile = () => {
         return;
       }
 
+
       // Clear old data before fetching new profile
-      console.log('ðŸ”„ Switching to view profile:', viewingUsername);
       setContributions([]);
       setViewingOtherProfile(null);
 
       // Fetch the other user's profile
       const { data: otherProfile } = await supabase
-        .from('users')
+        .from('users_safe')
         .select(USER_PROFILE_SELECT)
         .eq('username', viewingUsername)
         .maybeSingle();
 
       if (otherProfile) {
-        console.log('âœ… Loaded profile for:', otherProfile.display_name, 'ID:', otherProfile.id);
         setViewingOtherProfile({
           ...otherProfile,
           college: extractCollegeName(otherProfile.college),
@@ -787,7 +786,6 @@ const Profile = () => {
 
       try {
         // Query by uploaded_by_email to match how resources are stored
-        console.log('ðŸ“š Fetching contributions for user email:', viewingOtherProfile.email);
         const { data, error } = await supabase
           .from('resources')
           .select('*')
@@ -796,7 +794,6 @@ const Profile = () => {
 
         if (error) throw error;
 
-        console.log('âœ… Found', data?.length || 0, 'contributions for', viewingOtherProfile.display_name);
 
         const transformed = data?.map(r => ({
           id: r.id,
@@ -852,7 +849,7 @@ const Profile = () => {
     return null;
   }
 
-  /* ðŸ§­ VIEW MODE - Phase 2: Fix profile routing */
+  /* === VIEW MODE - Phase 2: Fix profile routing === */
   const activeProfile = isViewingOther && viewingOtherProfile
     ? viewingOtherProfile
     : userProfile;
@@ -877,7 +874,7 @@ const Profile = () => {
     role: activeProfile?.role || "student",
   };
 
-  /* ðŸ§¾ DISPLAY VALUES */
+  /* === DISPLAY VALUES === */
   const displayName = profileUser.name || "Student";
   const displayEmail = profileUser.email;
   const displayUsername = profileUser.username;
@@ -905,14 +902,14 @@ const Profile = () => {
       ? formatCycleDate(activeProfile.subscription_end_date)
       : null;
 
-  /* ðŸ‘¥ SOCIAL DATA */
+  /* === SOCIAL DATA === */
   const displayContributions = contributions;
   const activeFollowers = isViewingOther ? viewFollowers : followers;
   const activeFollowing = isViewingOther ? viewFollowing : following;
   const activeFollowersCount = isViewingOther ? viewFollowersCount : followersCount;
   const activeFollowingCount = isViewingOther ? viewFollowingCount : followingCount;
 
-  /* ðŸŽ“ ROLE */
+  /* === ROLE === */
   const isTeacher = ["teacher", "admin", "moderator"].includes(profileUser.role.toLowerCase());
 
   const getInitials = (name: string) => {
@@ -935,7 +932,7 @@ const Profile = () => {
     try {
       // Search users from database
       const { data, error } = await supabase
-        .from('users')
+        .from('users_safe')
         .select('id, email, display_name, username, profile_photo_url, college')
         .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
         .limit(10);
@@ -993,8 +990,6 @@ const Profile = () => {
 
     setUploadingPhoto(true);
     try {
-      console.log('Converting cropped image to base64...');
-
       // Convert blob to base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -1005,12 +1000,8 @@ const Profile = () => {
         reader.readAsDataURL(croppedBlob);
       });
 
-      console.log('Image cropped, updating via API...');
-
       // Use backend API which bypasses RLS
       await api.updateProfile({ profile_photo_url: base64 });
-
-      console.log('Profile photo updated successfully!');
 
       // Update local state
       setUserProfile(prev => prev ? { ...prev, profile_photo_url: base64 } : null);
@@ -1054,7 +1045,7 @@ const Profile = () => {
       // Check if username is taken (via frontend read - allowed by RLS)
       if (normalizedUsername !== userProfile?.username) {
         const { data: existingUser } = await supabase
-          .from('users')
+          .from('users_safe')
           .select('id, email')
           .eq('username', normalizedUsername)
           .maybeSingle();
@@ -1064,8 +1055,6 @@ const Profile = () => {
           return;
         }
       }
-
-      console.log('Updating profile via API for user:', authUser.uid);
 
       // Use backend API which bypasses RLS
       const profileUpdates: Partial<UserProfile> = {
@@ -1085,8 +1074,6 @@ const Profile = () => {
       }
 
       const result = await api.updateProfile(profileUpdates);
-
-      console.log('Update successful:', result);
 
       setUserProfile(prev => prev ? {
         ...prev,

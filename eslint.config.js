@@ -21,6 +21,9 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Security: warn on console usage to prevent leaking tokens/PII in production.
+      // console.error and console.warn are allowed for legitimate error reporting.
+      "no-console": ["warn", { "allow": ["error", "warn"] }],
     },
   },
 );

@@ -144,7 +144,7 @@ export class SubscriptionService {
 
             const { data } = await import('../supabase').then(({ supabase }) =>
                 supabase
-                    .from('users')
+                    .from('users_safe')
                     .select('subscription_tier, subscription_end_date')
                     .eq('id', userId)
                     .maybeSingle()

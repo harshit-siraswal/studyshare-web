@@ -69,7 +69,7 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
 
       try {
         const { data } = await supabase
-          .from('users')
+          .from('users_safe')
           .select(SIDEBAR_USER_SELECT)
           .eq('id', userId)
           .maybeSingle();

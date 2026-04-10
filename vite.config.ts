@@ -48,9 +48,23 @@ export default defineConfig(({ mode }) => ({
         }
       }
     },
-    // Generate source maps for debugging
+    // Security: strip all console.log/warn/info from production bundles
+    // to prevent leaking auth tokens, user PII, API responses, and
+    // internal paths in browser DevTools. console.error is preserved.
+    ...(mode === 'production' && {
+      minify: 'esbuild',
+    }),
+    // Generate source maps for debugging (never in production)
     sourcemap: mode === 'development',
     // Chunk size warning limit
     chunkSizeWarningLimit: 1000,
+  },
+  // Esbuild: drop console statements in production
+  esbuild: {
+    drop: mode === 'production' ? ['debugger'] : [],
+    // Only keep console.error in production
+    ...(mode === 'production' && {
+      pure: ['console.log', 'console.info', 'console.warn', 'console.debug', 'console.trace'],
+    }),
   },
 }));

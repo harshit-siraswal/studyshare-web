@@ -122,8 +122,8 @@ const SelectCollege = () => {
                         .filter((college) => college.domain)
                         .map(async (college) => {
                             const { count, error } = await supabase
-                                .from('users')
-                                .select('id', { count: 'exact', head: true })
+        .from('users_safe')
+        .select('id', { count: 'exact', head: true })
                                 .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
 
                             if (error || count === null) {
