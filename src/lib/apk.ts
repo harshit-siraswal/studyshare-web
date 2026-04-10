@@ -1,6 +1,8 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
-const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
-const DEFAULT_ANDROID_APP_VERSION = "1.0.4 (Build 5)";
+const DEFAULT_APK_URL = "/downloads/studyshare-android-v1.0.5-b6.apk";
+const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android-v1.0.5-b6.apk";
+const LEGACY_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
+const DEFAULT_ANDROID_APP_VERSION = "1.0.5 (Build 6)";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
 function normalizeConfiguredApkUrl(value: unknown): string {
@@ -26,10 +28,15 @@ function normalizeConfiguredApkUrl(value: unknown): string {
 
 const configuredPrimaryApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_URL);
 const configuredFallbackApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_FALLBACK_URL);
-const hostedFallbackApkUrl = normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL);
+const hostedFallbackApkUrl =
+  normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL) || normalizeConfiguredApkUrl(LEGACY_HOSTED_APK_URL);
 
 export const ANDROID_APK_URL =
-  configuredPrimaryApkUrl || configuredFallbackApkUrl || hostedFallbackApkUrl || DEFAULT_APK_URL;
+  configuredPrimaryApkUrl ||
+  configuredFallbackApkUrl ||
+  hostedFallbackApkUrl ||
+  DEFAULT_APK_URL ||
+  LEGACY_APK_URL;
 export const ANDROID_APP_VERSION =
   (typeof import.meta.env.VITE_ANDROID_APP_VERSION === "string" &&
   import.meta.env.VITE_ANDROID_APP_VERSION.trim()) ||
