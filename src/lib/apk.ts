@@ -1,4 +1,5 @@
 const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
 const DEFAULT_ANDROID_APP_VERSION = "1.0.3 (Build 4)";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
@@ -25,9 +26,10 @@ function normalizeConfiguredApkUrl(value: unknown): string {
 
 const configuredPrimaryApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_URL);
 const configuredFallbackApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_FALLBACK_URL);
+const hostedFallbackApkUrl = normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL);
 
 export const ANDROID_APK_URL =
-  configuredPrimaryApkUrl || configuredFallbackApkUrl || DEFAULT_APK_URL;
+  configuredPrimaryApkUrl || configuredFallbackApkUrl || hostedFallbackApkUrl || DEFAULT_APK_URL;
 export const ANDROID_APP_VERSION =
   (typeof import.meta.env.VITE_ANDROID_APP_VERSION === "string" &&
   import.meta.env.VITE_ANDROID_APP_VERSION.trim()) ||

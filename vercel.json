@@ -9,6 +9,11 @@
             "source": "/security-policy",
             "destination": "/security-policy.html",
             "permanent": true
+        },
+        {
+            "source": "/downloads/studyshare-android.apk",
+            "destination": "https://file.mystudyspace.me/downloads/studyshare-android.apk",
+            "permanent": false
         }
     ],
     "headers": [

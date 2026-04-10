@@ -213,13 +213,13 @@ const SelectCollege = () => {
             </div>
 
             <div className="relative z-10 container mx-auto px-4 py-8 md:py-12">
-                <div className="mb-6 flex items-center justify-end gap-2 md:mb-8">
+                <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:mb-8">
                     <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                        className="bg-card/70 backdrop-blur-sm"
+                        className="w-full justify-center bg-card/70 backdrop-blur-sm sm:w-auto"
                     >
                         {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                         {theme === "dark" ? "Light" : "Dark"}
@@ -229,6 +229,7 @@ const SelectCollege = () => {
                         variant="default"
                         size="sm"
                         onClick={handleDownloadApk}
+                        className="w-full justify-center sm:w-auto"
                     >
                         <Download className="h-4 w-4" />
                         Download APK

@@ -1,4 +1,5 @@
 const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
 const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
 const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
@@ -65,6 +66,7 @@ async function probeApkUrl(url: string): Promise<boolean | null> {
 
 const configuredPrimaryApkUrl = normalizeConfiguredApkUrl(process.env.NEXT_PUBLIC_ANDROID_APK_URL);
 const configuredFallbackApkUrl = normalizeConfiguredApkUrl(process.env.NEXT_PUBLIC_ANDROID_APK_FALLBACK_URL);
+const hostedFallbackApkUrl = normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL);
 
 const STATIC_APK_CANDIDATE_URLS = [configuredPrimaryApkUrl, configuredFallbackApkUrl].filter(Boolean);
 
@@ -106,7 +108,19 @@ export async function resolveAndroidApkDownloadUrl(): Promise<string | null> {
   }
 
   const isValid = await bundledApkValidationPromise;
-  return isValid ? DEFAULT_APK_URL : null;
+  if (isValid) return DEFAULT_APK_URL;
+
+  if (hostedFallbackApkUrl) {
+    const hostedProbe = await probeApkUrl(hostedFallbackApkUrl);
+    if (hostedProbe === true) {
+      return hostedFallbackApkUrl;
+    }
+    if (hostedProbe === null && !isSameOriginUrl(hostedFallbackApkUrl)) {
+      return hostedFallbackApkUrl;
+    }
+  }
+
+  return null;
 }
 
 export async function openAndroidApkDownload(): Promise<boolean> {
