@@ -882,8 +882,11 @@ const AIRagChat = ({
     return content
       .replace(/\r\n/g, "\n")
       .replace(/^#{1,6}\s*answer\s*:?\s*$/gim, "")
+      .replace(/^#{1,6}\s*brief\s+answer\s*:?\s*$/gim, "")
       .replace(/^\s*\*\*source used:\*\*.*$/gim, "")
       .replace(/^\s*source used:.*$/gim, "")
+      .replace(/^\s*pages?\s*\d+\s*-\s*\d+\s+open source here\s*$/gim, "")
+      .replace(/\bopen source here\b/gim, "")
       .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, (match) => circledNumberMap[match] || match)
       .replace(/\s+---\s+/g, " ")
       .replace(/\n{3,}/g, "\n\n")
