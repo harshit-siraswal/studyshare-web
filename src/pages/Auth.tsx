@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
+  Loader2,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ const Auth = () => {
   const [resendingEmail, setResendingEmail] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
+  const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -68,6 +70,7 @@ const Auth = () => {
 
       // Google auth users are auto-verified, email/password users need to verify
       if (firebaseUser?.emailVerified) {
+        setGoogleSigningIn(true);
         navigate("/study", { replace: true });
       } else {
         // User exists but email not verified - show verification pending
@@ -118,6 +121,13 @@ const Auth = () => {
   /* 🔵 GOOGLE LOGIN — FIREBASE ONLY */
   /* ---------------------------------------------------------------- */
   const handleGoogleLogin = async () => {
+    if (!auth || !db) {
+      toast.error("Google sign-in is temporarily unavailable.");
+      return;
+    }
+
+    setGoogleSigningIn(true);
+
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
@@ -145,6 +155,7 @@ const Auth = () => {
     } catch (err) {
       console.error(err);
       toast.error("Google sign-in failed");
+      setGoogleSigningIn(false);
     }
   };
 
@@ -391,8 +402,16 @@ const Auth = () => {
               variant="outline"
               className="w-full h-11"
               onClick={handleGoogleLogin}
+              disabled={googleSigningIn}
             >
-              Continue with Google
+              {googleSigningIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting Google...
+                </>
+              ) : (
+                "Continue with Google"
+              )}
             </Button>
 
             <div className="text-center text-xs text-muted-foreground">

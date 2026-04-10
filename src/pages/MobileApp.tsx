@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   House,
+  Loader2,
   Megaphone,
   MessagesSquare,
   Moon,
@@ -373,6 +374,7 @@ const MobileApp = () => {
   const reduceMotion = Boolean(useReducedMotion());
   const isDark = theme === "dark";
   const [activeSceneIndex, setActiveSceneIndex] = useState(1);
+  const [isLeavingToStudy, setIsLeavingToStudy] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -424,6 +426,11 @@ const MobileApp = () => {
     }
   };
 
+  const handleBackToStudy = () => {
+    setIsLeavingToStudy(true);
+    navigate("/study");
+  };
+
   return (
     <div className={cn("min-h-screen overflow-hidden transition-colors", isDark ? "bg-[#071019] text-[#f5f7fb]" : "bg-[#f5efe4] text-slate-950")}>
       <SEO
@@ -469,15 +476,20 @@ const MobileApp = () => {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={handleBackToStudy}
+              disabled={isLeavingToStudy}
               className={cn(
                 isDark
                   ? "border-white/12 bg-white/5 text-white hover:bg-white/10"
                   : "border-black/10 bg-white/70 text-slate-900 hover:bg-white"
               )}
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
+              {isLeavingToStudy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowLeft className="h-4 w-4" />
+              )}
+              {isLeavingToStudy ? "Opening Study..." : "Back"}
             </Button>
             <Button
               variant="outline"

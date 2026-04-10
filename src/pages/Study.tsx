@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, Users, Smartphone } from "lucide-react";
+import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, Users } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import FollowingFeed from '@/components/FollowingFeed';
 import BookmarkedResources from '@/components/BookmarkedResources';
 import NotificationButton from '@/components/NotificationButton';
 import PremiumButton from "@/components/PremiumButton";
+import BrandLoader from "@/components/BrandLoader";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -30,7 +31,6 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useResources } from "@/hooks/useResources";
 import { BRANCH_OPTIONS, SEMESTER_OPTIONS, getBranchLabel, getSubjectsForBranchAndSemester } from "@/lib/academicSubjects";
 import { getAcademicCatalog, type AcademicCatalog } from "@/lib/api";
-import { ANDROID_APP_VERSION } from "@/lib/apk";
 
 type SortOption = "teacher" | "votes" | "recent";
 
@@ -109,7 +109,16 @@ const Study = () => {
     }
   }, [user, loading, navigate]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-hero">
+        <div className="rounded-3xl border border-border/50 bg-card/80 px-8 py-6 shadow-card backdrop-blur-xl">
+          <BrandLoader label="Loading study resources..." />
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   const availableSubjects = (selectedBranch && selectedBranch !== 'all')
@@ -252,16 +261,6 @@ const Study = () => {
 
               {/* Notification Button */}
               <NotificationButton />
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden md:inline-flex shrink-0 items-center gap-2"
-                onClick={() => navigate("/mobile-app")}
-              >
-                <Smartphone className="h-4 w-4" />
-                App v{ANDROID_APP_VERSION}
-              </Button>
 
               {/* Policy: Hide Upload buttons for readonly users */}
               {isFullAccess && (
@@ -409,26 +408,6 @@ const Study = () => {
 
         {/* Main Content Area - Scrollable */}
         <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 overflow-y-auto">
-          <div className="mb-5 rounded-2xl border border-border/60 bg-card/60 p-4 shadow-card">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                  Android App
-                </p>
-                <p className="mt-1 text-sm text-foreground">
-                  Download StudyShare mobile app and continue your workflow on phone.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Current synced version: {ANDROID_APP_VERSION}
-                </p>
-              </div>
-              <Button onClick={() => navigate("/mobile-app")} className="inline-flex items-center gap-2">
-                <Smartphone className="h-4 w-4" />
-                View App Gallery
-              </Button>
-            </div>
-          </div>
-
           {searchMode === "resources" ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
