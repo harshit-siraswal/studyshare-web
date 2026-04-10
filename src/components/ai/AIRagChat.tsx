@@ -95,6 +95,12 @@ const shouldUseLiveTrace = (query: string): boolean => {
   return LONG_TASK_HINTS.some((hint) => normalized.includes(hint));
 };
 
+const buildReaderProxyUrl = (url: string): string => {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  return `https://r.jina.ai/http://${trimmed.replace(/^https?:\/\//i, "")}`;
+};
+
 const DEFAULT_FILTERS: RagFilters = {
   source_type: "both",
 };
@@ -385,7 +391,6 @@ const AIRagChat = ({
   const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
   const [queryMode, setQueryMode] = useState<"notes" | "web">("notes");
   const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
-  const [activeSourceByMessage, setActiveSourceByMessage] = useState<Record<string, number>>({});
   const [traceCurrentRequest, setTraceCurrentRequest] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ isOpen: boolean; title: string; url: string }>({
     isOpen: false,
@@ -402,9 +407,28 @@ const AIRagChat = ({
     title: "",
     url: "",
   });
+  const [webPreviewMode, setWebPreviewMode] = useState<"direct" | "reader">("direct");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const webPreviewLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!webPreview.isOpen || !webPreview.url) return;
+
+    webPreviewLoadedRef.current = false;
+    setWebPreviewMode("direct");
+
+    const timeout = window.setTimeout(() => {
+      if (!webPreviewLoadedRef.current) {
+        setWebPreviewMode("reader");
+      }
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [webPreview.isOpen, webPreview.url]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -772,7 +796,10 @@ const AIRagChat = ({
     const transcript = messages
       .map((msg) => {
         const roleLabel = msg.role === "user" ? "You" : "StudyShare AI";
-        const value = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+        const value =
+          msg.role === "assistant"
+            ? normalizeAssistantOutput(msg.noLocal ? getAssistantDisplayContent(msg) : msg.content)
+            : msg.content;
         return `${roleLabel}:\n${value.trim()}`;
       })
       .join("\n\n");
@@ -798,6 +825,10 @@ const AIRagChat = ({
     filters.source_type && filters.source_type !== "both" ? filters.source_type.toUpperCase() : "",
   ].filter(Boolean);
   const hasActiveFilters = activeFilterParts.length > 0;
+  const webPreviewFrameUrl =
+    webPreviewMode === "reader"
+      ? buildReaderProxyUrl(webPreview.url)
+      : webPreview.url;
 
   const getAssistantDisplayContent = (msg: ChatMessage) => {
     if (msg.role !== "assistant") return msg.content;
@@ -830,6 +861,33 @@ const AIRagChat = ({
       "- Use a keyword from the source title",
       "- Add filters like semester, branch, or subject",
     ].join("\n");
+  };
+
+  const normalizeAssistantOutput = (content: string) => {
+    if (!content) return "";
+
+    const circledNumberMap: Record<string, string> = {
+      "①": "1.",
+      "②": "2.",
+      "③": "3.",
+      "④": "4.",
+      "⑤": "5.",
+      "⑥": "6.",
+      "⑦": "7.",
+      "⑧": "8.",
+      "⑨": "9.",
+      "⑩": "10.",
+    };
+
+    return content
+      .replace(/\r\n/g, "\n")
+      .replace(/^#{1,6}\s*answer\s*:?\s*$/gim, "")
+      .replace(/^\s*\*\*source used:\*\*.*$/gim, "")
+      .replace(/^\s*source used:.*$/gim, "")
+      .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, (match) => circledNumberMap[match] || match)
+      .replace(/\s+---\s+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   };
 
   const renderMessageContent = (content: string) => {
@@ -882,7 +940,6 @@ const AIRagChat = ({
     setQuestion("");
     setAttachments([]);
     setExpandedTraceId(null);
-    setActiveSourceByMessage({});
     setCopiedConversation(false);
   };
 
@@ -949,12 +1006,14 @@ const AIRagChat = ({
 
             {messages.map((msg, idx) => {
               const isUser = msg.role === "user";
-              const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+              const displayContent =
+                msg.role === "assistant"
+                  ? normalizeAssistantOutput(msg.noLocal ? getAssistantDisplayContent(msg) : msg.content)
+                  : msg.content;
               const messageId = `${msg.role}-${idx}`;
               const traceExpanded = expandedTraceId === messageId;
               const canRegenerate = msg.role === "assistant" && idx === latestAssistantIndex;
               const isRegenerating = regeneratingMessageIndex === idx;
-              const activeSource = msg.sources?.[activeSourceByMessage[messageId] || 0];
 
               return (
                 <div key={messageId} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
@@ -1001,23 +1060,17 @@ const AIRagChat = ({
                         <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
                           {msg.sources.map((s, sidx) => {
                             const sourceType = (s.source_type || "pdf").toLowerCase();
-                            const isActive = (activeSourceByMessage[messageId] || 0) === sidx;
                             return (
                               <button
                                 key={`${s.file_id || s.title}-${sidx}`}
                                 type="button"
                                 onClick={() =>
-                                  setActiveSourceByMessage((prev) => ({
-                                    ...prev,
-                                    [messageId]: sidx,
-                                  }))
+                                  openRagSourceInApp(
+                                    s,
+                                    sourceType === "youtube" || sourceType === "video" ? "video" : "file"
+                                  )
                                 }
-                                className={cn(
-                                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] transition",
-                                  isActive
-                                    ? "border-primary/50 bg-primary/10 text-primary"
-                                    : "border-border/60 bg-background text-muted-foreground hover:border-primary/60 hover:text-primary"
-                                )}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
                               >
                                 {sourceType === "web" ? <Globe2 className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
                                 <span className="max-w-[180px] truncate">{s.title}</span>
@@ -1025,38 +1078,6 @@ const AIRagChat = ({
                             );
                           })}
                         </div>
-
-                        {activeSource && (
-                          <div className="mt-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs text-muted-foreground">
-                            <div className="font-medium text-foreground">{activeSource.title}</div>
-                            <div className="mt-1 flex flex-wrap items-center gap-3">
-                              {activeSource.pages && (
-                                <span>
-                                  Pages {activeSource.pages.start}-{activeSource.pages.end}
-                                </span>
-                              )}
-                              {activeSource.timestamp && <span>Time {activeSource.timestamp}</span>}
-                              {activeSource.file_url && (
-                                <button
-                                  type="button"
-                                  onClick={() => openRagSourceInApp(activeSource, "file")}
-                                  className="text-primary hover:underline"
-                                >
-                                  Open source here
-                                </button>
-                              )}
-                              {activeSource.video_url && (
-                                <button
-                                  type="button"
-                                  onClick={() => openRagSourceInApp(activeSource, "video")}
-                                  className="text-primary hover:underline"
-                                >
-                                  Open video here
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -1279,20 +1300,54 @@ const AIRagChat = ({
           onOpenChange={(open) => {
             if (!open) {
               setWebPreview({ isOpen: false, title: "", url: "" });
+              setWebPreviewMode("direct");
             }
           }}
         >
           <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
             <DialogHeader className="border-b border-border/60 px-4 py-3">
-              <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={webPreviewMode === "direct" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setWebPreviewMode("direct")}
+                  >
+                    Direct
+                  </Button>
+                  <Button
+                    variant={webPreviewMode === "reader" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setWebPreviewMode("reader")}
+                  >
+                    Reader
+                  </Button>
+                  {webPreview.url ? (
+                    <a
+                      href={webPreview.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Open external
+                    </a>
+                  ) : null}
+                </div>
+              </div>
             </DialogHeader>
             <div className="h-full w-full">
-              {webPreview.url ? (
+              {webPreviewFrameUrl ? (
                 <iframe
-                  src={webPreview.url}
+                  src={webPreviewFrameUrl}
                   title={webPreview.title || "Web source"}
                   className="h-full w-full border-0"
                   referrerPolicy="strict-origin-when-cross-origin"
+                  onLoad={() => {
+                    webPreviewLoadedRef.current = true;
+                  }}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -1452,7 +1507,10 @@ const AIRagChat = ({
 
             {messages.map((msg, idx) => {
               const isUser = msg.role === "user";
-              const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+              const displayContent =
+                msg.role === "assistant"
+                  ? normalizeAssistantOutput(msg.noLocal ? getAssistantDisplayContent(msg) : msg.content)
+                  : msg.content;
               const messageId = `${msg.role}-${idx}`;
               const canRegenerate = msg.role === "assistant" && idx === latestAssistantIndex;
               const isRegenerating = regeneratingMessageIndex === idx;
@@ -1649,23 +1707,17 @@ const AIRagChat = ({
                         <div className="flex gap-2 overflow-x-auto pb-1">
                           {msg.sources.map((s, sidx) => {
                             const sourceType = (s.source_type || "pdf").toLowerCase();
-                            const isActive = (activeSourceByMessage[messageId] || 0) === sidx;
                             return (
                               <button
                                 key={`${s.file_id || s.title}-${sidx}`}
                                 type="button"
                                 onClick={() =>
-                                  setActiveSourceByMessage((prev) => ({
-                                    ...prev,
-                                    [messageId]: sidx,
-                                  }))
+                                  openRagSourceInApp(
+                                    s,
+                                    sourceType === "youtube" || sourceType === "video" ? "video" : "file"
+                                  )
                                 }
-                                className={cn(
-                                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] transition",
-                                  isActive
-                                    ? "border-primary/50 bg-primary/10 text-primary"
-                                    : "border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:text-primary"
-                                )}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
                               >
                                 {sourceType === "web" ? (
                                   <Globe2 className="h-3 w-3" />
@@ -1677,52 +1729,6 @@ const AIRagChat = ({
                             );
                           })}
                         </div>
-                        {msg.sources[(activeSourceByMessage[messageId] || 0)] && (
-                          <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-                            <div className="font-medium text-foreground">
-                              {msg.sources[activeSourceByMessage[messageId] || 0].title}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-3">
-                              {msg.sources[activeSourceByMessage[messageId] || 0].pages && (
-                                <span>
-                                  Pages {msg.sources[activeSourceByMessage[messageId] || 0].pages?.start}
-                                  -{msg.sources[activeSourceByMessage[messageId] || 0].pages?.end}
-                                </span>
-                              )}
-                              {msg.sources[activeSourceByMessage[messageId] || 0].timestamp && (
-                                <span>Time {msg.sources[activeSourceByMessage[messageId] || 0].timestamp}</span>
-                              )}
-                              {msg.sources[activeSourceByMessage[messageId] || 0].file_url && (
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-1 text-primary hover:underline"
-                                  onClick={() =>
-                                    openRagSourceInApp(
-                                      msg.sources[activeSourceByMessage[messageId] || 0],
-                                      "file"
-                                    )
-                                  }
-                                >
-                                  Open source
-                                </button>
-                              )}
-                              {msg.sources[activeSourceByMessage[messageId] || 0].video_url && (
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-1 text-primary hover:underline"
-                                  onClick={() =>
-                                    openRagSourceInApp(
-                                      msg.sources[activeSourceByMessage[messageId] || 0],
-                                      "video"
-                                    )
-                                  }
-                                >
-                                  Open video
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -2068,20 +2074,54 @@ const AIRagChat = ({
           onOpenChange={(open) => {
             if (!open) {
               setWebPreview({ isOpen: false, title: "", url: "" });
+              setWebPreviewMode("direct");
             }
           }}
         >
           <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
             <DialogHeader className="border-b border-border/60 px-4 py-3">
-              <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={webPreviewMode === "direct" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setWebPreviewMode("direct")}
+                  >
+                    Direct
+                  </Button>
+                  <Button
+                    variant={webPreviewMode === "reader" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setWebPreviewMode("reader")}
+                  >
+                    Reader
+                  </Button>
+                  {webPreview.url ? (
+                    <a
+                      href={webPreview.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Open external
+                    </a>
+                  ) : null}
+                </div>
+              </div>
             </DialogHeader>
             <div className="h-full w-full">
-              {webPreview.url ? (
+              {webPreviewFrameUrl ? (
                 <iframe
-                  src={webPreview.url}
+                  src={webPreviewFrameUrl}
                   title={webPreview.title || "Web source"}
                   className="h-full w-full border-0"
                   referrerPolicy="strict-origin-when-cross-origin"
+                  onLoad={() => {
+                    webPreviewLoadedRef.current = true;
+                  }}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
