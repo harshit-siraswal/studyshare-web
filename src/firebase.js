@@ -32,14 +32,21 @@ const missingEnvVars = Object.entries(rawConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
+const strictEnvCheck = String(import.meta.env.VITE_STRICT_ENV_CHECK || "").toLowerCase() === "true";
+
 if (missingEnvVars.length > 0) {
-  if (import.meta.env.MODE === "production") {
-    throw new Error(`[Firebase] Missing required env vars in production: ${missingEnvVars.join(", ")}`);
-  }
-  console.warn(
+  const message =
     `[Firebase] Missing env config entries: ${missingEnvVars.join(", ")}. ` +
-      "Falling back to DEFAULT_FIREBASE_CONFIG for development."
-  );
+    "Falling back to DEFAULT_FIREBASE_CONFIG.";
+
+  if (import.meta.env.MODE === "production") {
+    if (strictEnvCheck) {
+      throw new Error(`[Firebase] Missing required env vars in production: ${missingEnvVars.join(", ")}`);
+    }
+    console.error(message);
+  } else {
+    console.warn(message);
+  }
 }
 
 const firebaseConfig = {
