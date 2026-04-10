@@ -28,7 +28,7 @@ const AIChat = () => {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.09),transparent_40%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_45%)]">
 
       <SEO
         title="AI Chat"
@@ -55,9 +55,9 @@ const AIChat = () => {
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="sticky top-0 z-40 border-b border-border bg-background">
+        <div className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur">
           <div className="px-3 sm:px-4 md:px-6">
-            <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3">
+            <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3">
               <div className="flex shrink-0 items-center gap-2">
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
@@ -87,17 +87,15 @@ const AIChat = () => {
               </div>
 
               <div className="min-w-0 text-center">
-                <p className="text-sm font-semibold text-foreground">
-                  StudyShare AI
-                </p>
+                <p className="text-sm font-semibold text-foreground">AI Workspace</p>
                 <p className="truncate text-xs text-muted-foreground md:block">
                   {collegeLabel}
                 </p>
               </div>
 
               <div className="flex w-8 items-center justify-end sm:w-[148px]">
-                <div className="hidden items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-[10px] font-medium text-muted-foreground sm:inline-flex">
-                  Minimal Chat
+                <div className="hidden items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-1 text-[10px] font-medium text-muted-foreground sm:inline-flex">
+                  Minimal UI
                 </div>
               </div>
             </div>
@@ -105,10 +103,10 @@ const AIChat = () => {
         </div>
 
         <div className="flex-1 overflow-hidden px-2 py-2 sm:px-4 sm:py-4 md:px-6 md:pb-6">
-          <div className="mx-auto h-full max-w-6xl">
+          <div className="mx-auto h-full max-w-7xl">
             <AIRagChat
               variant="minimal"
-              className="h-full rounded-3xl border border-border bg-card/30 shadow-sm"
+              className="h-full"
             />
           </div>
         </div>

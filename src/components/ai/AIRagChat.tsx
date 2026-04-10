@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
@@ -43,6 +44,8 @@ import AILivePlanCard, {
   type AiLiveActivitySource,
   type AiLiveActivityStep,
 } from "@/components/ai/AILivePlanCard";
+import PDFViewer from "@/components/PDFViewer";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -63,6 +66,34 @@ interface ComposerAttachment {
   id: string;
   file: File;
 }
+
+interface SourceWebPreview {
+  isOpen: boolean;
+  title: string;
+  url: string;
+}
+
+const LONG_TASK_HINTS = [
+  "test",
+  "mock test",
+  "question paper",
+  "quiz",
+  "mcq",
+  "generate",
+  "assignment",
+  "worksheet",
+  "long answer",
+  "practice set",
+  "case study",
+  "project",
+] as const;
+
+const shouldUseLiveTrace = (query: string): boolean => {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized.length >= 180) return true;
+  return LONG_TASK_HINTS.some((hint) => normalized.includes(hint));
+};
 
 const DEFAULT_FILTERS: RagFilters = {
   source_type: "both",
@@ -270,25 +301,33 @@ const buildLiveAnswerSteps = ({
 
 const buildAssistantMessage = (
   response: RagResponse,
-  liveTitle = "Tracing your answer"
-): ChatMessage => ({
-  role: "assistant",
-  content: response.answer || "No answer returned.",
-  sources: response.sources || [],
-  followUps: response.follow_ups || [],
-  cached: response.cached,
-  noLocal: response.no_local,
-  answerOrigin: response.answer_origin,
-  retrievalScore: response.retrieval_score,
-  llmConfidenceScore: response.llm_confidence_score,
-  combinedConfidence: response.combined_confidence,
-  liveTitle,
-  liveSteps: buildLiveAnswerSteps({
-    answerOrigin: response.answer_origin,
+  options?: {
+    liveTitle?: string;
+    traceEnabled?: boolean;
+  }
+): ChatMessage => {
+  const traceEnabled = !!options?.traceEnabled;
+  return {
+    role: "assistant",
+    content: response.answer || "No answer returned.",
     sources: response.sources || [],
+    followUps: response.follow_ups || [],
+    cached: response.cached,
     noLocal: response.no_local,
-  }),
-});
+    answerOrigin: response.answer_origin,
+    retrievalScore: response.retrieval_score,
+    llmConfidenceScore: response.llm_confidence_score,
+    combinedConfidence: response.combined_confidence,
+    liveTitle: traceEnabled ? options?.liveTitle || "Tracing your answer" : undefined,
+    liveSteps: traceEnabled
+      ? buildLiveAnswerSteps({
+          answerOrigin: response.answer_origin,
+          sources: response.sources || [],
+          noLocal: response.no_local,
+        })
+      : undefined,
+  };
+};
 
 const percentLabel = (value?: number) => {
   if (typeof value !== "number" || Number.isNaN(value)) return null;
@@ -347,6 +386,22 @@ const AIRagChat = ({
   const [queryMode, setQueryMode] = useState<"notes" | "web">("notes");
   const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
   const [activeSourceByMessage, setActiveSourceByMessage] = useState<Record<string, number>>({});
+  const [traceCurrentRequest, setTraceCurrentRequest] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ isOpen: boolean; title: string; url: string }>({
+    isOpen: false,
+    title: "",
+    url: "",
+  });
+  const [videoPreview, setVideoPreview] = useState<{ isOpen: boolean; title: string; url: string }>({
+    isOpen: false,
+    title: "",
+    url: "",
+  });
+  const [webPreview, setWebPreview] = useState<SourceWebPreview>({
+    isOpen: false,
+    title: "",
+    url: "",
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -400,6 +455,94 @@ const AIRagChat = ({
     }
   };
 
+  const openRagSourceInApp = (
+    source: RagSource,
+    preferred: "file" | "video" = "file"
+  ) => {
+    const sourceType = (source.source_type || "pdf").trim().toLowerCase();
+    const fileUrl = source.file_url?.trim() || "";
+    const videoUrl = source.video_url?.trim() || "";
+
+    if (preferred === "video" && videoUrl) {
+      setVideoPreview({
+        isOpen: true,
+        title: source.title || "Source video",
+        url: videoUrl,
+      });
+      return;
+    }
+
+    if (sourceType === "web" && fileUrl) {
+      setWebPreview({
+        isOpen: true,
+        title: source.title || "Web source",
+        url: fileUrl,
+      });
+      return;
+    }
+
+    if ((sourceType === "youtube" || sourceType === "video") && videoUrl) {
+      setVideoPreview({
+        isOpen: true,
+        title: source.title || "Source video",
+        url: videoUrl,
+      });
+      return;
+    }
+
+    if (fileUrl) {
+      setPdfPreview({
+        isOpen: true,
+        title: source.title || "Source document",
+        url: fileUrl,
+      });
+      return;
+    }
+
+    if (videoUrl) {
+      setVideoPreview({
+        isOpen: true,
+        title: source.title || "Source video",
+        url: videoUrl,
+      });
+      return;
+    }
+
+    toast.error("No preview URL found for this source.");
+  };
+
+  const openTraceSourceInApp = (source: AiLiveActivitySource) => {
+    const url = source.url?.trim() || "";
+    if (!url) {
+      toast.error("No preview URL found for this source.");
+      return;
+    }
+
+    if (source.kind === "web") {
+      setWebPreview({
+        isOpen: true,
+        title: source.title || "Web source",
+        url,
+      });
+      return;
+    }
+
+    if (source.kind === "video") {
+      setVideoPreview({
+        isOpen: true,
+        title: source.title || "Source video",
+        url,
+      });
+      return;
+    }
+
+    setPdfPreview({
+      isOpen: true,
+      title: source.title || "Source document",
+      url,
+    });
+  };
+
   const handleAsk = async (presetQuestion?: string) => {
     if (!user) return;
     if (loading) return;
@@ -413,11 +556,13 @@ const AIRagChat = ({
       ...filters,
       source_type: queryMode === "notes" ? "pdf" : filters.source_type || "both",
     };
+    const traceEnabled = shouldUseLiveTrace(q);
 
     if (!presetQuestion) {
       setQuestion("");
     }
     setExpandedTraceId(null);
+    setTraceCurrentRequest(traceEnabled);
     setMessages((prev) => [...prev, { role: "user", content: askContent }]);
     setLoading(true);
 
@@ -429,7 +574,7 @@ const AIRagChat = ({
         history: [...getHistoryForRequest(), { role: "user", content: askContent }],
       });
 
-      setMessages((prev) => [...prev, buildAssistantMessage(response)]);
+      setMessages((prev) => [...prev, buildAssistantMessage(response, { traceEnabled })]);
       setAttachments([]);
     } catch (error: unknown) {
       let message = error instanceof Error ? error.message : "Failed to get AI response.";
@@ -441,12 +586,13 @@ const AIRagChat = ({
         {
           role: "assistant",
           content: message,
-          liveTitle: "Tracing your answer",
-          liveSteps: buildFailedLiveSteps(message),
+          liveTitle: traceEnabled ? "Tracing your answer" : undefined,
+          liveSteps: traceEnabled ? buildFailedLiveSteps(message) : undefined,
         },
       ]);
     } finally {
       setLoading(false);
+      setTraceCurrentRequest(false);
     }
   };
 
@@ -463,8 +609,8 @@ const AIRagChat = ({
 
     if (action.type === "show_full_pdfs") {
       const firstSource = message.sources?.find((source) => source.file_url);
-      if (firstSource?.file_url) {
-        window.open(firstSource.file_url, "_blank", "noopener,noreferrer");
+      if (firstSource) {
+        openRagSourceInApp(firstSource, "file");
       }
       return;
     }
@@ -476,8 +622,8 @@ const AIRagChat = ({
 
     if (action.type === "watch_video_segments") {
       const video = message.sources?.find((source) => source.video_url);
-      if (video?.video_url) {
-        window.open(video.video_url, "_blank", "noopener,noreferrer");
+      if (video) {
+        openRagSourceInApp(video, "video");
       }
       return;
     }
@@ -575,9 +721,12 @@ const AIRagChat = ({
       return;
     }
 
+    const traceEnabled = shouldUseLiveTrace(originalQuestion);
+
     const truncatedMessages = messages.slice(0, assistantIndex);
     setExpandedTraceId(null);
     setRegeneratingMessageIndex(assistantIndex);
+    setTraceCurrentRequest(traceEnabled);
     setMessages(truncatedMessages);
     setLoading(true);
 
@@ -592,7 +741,7 @@ const AIRagChat = ({
           history: getHistoryForRequest(truncatedMessages),
         });
 
-      setMessages((prev) => [...prev, buildAssistantMessage(response)]);
+      setMessages((prev) => [...prev, buildAssistantMessage(response, { traceEnabled })]);
     } catch (error: unknown) {
       let message = error instanceof Error ? error.message : "Failed to regenerate AI response.";
       if (error instanceof ApiError && isAiTokenQuotaExceededPayload(error.payload)) {
@@ -603,13 +752,14 @@ const AIRagChat = ({
         {
           role: "assistant",
           content: message,
-          liveTitle: "Tracing your answer",
-          liveSteps: buildFailedLiveSteps(message),
+          liveTitle: traceEnabled ? "Tracing your answer" : undefined,
+          liveSteps: traceEnabled ? buildFailedLiveSteps(message) : undefined,
         },
       ]);
     } finally {
       setLoading(false);
       setRegeneratingMessageIndex(null);
+      setTraceCurrentRequest(false);
     }
   };
 
@@ -726,10 +876,432 @@ const AIRagChat = ({
     );
   };
 
+  const clearConversation = () => {
+    if (loading) return;
+    setMessages([]);
+    setQuestion("");
+    setAttachments([]);
+    setExpandedTraceId(null);
+    setActiveSourceByMessage({});
+    setCopiedConversation(false);
+  };
+
   if (!user) {
     return (
       <div className="text-sm text-muted-foreground">
         Please login to use AI chat.
+      </div>
+    );
+  }
+
+  if (isMinimal) {
+    return (
+      <div className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border border-border/60 bg-background", className)}>
+        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">StudyShare Assistant</p>
+            <p className="text-xs text-muted-foreground">{collegeLabel}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleCopyConversation()}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition",
+                  copiedConversation
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background text-muted-foreground hover:border-primary/60 hover:text-primary"
+                )}
+              >
+                {copiedConversation ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copiedConversation ? "Copied" : "Copy"}
+              </button>
+            )}
+            <Button variant="outline" size="sm" className="h-8 rounded-full" onClick={clearConversation}>
+              New chat
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div ref={scrollRef} className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
+            {messages.length === 0 && !loading && (
+              <div className="mx-auto mt-8 w-full max-w-2xl text-center">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">How can I help with your studies today?</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Ask concise questions for quick answers. Live trace appears automatically only for longer generation tasks.
+                </p>
+                <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                  {SUGGESTIONS.map((suggestion) => (
+                    <button
+                      key={`redesign-${suggestion}`}
+                      type="button"
+                      onClick={() => handleSuggestion(suggestion)}
+                      className="rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-sm text-foreground transition hover:border-primary/40 hover:bg-card/80"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((msg, idx) => {
+              const isUser = msg.role === "user";
+              const displayContent = msg.noLocal ? getAssistantDisplayContent(msg) : msg.content;
+              const messageId = `${msg.role}-${idx}`;
+              const traceExpanded = expandedTraceId === messageId;
+              const canRegenerate = msg.role === "assistant" && idx === latestAssistantIndex;
+              const isRegenerating = regeneratingMessageIndex === idx;
+              const activeSource = msg.sources?.[activeSourceByMessage[messageId] || 0];
+
+              return (
+                <div key={messageId} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "max-w-[92%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-[82%]",
+                      isUser
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border/70 bg-card text-foreground"
+                    )}
+                  >
+                    {!isUser && msg.liveSteps?.length ? (
+                      <div className="mb-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedTraceId((prev) => (prev === messageId ? null : messageId))
+                          }
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-left text-xs text-muted-foreground transition hover:border-primary/50"
+                        >
+                          {traceExpanded ? "Hide live trace" : "Show live trace"}
+                        </button>
+                        {traceExpanded && (
+                          <AILivePlanCard
+                            title={msg.liveTitle || "Tracing your answer"}
+                            steps={msg.liveSteps || []}
+                            answerOrigin={msg.answerOrigin}
+                            metrics={{
+                              retrievalScore: msg.retrievalScore,
+                              confidenceScore: msg.combinedConfidence ?? msg.llmConfidenceScore,
+                            }}
+                            onOpenSource={openTraceSourceInApp}
+                            className="mt-2"
+                          />
+                        )}
+                      </div>
+                    ) : null}
+
+                    {renderMessageContent(displayContent)}
+
+                    {!isUser && msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-border/60 bg-background/70 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sources</p>
+                        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                          {msg.sources.map((s, sidx) => {
+                            const sourceType = (s.source_type || "pdf").toLowerCase();
+                            const isActive = (activeSourceByMessage[messageId] || 0) === sidx;
+                            return (
+                              <button
+                                key={`${s.file_id || s.title}-${sidx}`}
+                                type="button"
+                                onClick={() =>
+                                  setActiveSourceByMessage((prev) => ({
+                                    ...prev,
+                                    [messageId]: sidx,
+                                  }))
+                                }
+                                className={cn(
+                                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] transition",
+                                  isActive
+                                    ? "border-primary/50 bg-primary/10 text-primary"
+                                    : "border-border/60 bg-background text-muted-foreground hover:border-primary/60 hover:text-primary"
+                                )}
+                              >
+                                {sourceType === "web" ? <Globe2 className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
+                                <span className="max-w-[180px] truncate">{s.title}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {activeSource && (
+                          <div className="mt-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs text-muted-foreground">
+                            <div className="font-medium text-foreground">{activeSource.title}</div>
+                            <div className="mt-1 flex flex-wrap items-center gap-3">
+                              {activeSource.pages && (
+                                <span>
+                                  Pages {activeSource.pages.start}-{activeSource.pages.end}
+                                </span>
+                              )}
+                              {activeSource.timestamp && <span>Time {activeSource.timestamp}</span>}
+                              {activeSource.file_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => openRagSourceInApp(activeSource, "file")}
+                                  className="text-primary hover:underline"
+                                >
+                                  Open source here
+                                </button>
+                              )}
+                              {activeSource.video_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => openRagSourceInApp(activeSource, "video")}
+                                  className="text-primary hover:underline"
+                                >
+                                  Open video here
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={cn("mt-3 flex flex-wrap items-center gap-2", isUser && "justify-end")}>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyMessage(messageId, displayContent)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition",
+                          copiedMessageId === messageId
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border/60 bg-background text-muted-foreground hover:border-primary/60 hover:text-primary"
+                        )}
+                      >
+                        {copiedMessageId === messageId ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copiedMessageId === messageId ? "Copied" : "Copy"}
+                      </button>
+                      {canRegenerate && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRegenerate(idx)}
+                          disabled={loading}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary",
+                            loading && "cursor-not-allowed opacity-60"
+                          )}
+                        >
+                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
+                          {isRegenerating ? "Regenerating..." : "Regenerate"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {loading && (
+              <div className="flex justify-start">
+                <div className="max-w-[92%] rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm shadow-sm sm:max-w-[82%]">
+                  {traceCurrentRequest ? (
+                    <AILivePlanCard
+                      title="Tracing your answer"
+                      steps={buildLoadingLiveSteps(loadingPlanStep)}
+                      isRunning
+                      onOpenSource={openTraceSourceInApp}
+                    />
+                  ) : (
+                    <div className="inline-flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Thinking...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="border-t border-border/60 bg-background/95 px-4 py-3">
+          <div className="mx-auto w-full max-w-3xl space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center rounded-full border border-border/60 bg-background p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setQueryMode("notes")}
+                  className={cn(
+                    "rounded-full px-3 py-1 transition",
+                    queryMode === "notes"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  Notes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQueryMode("web")}
+                  className={cn(
+                    "rounded-full px-3 py-1 transition",
+                    queryMode === "web"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  Web
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-foreground"
+              >
+                <Filter className="h-3 w-3" />
+                Filters
+              </button>
+            </div>
+
+            {showFilters && (
+              <div className="grid gap-2 rounded-2xl border border-border/60 bg-card p-3 sm:grid-cols-2">
+                <label className="text-xs text-muted-foreground">
+                  Semester
+                  <select
+                    value={filters.semester || ""}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, semester: e.target.value || undefined }))}
+                    className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                  >
+                    <option value="">All</option>
+                    {Array.from({ length: 8 }).map((_, idx) => (
+                      <option key={`sem-min-${idx + 1}`} value={`${idx + 1}`}>
+                        {idx + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  Branch
+                  <select
+                    value={filters.branch || ""}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, branch: e.target.value || undefined }))}
+                    className="mt-1 w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-sm"
+                  >
+                    <option value="">All</option>
+                    {[
+                      "CSE",
+                      "ECE",
+                      "EEE",
+                      "Mechanical",
+                      "Civil",
+                      "Chemical",
+                      "IT",
+                      "AIML",
+                    ].map((value) => (
+                      <option key={`branch-min-${value}`} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((attachment) => (
+                  <span
+                    key={attachment.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] text-foreground"
+                  >
+                    <FileText className="h-3 w-3 text-primary" />
+                    <span className="max-w-[180px] truncate">{attachment.file.name}</span>
+                    <span className="text-muted-foreground">{formatFileSize(attachment.file.size)}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(attachment.id)}
+                      className="text-muted-foreground transition hover:text-foreground"
+                      aria-label={`Remove ${attachment.file.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.txt,.md,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleAttachFiles}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-xl"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach files"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Textarea
+                ref={inputRef}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Message StudyShare AI..."
+                className="min-h-[68px] max-h-[180px] resize-none rounded-2xl border border-border/70 bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
+              />
+              <Button
+                onClick={() => void handleAsk()}
+                disabled={loading || !question.trim()}
+                className="h-11 w-11 shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <PDFViewer
+          isOpen={pdfPreview.isOpen}
+          onClose={() => setPdfPreview({ isOpen: false, title: "", url: "" })}
+          title={pdfPreview.title}
+          pdfUrl={pdfPreview.url}
+        />
+
+        <VideoPlayer
+          isOpen={videoPreview.isOpen}
+          onClose={() => setVideoPreview({ isOpen: false, title: "", url: "" })}
+          title={videoPreview.title}
+          videoUrl={videoPreview.url}
+        />
+
+        <Dialog
+          open={webPreview.isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setWebPreview({ isOpen: false, title: "", url: "" });
+            }
+          }}
+        >
+          <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
+            <DialogHeader className="border-b border-border/60 px-4 py-3">
+              <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+            </DialogHeader>
+            <div className="h-full w-full">
+              {webPreview.url ? (
+                <iframe
+                  src={webPreview.url}
+                  title={webPreview.title || "Web source"}
+                  className="h-full w-full border-0"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No preview URL available.
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -989,6 +1561,7 @@ const AIRagChat = ({
                               confidenceScore:
                                 msg.combinedConfidence ?? msg.llmConfidenceScore,
                             }}
+                            onOpenSource={openTraceSourceInApp}
                             className="mt-3"
                           />
                         ) : null}
@@ -1120,24 +1693,32 @@ const AIRagChat = ({
                                 <span>Time {msg.sources[activeSourceByMessage[messageId] || 0].timestamp}</span>
                               )}
                               {msg.sources[activeSourceByMessage[messageId] || 0].file_url && (
-                                <a
-                                  href={msg.sources[activeSourceByMessage[messageId] || 0].file_url || "#"}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  type="button"
                                   className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  onClick={() =>
+                                    openRagSourceInApp(
+                                      msg.sources[activeSourceByMessage[messageId] || 0],
+                                      "file"
+                                    )
+                                  }
                                 >
                                   Open source
-                                </a>
+                                </button>
                               )}
                               {msg.sources[activeSourceByMessage[messageId] || 0].video_url && (
-                                <a
-                                  href={msg.sources[activeSourceByMessage[messageId] || 0].video_url || "#"}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  type="button"
                                   className="inline-flex items-center gap-1 text-primary hover:underline"
+                                  onClick={() =>
+                                    openRagSourceInApp(
+                                      msg.sources[activeSourceByMessage[messageId] || 0],
+                                      "video"
+                                    )
+                                  }
                                 >
                                   Open video
-                                </a>
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1182,6 +1763,7 @@ const AIRagChat = ({
                     title="Tracing your answer"
                     steps={buildLoadingLiveSteps(loadingPlanStep)}
                     isRunning
+                    onOpenSource={openTraceSourceInApp}
                   />
                   <div className="rounded-xl border border-border bg-card/30 px-3 py-3 text-sm text-muted-foreground">
                     StudyShare is searching your sources and assembling a grounded answer.
@@ -1466,6 +2048,49 @@ const AIRagChat = ({
             </div>
           )}
         </div>
+
+        <PDFViewer
+          isOpen={pdfPreview.isOpen}
+          onClose={() => setPdfPreview({ isOpen: false, title: "", url: "" })}
+          title={pdfPreview.title}
+          pdfUrl={pdfPreview.url}
+        />
+
+        <VideoPlayer
+          isOpen={videoPreview.isOpen}
+          onClose={() => setVideoPreview({ isOpen: false, title: "", url: "" })}
+          title={videoPreview.title}
+          videoUrl={videoPreview.url}
+        />
+
+        <Dialog
+          open={webPreview.isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setWebPreview({ isOpen: false, title: "", url: "" });
+            }
+          }}
+        >
+          <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
+            <DialogHeader className="border-b border-border/60 px-4 py-3">
+              <DialogTitle className="truncate text-base">{webPreview.title || "Web source"}</DialogTitle>
+            </DialogHeader>
+            <div className="h-full w-full">
+              {webPreview.url ? (
+                <iframe
+                  src={webPreview.url}
+                  title={webPreview.title || "Web source"}
+                  className="h-full w-full border-0"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No preview URL available.
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

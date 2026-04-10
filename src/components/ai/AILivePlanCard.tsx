@@ -51,6 +51,7 @@ interface AILivePlanCardProps {
     confidenceScore?: number;
   };
   className?: string;
+  onOpenSource?: (source: AiLiveActivitySource) => void;
 }
 
 const statusConfig: Record<
@@ -147,7 +148,13 @@ const summaryLabel = ({
   return isRunning ? `Tracing the answer live - ${progress}` : progress;
 };
 
-const SourceChip = ({ source }: { source: AiLiveActivitySource }) => {
+const SourceChip = ({
+  source,
+  onOpenSource,
+}: {
+  source: AiLiveActivitySource;
+  onOpenSource?: (source: AiLiveActivitySource) => void;
+}) => {
   const Icon = sourceIcon(source.kind);
   const meta = formatSourceMeta(source);
   const href = source.url?.trim() || "";
@@ -158,6 +165,18 @@ const SourceChip = ({ source }: { source: AiLiveActivitySource }) => {
       {meta ? <span className="text-muted-foreground/80">{meta}</span> : null}
     </>
   );
+
+  if (href && onOpenSource) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenSource(source)}
+        className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3 py-1.5 text-[11px] font-medium text-foreground/90 transition hover:border-primary/40 hover:text-primary"
+      >
+        {content}
+      </button>
+    );
+  }
 
   if (href) {
     return (
@@ -182,9 +201,11 @@ const SourceChip = ({ source }: { source: AiLiveActivitySource }) => {
 const StepRow = ({
   step,
   isLast,
+  onOpenSource,
 }: {
   step: AiLiveActivityStep;
   isLast: boolean;
+  onOpenSource?: (source: AiLiveActivitySource) => void;
 }) => {
   const config = statusConfig[step.status];
   const StatusIcon = config.icon;
@@ -230,6 +251,7 @@ const StepRow = ({
               <SourceChip
                 key={`${step.id}-${source.kind}-${source.title}-${index}`}
                 source={source}
+                onOpenSource={onOpenSource}
               />
             ))}
           </div>
@@ -267,6 +289,7 @@ const AILivePlanCard = ({
   isRunning = false,
   metrics,
   className,
+  onOpenSource,
 }: AILivePlanCardProps) => {
   const totalCount = steps.length || 3;
   const completedCount = steps.filter((step) => step.status === "completed").length;
@@ -342,6 +365,7 @@ const AILivePlanCard = ({
                   key={step.id}
                   step={step}
                   isLast={index === steps.length - 1}
+                  onOpenSource={onOpenSource}
                 />
               ))}
             </div>
