@@ -886,6 +886,8 @@ const AIRagChat = ({
       .replace(/^\s*\*\*source used:\*\*.*$/gim, "")
       .replace(/^\s*source used:.*$/gim, "")
       .replace(/^\s*pages?\s*\d+\s*-\s*\d+\s+open source here\s*$/gim, "")
+      .replace(/^\s*(?:pages?|pg\.?|p\.)\s*\d+(?:\s*-\s*\d+)?\s*(?:[:|\-])?\s*open source here\s*$/gim, "")
+      .replace(/^\s*open source here\s*[:|\-]?\s*https?:\/\/\S+\s*$/gim, "")
       .replace(/\bopen source here\b/gim, "")
       .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, (match) => circledNumberMap[match] || match)
       .replace(/\s+---\s+/g, " ")
@@ -1058,29 +1060,25 @@ const AIRagChat = ({
                     {renderMessageContent(displayContent)}
 
                     {!isUser && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-border/60 bg-background/70 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sources</p>
-                        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                          {msg.sources.map((s, sidx) => {
-                            const sourceType = (s.source_type || "pdf").toLowerCase();
-                            return (
-                              <button
-                                key={`${s.file_id || s.title}-${sidx}`}
-                                type="button"
-                                onClick={() =>
-                                  openRagSourceInApp(
-                                    s,
-                                    sourceType === "youtube" || sourceType === "video" ? "video" : "file"
-                                  )
-                                }
-                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-                              >
-                                {sourceType === "web" ? <Globe2 className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
-                                <span className="max-w-[180px] truncate">{s.title}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                        {msg.sources.map((s, sidx) => {
+                          const sourceType = (s.source_type || "pdf").toLowerCase();
+                          return (
+                            <button
+                              key={`${s.file_id || s.title}-${sidx}`}
+                              type="button"
+                              onClick={() =>
+                                openRagSourceInApp(
+                                  s,
+                                  sourceType === "youtube" || sourceType === "video" ? "video" : "file"
+                                )
+                              }
+                              className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                            >
+                              <span className="max-w-[180px] truncate">{s.title}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -1698,40 +1696,25 @@ const AIRagChat = ({
                     </div>
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div
-                        className={cn(
-                          "mt-4 space-y-2",
-                          isMinimal && "rounded-xl border border-border/60 bg-background/70 p-3"
-                        )}
-                      >
-                        <div className="text-xs font-semibold text-muted-foreground">
-                          {isMinimal ? "References" : "Sources"}
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                          {msg.sources.map((s, sidx) => {
-                            const sourceType = (s.source_type || "pdf").toLowerCase();
-                            return (
-                              <button
-                                key={`${s.file_id || s.title}-${sidx}`}
-                                type="button"
-                                onClick={() =>
-                                  openRagSourceInApp(
-                                    s,
-                                    sourceType === "youtube" || sourceType === "video" ? "video" : "file"
-                                  )
-                                }
-                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-                              >
-                                {sourceType === "web" ? (
-                                  <Globe2 className="h-3 w-3" />
-                                ) : (
-                                  <BookOpen className="h-3 w-3" />
-                                )}
-                                <span className="max-w-[180px] truncate">{s.title}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                        {msg.sources.map((s, sidx) => {
+                          const sourceType = (s.source_type || "pdf").toLowerCase();
+                          return (
+                            <button
+                              key={`${s.file_id || s.title}-${sidx}`}
+                              type="button"
+                              onClick={() =>
+                                openRagSourceInApp(
+                                  s,
+                                  sourceType === "youtube" || sourceType === "video" ? "video" : "file"
+                                )
+                              }
+                              className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                            >
+                              <span className="max-w-[180px] truncate">{s.title}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
