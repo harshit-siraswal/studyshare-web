@@ -1,6 +1,6 @@
 const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
 const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
-const DEFAULT_ANDROID_APP_VERSION = "1.0.3 (Build 4)";
+const DEFAULT_ANDROID_APP_VERSION = "1.0.4 (Build 5)";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
 function normalizeConfiguredApkUrl(value: unknown): string {
