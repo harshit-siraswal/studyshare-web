@@ -2,34 +2,36 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+const DEFAULT_SUPABASE_URL = 'https://iayuwsvguwfqjgjsvjiy.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV3c3ZndXdmcWpnanN2aml5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTE5MTEsImV4cCI6MjA4MTYyNzkxMX0.EQhiq-yv9QLBNL_kmT5P59AZPykQkEZwbNbilxquYOA';
+
 const getEnv = (key: string): string => {
   const env = import.meta.env as Record<string, string | undefined>;
   return (env[key] || '').trim();
 };
 
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || DEFAULT_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY =
   getEnv('VITE_SUPABASE_PUBLISHABLE_KEY') ||
-  getEnv('VITE_SUPABASE_ANON_KEY');
+  getEnv('VITE_SUPABASE_ANON_KEY') ||
+  DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 const missingSupabaseVars: string[] = [];
 if (!SUPABASE_URL) missingSupabaseVars.push('VITE_SUPABASE_URL');
 if (!SUPABASE_PUBLISHABLE_KEY) missingSupabaseVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
 
 if (missingSupabaseVars.length > 0) {
-  console.error(
-    `[Supabase] Missing required config entries: ${missingSupabaseVars.join(', ')}. ` +
-      'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in environment variables.'
+  console.warn(
+    `[Supabase] Missing config entries after fallbacks: ${missingSupabaseVars.join(', ')}. ` +
+      'Supabase features may not work until env vars are configured.'
   );
 }
-
-const finalUrl = SUPABASE_URL || 'https://placeholder.supabase.co';
-const finalKey = SUPABASE_PUBLISHABLE_KEY || 'placeholder.key';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(finalUrl, finalKey, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     // StudyShare uses Firebase Auth for browser sessions. Keep the Supabase client stateless
     // so it never persists tokens into localStorage where an XSS issue could exfiltrate them.
