@@ -14,17 +14,12 @@ const missingSupabaseVars: string[] = [];
 if (!rawSupabaseUrl) missingSupabaseVars.push('VITE_SUPABASE_URL');
 if (!rawSupabaseKey) missingSupabaseVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
 
-const strictEnvCheck = getEnv('VITE_STRICT_ENV_CHECK').toLowerCase() === 'true';
-
 if (missingSupabaseVars.length > 0) {
   const message =
     `[Supabase] Missing env config entries: ${missingSupabaseVars.join(', ')}. ` +
     'Falling back to configured defaults.';
 
   if (import.meta.env.MODE === 'production') {
-    if (strictEnvCheck) {
-      throw new Error(`[Supabase] Missing required env vars in production: ${missingSupabaseVars.join(', ')}`);
-    }
     console.error(message);
   } else {
     console.warn(message);
