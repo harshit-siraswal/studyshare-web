@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Bell, Building, Users, MessageCircle, Share, FileText, Loader2, Bookmark, Send, Trash2 } from "lucide-react";
 import { CommentThread } from "@/components/CommentThread";
@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "../supabase";
@@ -21,6 +21,8 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 import { useCollege } from "@/context/CollegeContext";
 import { collectCollegeIdScopes } from "@/lib/collegeIds";
 import { getDepartmentMeta } from "@/lib/departmentMeta";
+import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+import NoticeContent, { getNoticePreview } from "@/components/notices/NoticeContent";
 
 type Notice = api.Notice;
 
@@ -30,9 +32,13 @@ const DepartmentProfile = () => {
     const { user } = useAuth();
     const { selectedCollegeId, selectedCollege } = useCollege();
     const collegeId = selectedCollegeId;
-    const collegeScopes = collectCollegeIdScopes(
-        selectedCollegeId,
-        selectedCollege?.collegeId || null
+    const collegeScopes = useMemo(
+        () =>
+            collectCollegeIdScopes(
+                selectedCollegeId,
+                selectedCollege?.collegeId || null
+            ),
+        [selectedCollegeId, selectedCollege?.collegeId]
     );
     const departmentValue = (deptId || "").trim().toLowerCase();
     const department = departmentValue ? getDepartmentMeta(deptId) : undefined;
@@ -59,8 +65,6 @@ const DepartmentProfile = () => {
 
     // Bookmarks hook
     const { isBookmarked, toggleBookmark } = useBookmarks();
-    const collegeScopesKey = collegeScopes.join('|');
-
     useEffect(() => {
         if (!departmentValue || collegeScopes.length === 0) return;
 
@@ -73,7 +77,6 @@ const DepartmentProfile = () => {
                 const [noticeResponse, followedResponse, followerResponse] = await Promise.all([
                     api.getNotices({
                         collegeId: collegeScopes,
-                        department: departmentValue,
                     }),
                     user?.email && collegeId
                         ? api.getFollowedDepartments(collegeId)
@@ -90,6 +93,7 @@ const DepartmentProfile = () => {
                 if (isCancelled) return;
 
                 const activeNotices = (noticeResponse.notices || [])
+                    .filter(notice => getEffectiveNoticeDepartment(notice) === departmentValue)
                     .filter(notice => !notice.expires_at || new Date(notice.expires_at) > new Date())
                     .map(notice => ({
                         ...notice,
@@ -122,7 +126,7 @@ const DepartmentProfile = () => {
         return () => {
             isCancelled = true;
         };
-    }, [departmentValue, user?.email, collegeId, collegeScopes, collegeScopesKey]);
+    }, [departmentValue, user?.email, collegeId, collegeScopes]);
 
     const handleFollow = async () => {
         if (!user?.email || !departmentValue || !collegeId) {
@@ -299,7 +303,7 @@ const DepartmentProfile = () => {
                             <div className="mb-2 flex items-center gap-2 flex-wrap">
                                 <h2 className="text-2xl font-bold">{department.label}</h2>
                                 <Badge variant="outline" className={cn("uppercase tracking-wide", department.badgeClassName)}>
-                                    @{department.value}
+                                    {department.handle}
                                 </Badge>
                             </div>
                             <p className="text-muted-foreground mb-4">
@@ -350,7 +354,7 @@ const DepartmentProfile = () => {
                                 <Card
                                     key={notice.id}
                                     className="p-6 hover:shadow-lg transition-all cursor-pointer"
-                                    onClick={() => setSelectedNotice(notice)}
+                                    onClick={() => navigate(`/notices/post/${notice.id}`)}
                                 >
                                     <div className="flex items-start gap-4">
                                         <DepartmentAvatar meta={department} size="lg" />
@@ -358,7 +362,7 @@ const DepartmentProfile = () => {
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="font-semibold">{department.label}</span>
                                                 <Badge variant="outline" className={cn("uppercase tracking-wide", department.badgeClassName)}>
-                                                    @{department.value}
+                                                    {department.handle}
                                                 </Badge>
                                                 <span className="text-muted-foreground text-sm">{formatTimeAgo(notice.created_at)}</span>
                                                 {notice.priority === 'urgent' && (
@@ -369,8 +373,27 @@ const DepartmentProfile = () => {
                                             {notice.title && (
                                                 <h3 className="text-lg font-semibold mb-2">{notice.title}</h3>
                                             )}
-
-                                            <p className="text-foreground mb-3 whitespace-pre-wrap">{notice.content}</p>
+                                            {(() => {
+                                                const preview = getNoticePreview(notice.content || '', 260);
+                                                const previewText = preview.truncated ? `${preview.text}...` : preview.text;
+                                                return (
+                                                    <div className="mb-3">
+                                                        <NoticeContent content={previewText} className="text-foreground" />
+                                                        {preview.truncated && (
+                                                            <button
+                                                                type="button"
+                                                                className="mt-2 text-sm font-medium text-primary hover:underline"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigate(`/notices/post/${notice.id}`);
+                                                                }}
+                                                            >
+                                                                See more
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {notice.file_url && notice.file_type === 'image' && (
                                                 <div
@@ -516,6 +539,9 @@ const DepartmentProfile = () => {
             {/* Notice Modal */}
             <Dialog open={!!selectedNotice} onOpenChange={(open) => !open && setSelectedNotice(null)}>
                 <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+                    <DialogTitle className="sr-only">
+                        {selectedNotice?.title ? `Notice: ${selectedNotice.title}` : "Notice details"}
+                    </DialogTitle>
                     {selectedNotice && (
                         <div className="flex flex-col h-full max-h-[90vh]">
                             <div className="p-4 border-b border-border flex items-center gap-3">
@@ -531,7 +557,7 @@ const DepartmentProfile = () => {
                                     {selectedNotice.title && (
                                         <h2 className="text-xl font-bold">{selectedNotice.title}</h2>
                                     )}
-                                    <p className="text-foreground whitespace-pre-wrap">{selectedNotice.content}</p>
+                                    <NoticeContent content={selectedNotice.content} className="text-foreground" />
 
                                     {selectedNotice.file_url && (
                                         <div className="rounded-lg overflow-hidden border border-border/50">

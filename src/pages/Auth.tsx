@@ -48,7 +48,7 @@ const Auth = () => {
   const [resendingEmail, setResendingEmail] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
-  const [googleSigningIn, setGoogleSigningIn] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -70,7 +70,7 @@ const Auth = () => {
 
       // Google auth users are auto-verified, email/password users need to verify
       if (firebaseUser?.emailVerified) {
-        setGoogleSigningIn(true);
+        setIsRedirecting(true);
         navigate("/study", { replace: true });
       } else {
         // User exists but email not verified - show verification pending
@@ -126,7 +126,7 @@ const Auth = () => {
       return;
     }
 
-    setGoogleSigningIn(true);
+    setIsRedirecting(true);
 
     try {
       const provider = new GoogleAuthProvider();
@@ -154,8 +154,11 @@ const Auth = () => {
       toast.success("Signed in with Google");
     } catch (err) {
       console.error(err);
-      toast.error("Google sign-in failed");
-      setGoogleSigningIn(false);
+      // Only show error if user wasn't actually signed in
+      if (!auth?.currentUser) {
+        toast.error("Google sign-in failed");
+      }
+      setIsRedirecting(false);
     }
   };
 
@@ -402,9 +405,9 @@ const Auth = () => {
               variant="outline"
               className="w-full h-11"
               onClick={handleGoogleLogin}
-              disabled={googleSigningIn}
+              disabled={isRedirecting}
             >
-              {googleSigningIn ? (
+              {isRedirecting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Connecting Google...

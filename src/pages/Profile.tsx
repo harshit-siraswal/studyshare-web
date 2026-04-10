@@ -394,12 +394,12 @@ const Profile = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [followers, setFollowers] = useState<any[]>([]);
-  const [following, setFollowing] = useState<any[]>([]);
+  const [followers, setFollowers] = useState<Record<string, unknown>[]>([]);
+  const [following, setFollowing] = useState<Record<string, unknown>[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [viewFollowers, setViewFollowers] = useState<any[]>([]);
-  const [viewFollowing, setViewFollowing] = useState<any[]>([]);
+  const [viewFollowers, setViewFollowers] = useState<Record<string, unknown>[]>([]);
+  const [viewFollowing, setViewFollowing] = useState<Record<string, unknown>[]>([]);
   const [viewFollowersCount, setViewFollowersCount] = useState(0);
   const [viewFollowingCount, setViewFollowingCount] = useState(0);
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
@@ -409,7 +409,7 @@ const Profile = () => {
 
   // Discover Users State
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
-  const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
+  const [discoverUsers, setDiscoverUsers] = useState<Record<string, unknown>[]>([]);
   const [discoverSearch, setDiscoverSearch] = useState("");
 
   // Image Cropper State
@@ -618,6 +618,7 @@ const Profile = () => {
 
   useEffect(() => {
     fetchProfileData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser]);
 
   useEffect(() => {
@@ -724,6 +725,7 @@ const Profile = () => {
     if (showDiscoverDialog) {
       fetchDiscoverUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDiscoverDialog, following]);
 
   const handleFollowStatusChange = () => {
@@ -830,6 +832,7 @@ const Profile = () => {
       // Viewing other but profile not loaded yet
       setContributions([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isViewingOther, viewingOtherProfile]);
 
 
@@ -1016,9 +1019,9 @@ const Profile = () => {
       setCropperImage(null);
 
       toast.success('Profile photo updated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Photo upload error:', error);
-      toast.error(error.message || 'Failed to upload photo');
+      toast.error((error as Error).message || 'Failed to upload photo');
     } finally {
       setUploadingPhoto(false);
     }
@@ -1091,9 +1094,9 @@ const Profile = () => {
 
       setIsEditing(false);
       toast.success('Profile updated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save profile error:', error);
-      toast.error(error.message || 'Failed to update profile');
+      toast.error((error as Error).message || 'Failed to update profile');
     }
   };
 
@@ -1911,7 +1914,7 @@ const Profile = () => {
       {
         editingContribution && (
           <EditResourceDialog
-            resource={editingContribution as any}
+            resource={editingContribution as unknown as Record<string, unknown>}
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             onSuccess={handleEditSuccess}

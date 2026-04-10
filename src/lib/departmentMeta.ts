@@ -1,170 +1,265 @@
 import type { ElementType } from "react";
 import {
-  LayoutGrid,
-  BrainCircuit,
   Building2,
-  Cable,
+  CalendarDays,
+  CircuitBoard,
   Cpu,
   Database,
   Factory,
   Globe,
+  GraduationCap,
+  LayoutGrid,
   Megaphone,
+  Network,
   PlugZap,
   RadioTower,
   Shield,
-  SquareTerminal,
+  Sparkles,
+  Trophy,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { BRANCH_OPTIONS } from "./academicSubjects";
 
 export type DepartmentMeta = {
   value: string;
   label: string;
+  handle: string;
+  avatarLetter: string;
+  avatarColor: string;
   icon: ElementType;
-  avatarClassName: string;
-  iconClassName: string;
   badgeClassName: string;
   description?: string;
 };
 
-type DepartmentOverride = Omit<DepartmentMeta, "value" | "label">;
+type DepartmentOverride = Omit<DepartmentMeta, "value">;
 
 const DEFAULT_META: DepartmentOverride = {
+  label: "Department",
+  handle: "@department",
+  avatarLetter: "DP",
+  avatarColor: "#64748B",
   icon: Building2,
-  avatarClassName:
-    "bg-gradient-to-br from-slate-500/25 via-slate-400/10 to-slate-600/10 text-slate-100",
-  iconClassName: "text-slate-100",
-  badgeClassName:
-    "border-slate-400/20 bg-slate-400/10 text-slate-100",
+  badgeClassName: "border-border/60 bg-muted/40 text-foreground/80",
   description: "Official department notices and updates.",
 };
 
-const DEPARTMENT_OVERRIDES: Record<string, Partial<DepartmentMeta>> = {
+const DEPARTMENT_OVERRIDES: Record<string, Partial<DepartmentOverride>> = {
   general: {
     label: "General Notices",
+    handle: "@general",
+    avatarLetter: "G",
+    avatarColor: "#3B82F6",
     icon: Megaphone,
-    avatarClassName:
-      "bg-gradient-to-br from-sky-500/30 via-cyan-400/15 to-blue-500/10 text-sky-100",
-    iconClassName: "text-sky-100",
-    badgeClassName: "border-sky-400/20 bg-sky-400/10 text-sky-100",
     description: "Campus-wide notices, exam updates, and administrative announcements.",
   },
-  cse: {
-    icon: SquareTerminal,
-    avatarClassName:
-      "bg-gradient-to-br from-blue-500/30 via-indigo-400/15 to-cyan-400/10 text-blue-100",
-    iconClassName: "text-blue-100",
-    badgeClassName: "border-blue-400/20 bg-blue-400/10 text-blue-100",
+  hackathons: {
+    label: "Hackathons and Competitions",
+    handle: "@hackathons",
+    avatarLetter: "HC",
+    avatarColor: "#8B5CF6",
+    icon: Trophy,
   },
-  it: {
+  ir: {
+    label: "International Relations",
+    handle: "@ir_cell",
+    avatarLetter: "IR",
+    avatarColor: "#0EA5E9",
     icon: Globe,
-    avatarClassName:
-      "bg-gradient-to-br from-cyan-500/30 via-sky-400/15 to-emerald-400/10 text-cyan-100",
-    iconClassName: "text-cyan-100",
-    badgeClassName: "border-cyan-400/20 bg-cyan-400/10 text-cyan-100",
   },
-  cse_ai: {
-    icon: BrainCircuit,
-    avatarClassName:
-      "bg-gradient-to-br from-fuchsia-500/25 via-purple-400/15 to-indigo-500/10 text-fuchsia-100",
-    iconClassName: "text-fuchsia-100",
-    badgeClassName:
-      "border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-100",
+  pr: {
+    label: "Public Relations",
+    handle: "@pr_cell",
+    avatarLetter: "PR",
+    avatarColor: "#EC4899",
+    icon: Users,
+  },
+  placements: {
+    label: "Placements and Career",
+    handle: "@placements",
+    avatarLetter: "PC",
+    avatarColor: "#F59E0B",
+    icon: GraduationCap,
+  },
+  internships: {
+    label: "Internships",
+    handle: "@internships",
+    avatarLetter: "IN",
+    avatarColor: "#14B8A6",
+    icon: Sparkles,
+  },
+  workshops: {
+    label: "Workshops and Seminars",
+    handle: "@workshops",
+    avatarLetter: "WS",
+    avatarColor: "#6366F1",
+    icon: CalendarDays,
+  },
+  events: {
+    label: "Events and Activities",
+    handle: "@events",
+    avatarLetter: "EV",
+    avatarColor: "#EF4444",
+    icon: CalendarDays,
+  },
+  scholarships: {
+    label: "Scholarships and Financial Aid",
+    handle: "@scholarships",
+    avatarLetter: "SF",
+    avatarColor: "#22C55E",
+    icon: Wallet,
+  },
+  admissions: {
+    label: "Admissions and Enrollment",
+    handle: "@admissions",
+    avatarLetter: "AD",
+    avatarColor: "#06B6D4",
+    icon: Network,
+  },
+  examinations: {
+    label: "Examinations and Assessment",
+    handle: "@examinations",
+    avatarLetter: "EX",
+    avatarColor: "#F97316",
+    icon: CircuitBoard,
+  },
+  academics: {
+    label: "Academic Notices",
+    handle: "@academics",
+    avatarLetter: "AC",
+    avatarColor: "#475569",
+    icon: Building2,
+  },
+  training: {
+    label: "Training and Certifications",
+    handle: "@training",
+    avatarLetter: "TR",
+    avatarColor: "#10B981",
+    icon: GraduationCap,
+  },
+  clubs: {
+    label: "Clubs and Societies",
+    handle: "@clubs",
+    avatarLetter: "CL",
+    avatarColor: "#7C3AED",
+    icon: Users,
+  },
+  nss_ncc: {
+    label: "NSS / NCC",
+    handle: "@nss_ncc",
+    avatarLetter: "NN",
+    avatarColor: "#84CC16",
+    icon: Users,
+  },
+  cse: {
+    label: "Computer Science",
+    handle: "@cse_dept",
+    avatarLetter: "CS",
+    avatarColor: "#8B5CF6",
+    icon: CircuitBoard,
   },
   aiml: {
-    icon: BrainCircuit,
-    avatarClassName:
-      "bg-gradient-to-br from-violet-500/25 via-purple-400/15 to-pink-500/10 text-violet-100",
-    iconClassName: "text-violet-100",
-    badgeClassName:
-      "border-violet-400/20 bg-violet-400/10 text-violet-100",
+    label: "CSE (AI & ML)",
+    handle: "@aiml_dept",
+    avatarLetter: "AI",
+    avatarColor: "#7C3AED",
+    icon: Cpu,
+  },
+  cse_ai: {
+    label: "CSE (AI)",
+    handle: "@cse_ai_dept",
+    avatarLetter: "CA",
+    avatarColor: "#6366F1",
+    icon: Cpu,
+  },
+  it: {
+    label: "Information Technology",
+    handle: "@it_dept",
+    avatarLetter: "IT",
+    avatarColor: "#14B8A6",
+    icon: Globe,
   },
   ds: {
+    label: "CSE (Data Science)",
+    handle: "@ds_dept",
+    avatarLetter: "DS",
+    avatarColor: "#0EA5E9",
     icon: Database,
-    avatarClassName:
-      "bg-gradient-to-br from-emerald-500/25 via-green-400/15 to-teal-500/10 text-emerald-100",
-    iconClassName: "text-emerald-100",
-    badgeClassName:
-      "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
   },
   cse_cs: {
+    label: "CSE (Cyber Security)",
+    handle: "@cse_cs_dept",
+    avatarLetter: "CY",
+    avatarColor: "#2563EB",
     icon: Shield,
-    avatarClassName:
-      "bg-gradient-to-br from-amber-500/25 via-orange-400/15 to-red-500/10 text-amber-100",
-    iconClassName: "text-amber-100",
-    badgeClassName: "border-amber-400/20 bg-amber-400/10 text-amber-100",
   },
   ece: {
+    label: "Electronics",
+    handle: "@ece_dept",
+    avatarLetter: "EC",
+    avatarColor: "#10B981",
     icon: RadioTower,
-    avatarClassName:
-      "bg-gradient-to-br from-rose-500/25 via-pink-400/15 to-orange-500/10 text-rose-100",
-    iconClassName: "text-rose-100",
-    badgeClassName: "border-rose-400/20 bg-rose-400/10 text-rose-100",
   },
   ece_vlsi: {
+    label: "ECE (VLSI)",
+    handle: "@ece_vlsi_dept",
+    avatarLetter: "EV",
+    avatarColor: "#0F766E",
     icon: Cpu,
-    avatarClassName:
-      "bg-gradient-to-br from-red-500/25 via-rose-400/15 to-orange-500/10 text-red-100",
-    iconClassName: "text-red-100",
-    badgeClassName: "border-red-400/20 bg-red-400/10 text-red-100",
   },
   elce: {
-    icon: Cable,
-    avatarClassName:
-      "bg-gradient-to-br from-yellow-500/25 via-amber-400/15 to-lime-500/10 text-yellow-100",
-    iconClassName: "text-yellow-100",
-    badgeClassName:
-      "border-yellow-400/20 bg-yellow-400/10 text-yellow-100",
+    label: "ELCE",
+    handle: "@elce_dept",
+    avatarLetter: "EL",
+    avatarColor: "#0284C7",
+    icon: PlugZap,
   },
   eee: {
+    label: "Electrical",
+    handle: "@eee_dept",
+    avatarLetter: "EE",
+    avatarColor: "#F59E0B",
     icon: PlugZap,
-    avatarClassName:
-      "bg-gradient-to-br from-lime-500/25 via-yellow-400/15 to-amber-500/10 text-lime-100",
-    iconClassName: "text-lime-100",
-    badgeClassName: "border-lime-400/20 bg-lime-400/10 text-lime-100",
-  },
-  me: {
-    icon: Factory,
-    avatarClassName:
-      "bg-gradient-to-br from-orange-500/25 via-amber-400/15 to-stone-500/10 text-orange-100",
-    iconClassName: "text-orange-100",
-    badgeClassName:
-      "border-orange-400/20 bg-orange-400/10 text-orange-100",
-  },
-  amia: {
-    icon: Cpu,
-    avatarClassName:
-      "bg-gradient-to-br from-stone-500/25 via-zinc-400/15 to-slate-500/10 text-stone-100",
-    iconClassName: "text-stone-100",
-    badgeClassName: "border-stone-400/20 bg-stone-400/10 text-stone-100",
   },
   ce: {
+    label: "Civil",
+    handle: "@ce_dept",
+    avatarLetter: "CE",
+    avatarColor: "#6366F1",
     icon: Building2,
-    avatarClassName:
-      "bg-gradient-to-br from-teal-500/25 via-emerald-400/15 to-cyan-500/10 text-teal-100",
-    iconClassName: "text-teal-100",
-    badgeClassName: "border-teal-400/20 bg-teal-400/10 text-teal-100",
   },
-};
-
-const SHORT_LABELS: Record<string, string> = {
-  cse: "Computer Science",
-  it: "Information Technology",
-  cse_ai: "CSE (AI)",
-  aiml: "CSE (AI & ML)",
-  ds: "CSE (Data Science)",
-  cse_cs: "CSE (Cyber Security)",
-  ece: "Electronics",
-  ece_vlsi: "ECE (VLSI)",
-  elce: "ELCE",
-  eee: "Electrical",
-  me: "Mechanical",
-  amia: "AM & IA",
-  ce: "Civil",
-  general: "General Notices",
+  me: {
+    label: "Mechanical",
+    handle: "@me_dept",
+    avatarLetter: "ME",
+    avatarColor: "#EF4444",
+    icon: Factory,
+  },
+  amia: {
+    label: "AM & IA",
+    handle: "@amia_dept",
+    avatarLetter: "AM",
+    avatarColor: "#DC2626",
+    icon: Factory,
+  },
 };
 
 const DEPARTMENT_ORDER = [
   "general",
+  "hackathons",
+  "ir",
+  "pr",
+  "placements",
+  "internships",
+  "workshops",
+  "events",
+  "scholarships",
+  "admissions",
+  "examinations",
+  "academics",
+  "training",
+  "clubs",
+  "nss_ncc",
   "cse",
   "it",
   "cse_ai",
@@ -184,49 +279,72 @@ function normalize(value?: string | null): string {
   return String(value || "").trim().toLowerCase();
 }
 
-function resolveLabel(value: string): string {
-  if (!value) return "Department";
-  if (SHORT_LABELS[value]) return SHORT_LABELS[value];
-  const branch = BRANCH_OPTIONS.find((item) => item.value === value);
-  if (branch?.label) return branch.label;
-  return value.toUpperCase();
+function titleCase(value: string): string {
+  return value
+    .split(/[_\s]+/g)
+    .filter(Boolean)
+    .map((part) =>
+      part.length <= 3
+        ? part.toUpperCase()
+        : `${part[0].toUpperCase()}${part.slice(1).toLowerCase()}`
+    )
+    .join(" ");
 }
 
-function resolveOverrides(value: string): DepartmentOverride {
-  const overrides = DEPARTMENT_OVERRIDES[value] || {};
+function resolveFromBranches(value: string): string | null {
+  const branch = BRANCH_OPTIONS.find((item) => normalize(item.value) === value);
+  if (!branch?.label) return null;
+  return branch.label;
+}
+
+function resolveFallbackMeta(value: string): DepartmentOverride {
+  const label = resolveFromBranches(value) || titleCase(value) || DEFAULT_META.label;
+  const avatarLetter = label
+    .split(/\s+/g)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((item) => item[0]?.toUpperCase() || "")
+    .join("") || "DP";
+
   return {
     ...DEFAULT_META,
-    ...overrides,
+    label,
+    handle: `@${value.replace(/_/g, "")}`,
+    avatarLetter,
   };
 }
 
 export function getDepartmentMeta(value?: string | null): DepartmentMeta {
   const normalized = normalize(value);
+
   if (!normalized) {
     return {
       value: "",
-      label: "Department",
       ...DEFAULT_META,
     };
   }
+
   if (normalized === "all") {
     return {
       value: "all",
       label: "All Departments",
+      handle: "@all",
+      avatarLetter: "ALL",
+      avatarColor: "#64748B",
       icon: LayoutGrid,
-      avatarClassName:
-        "bg-gradient-to-br from-slate-500/25 via-slate-400/15 to-slate-600/10 text-slate-100",
-      iconClassName: "text-slate-100",
-      badgeClassName:
-        "border-slate-400/20 bg-slate-400/10 text-slate-100",
+      badgeClassName: "border-border/60 bg-muted/40 text-foreground/80",
       description: "Browse notices across every department.",
     };
   }
 
+  const override = DEPARTMENT_OVERRIDES[normalized];
+  const resolved = override
+    ? { ...DEFAULT_META, ...override }
+    : resolveFallbackMeta(normalized);
+
   return {
     value: normalized,
-    label: resolveLabel(normalized),
-    ...resolveOverrides(normalized),
+    ...resolved,
   };
 }
 

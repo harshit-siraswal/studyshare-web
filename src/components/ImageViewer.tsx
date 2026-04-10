@@ -1,6 +1,6 @@
 import { X, Download, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 
 interface ImageViewerProps {
@@ -31,6 +31,7 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, title }: ImageViewerProps) => 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl h-[85vh] p-0 bg-background/95 backdrop-blur-xl">
+        <DialogTitle className="sr-only">{title || "Image preview"}</DialogTitle>
         <div className="flex flex-col h-full">
           {/* Toolbar */}
           <div className="flex items-center justify-between p-4 border-b border-border">

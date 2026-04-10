@@ -7,7 +7,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-hero">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-hero" role="status" aria-busy="true">
         <div className="rounded-3xl border border-border/50 bg-card/80 px-8 py-6 shadow-card backdrop-blur-xl">
           <BrandLoader label="Opening your study space..." />
         </div>

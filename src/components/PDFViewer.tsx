@@ -182,7 +182,6 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
                 src={youtubeEmbedUrl}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
-                allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
                 title={title || "Video"}
                 loading="lazy"

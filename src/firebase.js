@@ -3,8 +3,8 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Firebase web config is public-by-design. These defaults keep prod builds alive
-// when host env vars are missing, while still allowing env overrides.
+// Firebase web config is public-by-design.
+// These defaults keep local dev builds alive for onboarding when host env vars are missing.
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyDt_mnuBryHcssBjRSdnPlh9VIC58LKL9Q",
   authDomain: "studyspace-kiet.firebaseapp.com",
@@ -19,26 +19,37 @@ const getEnv = (key) => {
   return typeof value === "string" ? value.trim() : "";
 };
 
-const firebaseConfig = {
-  apiKey: getEnv("VITE_FIREBASE_API_KEY") || DEFAULT_FIREBASE_CONFIG.apiKey,
-  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN") || DEFAULT_FIREBASE_CONFIG.authDomain,
-  projectId: getEnv("VITE_FIREBASE_PROJECT_ID") || DEFAULT_FIREBASE_CONFIG.projectId,
-  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET") || DEFAULT_FIREBASE_CONFIG.storageBucket,
-  messagingSenderId:
-    getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID") || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
-  appId: getEnv("VITE_FIREBASE_APP_ID") || DEFAULT_FIREBASE_CONFIG.appId,
+const rawConfig = {
+  apiKey: getEnv("VITE_FIREBASE_API_KEY"),
+  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN"),
+  projectId: getEnv("VITE_FIREBASE_PROJECT_ID"),
+  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+  appId: getEnv("VITE_FIREBASE_APP_ID"),
 };
 
-const missingFirebaseVars = Object.entries(firebaseConfig)
+const missingEnvVars = Object.entries(rawConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-if (missingFirebaseVars.length > 0) {
+if (missingEnvVars.length > 0) {
+  if (import.meta.env.MODE === "production") {
+    throw new Error(`[Firebase] Missing required env vars in production: ${missingEnvVars.join(", ")}`);
+  }
   console.warn(
-    `[Firebase] Missing config entries after fallbacks: ${missingFirebaseVars.join(", ")}. ` +
-      "Auth/storage features may not work until Firebase env vars are configured."
+    `[Firebase] Missing env config entries: ${missingEnvVars.join(", ")}. ` +
+      "Falling back to DEFAULT_FIREBASE_CONFIG for development."
   );
 }
+
+const firebaseConfig = {
+  apiKey: rawConfig.apiKey || DEFAULT_FIREBASE_CONFIG.apiKey,
+  authDomain: rawConfig.authDomain || DEFAULT_FIREBASE_CONFIG.authDomain,
+  projectId: rawConfig.projectId || DEFAULT_FIREBASE_CONFIG.projectId,
+  storageBucket: rawConfig.storageBucket || DEFAULT_FIREBASE_CONFIG.storageBucket,
+  messagingSenderId: rawConfig.messagingSenderId || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+  appId: rawConfig.appId || DEFAULT_FIREBASE_CONFIG.appId,
+};
 
 const app = initializeApp(firebaseConfig);
 

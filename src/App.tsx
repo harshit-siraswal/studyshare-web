@@ -49,6 +49,7 @@ const loadSelectCollege = () => import("./pages/SelectCollege");
 const loadAuth = () => import("./pages/Auth");
 const loadStudy = () => import("./pages/Study");
 const loadNotices = () => import("./pages/Notices");
+const loadNoticePost = () => import("./pages/NoticePost");
 const loadChatroom = () => import("./pages/Chatroom");
 const loadChatPostDetail = () => import("./pages/ChatPostDetail");
 const loadProfile = () => import("./pages/Profile");
@@ -68,6 +69,7 @@ const SelectCollege = createLazyPage(loadSelectCollege, "select-college");
 const Auth = createLazyPage(loadAuth, "auth");
 const Study = createLazyPage(loadStudy, "study");
 const Notices = createLazyPage(loadNotices, "notices");
+const NoticePost = createLazyPage(loadNoticePost, "notice-post");
 const Chatroom = createLazyPage(loadChatroom, "chatroom");
 const ChatPostDetail = createLazyPage(loadChatPostDetail, "chat-post-detail");
 const Profile = createLazyPage(loadProfile, "profile");
@@ -96,6 +98,7 @@ const preloadRouteModules = () => {
     loadAuth,
     loadStudy,
     loadNotices,
+    loadNoticePost,
     loadChatroom,
     loadProfile,
     loadMessages,
@@ -133,6 +136,7 @@ const AppRoutes = () => {
       <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
       <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
       <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+      <Route path="/notices/post/:noticeId" element={<ProtectedRoute><NoticePost /></ProtectedRoute>} />
       <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
       <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
       <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />

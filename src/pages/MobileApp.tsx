@@ -22,7 +22,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -370,12 +370,26 @@ function HighlightCard({
 
 const MobileApp = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const reduceMotion = Boolean(useReducedMotion());
   const isDark = theme === "dark";
   const [activeSceneIndex, setActiveSceneIndex] = useState(1);
   const [isLeavingToStudy, setIsLeavingToStudy] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear transition state when location changes out successfully
+  useEffect(() => {
+    setIsLeavingToStudy(false);
+  }, [location]);
+
+  // Clean-up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -429,6 +443,11 @@ const MobileApp = () => {
   const handleBackToStudy = () => {
     setIsLeavingToStudy(true);
     navigate("/study");
+    
+    // Fallback if the navigation is blocked/canceled
+    timeoutRef.current = setTimeout(() => {
+      setIsLeavingToStudy(false);
+    }, 3000);
   };
 
   return (

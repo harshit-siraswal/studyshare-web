@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Bookmark, Search, ArrowLeft, MoreHorizontal, Trash2, FileText, Heart, MessageCircle, Share, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
     DropdownMenu,
@@ -34,18 +33,10 @@ import MusicPlayer from "@/components/MusicPlayer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SEO } from "@/components/SEO";
-
-// Department info helper
-const DEPARTMENTS: Record<string, { label: string; icon: string }> = {
-    cse: { label: 'Computer Science', icon: '💻' },
-    ece: { label: 'Electronics', icon: '⚡' },
-    me: { label: 'Mechanical', icon: '⚙️' },
-    ce: { label: 'Civil', icon: '🏗️' },
-    eee: { label: 'Electrical', icon: '🔌' },
-    aiml: { label: 'AI & ML', icon: '🤖' },
-    ds: { label: 'Data Science', icon: '📊' },
-    it: { label: 'Information Technology', icon: '🌐' },
-};
+import DepartmentAvatar from "@/components/DepartmentAvatar";
+import NoticeContent, { getNoticePreview } from "@/components/notices/NoticeContent";
+import { getDepartmentMeta } from "@/lib/departmentMeta";
+import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
 
 const Bookmarks = () => {
     const navigate = useNavigate();
@@ -252,22 +243,40 @@ const Bookmarks = () => {
 
                                 if (bookmark.type === 'notice' && bookmark.content) {
                                     const notice = bookmark.content;
-                                    const dept = DEPARTMENTS[notice.department || ''] || { label: notice.department || 'Notice', icon: '📌' };
+                                    const dept = getDepartmentMeta(getEffectiveNoticeDepartment(notice));
+                                    const preview = getNoticePreview(notice.content || '', 220);
+                                    const previewText = preview.truncated ? `${preview.text}...` : preview.text;
                                     return (
                                         <div key={bookmark.id} className="px-4 py-3">
                                             {/* Notice Card - styled like resource cards */}
                                             <div
                                                 className="p-4 border border-border/50 rounded-xl hover:bg-secondary/20 transition-colors cursor-pointer bg-card"
-                                                onClick={() => notice.department && navigate(`/department/${notice.department}`)}
+                                                onClick={() => navigate(`/notices/post/${notice.id}`)}
                                             >
                                                 <div className="flex gap-3">
-                                                    <Avatar className="w-10 h-10 border border-border shrink-0">
-                                                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-500 text-white text-lg">{dept.icon}</AvatarFallback>
-                                                    </Avatar>
+                                                    <div
+                                                        className="shrink-0"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            navigate(`/department/${dept.value}`);
+                                                        }}
+                                                    >
+                                                        <DepartmentAvatar meta={dept} size="md" />
+                                                    </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
-                                                            <span className="font-bold">{dept.label}</span>
-                                                            <span className="text-muted-foreground text-sm">@{notice.department || 'notice'}</span>
+                                                            <span
+                                                                className="font-bold hover:underline"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    navigate(`/department/${dept.value}`);
+                                                                }}
+                                                            >
+                                                                {dept.label}
+                                                            </span>
+                                                            <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", dept.badgeClassName)}>
+                                                                {dept.handle}
+                                                            </Badge>
                                                             <span className="text-muted-foreground text-sm">·</span>
                                                             <span className="text-muted-foreground text-sm">{notice.created_at ? formatTimeAgo(notice.created_at) : ''}</span>
                                                             {notice.priority === 'urgent' && (
@@ -275,7 +284,21 @@ const Bookmarks = () => {
                                                             )}
                                                         </div>
                                                         {notice.title && <h3 className="font-bold mt-2 text-base text-foreground">{notice.title}</h3>}
-                                                        <p className="text-foreground/80 whitespace-pre-wrap mt-1 text-sm leading-relaxed line-clamp-3">{notice.content}</p>
+                                                        <div className="mt-1 text-sm leading-relaxed text-foreground/90">
+                                                            <NoticeContent content={previewText} />
+                                                            {preview.truncated && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="mt-2 text-sm font-medium text-primary hover:underline"
+                                                                    onClick={(event) => {
+                                                                        event.stopPropagation();
+                                                                        navigate(`/notices/post/${notice.id}`);
+                                                                    }}
+                                                                >
+                                                                    See more
+                                                                </button>
+                                                            )}
+                                                        </div>
 
                                                         {/* Media preview */}
                                                         {notice.file_url && notice.file_type === 'image' && (

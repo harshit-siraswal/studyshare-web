@@ -5,25 +5,16 @@ import { useState } from "react";
 import { Bookmark, FileText, Bell, Heart, MessageCircle, Share, Play, Search, ArrowLeft, MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import ResourceCard, { ResourceType } from "@/components/ResourceCard";
 import ResourceCardSkeleton from "@/components/ResourceCardSkeleton";
 import { cn } from "@/lib/utils";
-
-// Department info helper
-const DEPARTMENTS: Record<string, { label: string; icon: string }> = {
-    cse: { label: 'Computer Science', icon: '💻' },
-    ece: { label: 'Electronics', icon: '⚡' },
-    me: { label: 'Mechanical', icon: '⚙️' },
-    ce: { label: 'Civil', icon: '🏗️' },
-    eee: { label: 'Electrical', icon: '🔌' },
-    aiml: { label: 'AI & ML', icon: '🤖' },
-    ds: { label: 'Data Science', icon: '📊' },
-    it: { label: 'Information Technology', icon: '🌐' },
-};
+import DepartmentAvatar from "@/components/DepartmentAvatar";
+import NoticeContent, { getNoticePreview } from "@/components/notices/NoticeContent";
+import { getDepartmentMeta } from "@/lib/departmentMeta";
+import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
 
 const BookmarkedResources = () => {
     const navigate = useNavigate();
@@ -174,27 +165,59 @@ const BookmarkedResources = () => {
 
                         if (bookmark.type === 'notice' && bookmark.content) {
                             const notice = bookmark.content;
-                            const dept = DEPARTMENTS[notice.department] || { label: notice.department, icon: '📌' };
+                            const dept = getDepartmentMeta(getEffectiveNoticeDepartment(notice));
+                            const preview = getNoticePreview(notice.content || '', 220);
+                            const previewText = preview.truncated ? `${preview.text}...` : preview.text;
                             return (
                                 <div
                                     key={bookmark.id}
                                     className="p-4 hover:bg-secondary/30 transition-colors cursor-pointer"
-                                    onClick={() => navigate(`/department/${notice.department}`)}
+                                    onClick={() => navigate(`/notices/post/${notice.id}`)}
                                 >
                                     <div className="flex gap-3">
-                                        <Avatar className="w-10 h-10 border border-border shrink-0">
-                                            <AvatarFallback className="bg-secondary text-lg">{dept.icon}</AvatarFallback>
-                                        </Avatar>
+                                        <div
+                                            className="shrink-0"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                navigate(`/department/${dept.value}`);
+                                            }}
+                                        >
+                                            <DepartmentAvatar meta={dept} size="md" />
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className="font-bold hover:underline">{dept.label}</span>
-                                                <span className="text-muted-foreground text-sm">@{notice.department}</span>
+                                                <span
+                                                    className="font-bold hover:underline"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        navigate(`/department/${dept.value}`);
+                                                    }}
+                                                >
+                                                    {dept.label}
+                                                </span>
+                                                <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", dept.badgeClassName)}>
+                                                    {dept.handle}
+                                                </Badge>
                                                 <span className="text-muted-foreground text-sm">·</span>
                                                 <span className="text-muted-foreground text-sm">{formatTimeAgo(notice.created_at)}</span>
                                                 {notice.priority === 'urgent' && <Badge variant="destructive" className="ml-auto h-5 text-[10px]">Urgent</Badge>}
                                             </div>
                                             {notice.title && <h3 className="font-bold mt-1 text-base">{notice.title}</h3>}
-                                            <p className="text-foreground/90 whitespace-pre-wrap mt-1 text-[15px] leading-normal line-clamp-3">{notice.content}</p>
+                                            <div className="mt-1 text-[15px] leading-normal text-foreground/90">
+                                                <NoticeContent content={previewText} />
+                                                {preview.truncated && (
+                                                    <button
+                                                        type="button"
+                                                        className="mt-2 text-sm font-medium text-primary hover:underline"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            navigate(`/notices/post/${notice.id}`);
+                                                        }}
+                                                    >
+                                                        See more
+                                                    </button>
+                                                )}
+                                            </div>
 
                                             {/* Media preview */}
                                             {notice.file_url && notice.file_type === 'image' && (

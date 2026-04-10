@@ -20,6 +20,14 @@ const ICON_SIZE_CLASSES: Record<DepartmentAvatarSize, string> = {
   hero: "h-9 w-9",
 };
 
+const LETTER_SIZE_CLASSES: Record<DepartmentAvatarSize, string> = {
+  sm: "text-[11px]",
+  md: "text-xs",
+  lg: "text-sm",
+  xl: "text-base",
+  hero: "text-2xl",
+};
+
 type DepartmentAvatarProps = {
   department?: string | null;
   meta?: DepartmentMeta;
@@ -39,6 +47,8 @@ export default function DepartmentAvatar({
 }: DepartmentAvatarProps) {
   const departmentMeta = meta ?? getDepartmentMeta(department);
   const Icon = departmentMeta.icon;
+  const letter = (departmentMeta.avatarLetter || "DP").slice(0, 3).toUpperCase();
+  const showIcon = size === "hero";
 
   return (
     <Avatar
@@ -50,18 +60,23 @@ export default function DepartmentAvatar({
     >
       <AvatarFallback
         className={cn(
-          "border border-white/10",
-          departmentMeta.avatarClassName,
+          "border border-white/10 font-semibold tracking-wide text-white",
+          LETTER_SIZE_CLASSES[size],
           fallbackClassName
         )}
+        style={{ backgroundColor: departmentMeta.avatarColor }}
       >
-        <Icon
-          className={cn(
-            ICON_SIZE_CLASSES[size],
-            departmentMeta.iconClassName,
-            iconClassName
-          )}
-        />
+        {showIcon ? (
+          <Icon
+            className={cn(
+              ICON_SIZE_CLASSES[size],
+              departmentMeta.iconClassName,
+              iconClassName
+            )}
+          />
+        ) : (
+          <span className="select-none">{letter}</span>
+        )}
       </AvatarFallback>
     </Avatar>
   );

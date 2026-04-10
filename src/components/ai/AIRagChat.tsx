@@ -780,35 +780,17 @@ const AIRagChat = ({
             </div>
           </div>
         ) : (
-          <div className="rounded-[24px] border border-border/60 bg-background/55 px-4 py-4 shadow-card">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                  <Workflow className="h-3.5 w-3.5" />
-                  Live answer trace
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground sm:text-xl">
-                    Ask your notes and watch the answer form
-                  </h2>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    StudyShare now shows a Claude-style live trace while it is
-                    searching, checking evidence, and drafting the response.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-foreground/90">
-                  <BookOpen className="h-3.5 w-3.5 text-primary" />
-                  PDF grounded
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-foreground/90">
-                  <Globe2 className="h-3.5 w-3.5 text-primary" />
-                  Smart fallback
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-muted-foreground">
+          <div className="rounded-2xl border border-border bg-background px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Minimal AI Chat</p>
+                <p className="truncate text-xs text-muted-foreground">
                   {collegeLabel}
-                </span>
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] text-muted-foreground">
+                <Workflow className="h-3.5 w-3.5" />
+                Live trace enabled
               </div>
             </div>
           </div>
@@ -820,11 +802,11 @@ const AIRagChat = ({
           className={cn(
             "relative flex-1",
             isMinimal
-              ? "rounded-[26px] border border-border/60 bg-[linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.86))] shadow-card"
+              ? "rounded-2xl border border-border bg-background shadow-sm"
               : "rounded-3xl border border-border/60 bg-gradient-to-b from-background/80 via-background/60 to-background/40 shadow-card"
           )}
         >
-          <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "space-y-6 p-3 sm:p-4" : "p-4 sm:p-6")}>
+          <div ref={scrollRef} className={cn("relative space-y-4", isMinimal ? "space-y-4 p-4 sm:p-5" : "p-4 sm:p-6")}>
             {messages.length === 0 && !loading && (
               isCompact ? (
                 <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
@@ -843,39 +825,21 @@ const AIRagChat = ({
                   </div>
                 </div>
               ) : isMinimal ? (
-                <div className="mx-auto w-full max-w-3xl rounded-[26px] border border-border/60 bg-background/75 p-5 text-left shadow-card sm:p-6">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-3">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Ready to trace
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">
-                          What should we solve from your materials?
-                        </p>
-                        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                          Ask from notes, PDFs, or lectures. The live trace will
-                          appear while the answer is being built, then collapse
-                          once the output is ready.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="hidden rounded-[24px] border border-border/60 bg-background/60 p-4 sm:flex sm:items-center sm:justify-center">
-                      <BrandMark
-                        size={88}
-                        className="drop-shadow-[0_14px_30px_rgba(0,0,0,0.25)]"
-                        alt="StudyShare AI"
-                      />
-                    </div>
+                <div className="mx-auto w-full max-w-2xl rounded-2xl border border-border bg-card/20 px-5 py-10 text-center sm:px-8">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <h3 className="text-lg font-medium text-foreground">Start a new chat</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Ask from your notes, PDFs, or lectures.
+                  </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
                     {SUGGESTIONS.map((suggestion) => (
                       <button
                         key={`minimal-${suggestion}`}
                         type="button"
                         onClick={() => handleSuggestion(suggestion)}
-                        className="rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                        className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
                       >
                         {suggestion}
                       </button>
@@ -936,8 +900,8 @@ const AIRagChat = ({
                       "text-sm",
                       isMinimal
                         ? isUser
-                          ? "max-w-[88%] rounded-[26px] border border-primary/20 bg-primary/10 px-4 py-3 text-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
-                          : "w-full max-w-full rounded-[26px] border border-border/60 bg-card/55 px-4 py-4 text-foreground shadow-card"
+                          ? "max-w-[88%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-sm"
+                          : "w-full max-w-[90%] rounded-2xl border border-border bg-card px-4 py-3 text-foreground shadow-sm"
                         : "w-full max-w-[90%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[80%]",
                       !isMinimal && isUser && "bg-gradient-primary text-primary-foreground shadow-glow",
                       !isMinimal && !isUser && "border border-border/60 bg-card/70 text-foreground"
@@ -952,7 +916,7 @@ const AIRagChat = ({
                               prev === messageId ? null : messageId
                             )
                           }
-                          className="w-full rounded-[22px] border border-border/60 bg-background/65 px-3.5 py-3 text-left transition hover:border-primary/40"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-left transition hover:border-primary/40"
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-start gap-3">
@@ -963,8 +927,8 @@ const AIRagChat = ({
                                 )}
                               />
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                                  Live trace
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                  Answer trace
                                 </p>
                                 <p className="mt-1 text-sm font-medium text-foreground">
                                   {traceHeadline(msg)}
@@ -978,23 +942,23 @@ const AIRagChat = ({
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                               {msg.cached ? (
-                                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+                                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
                                   Cached
                                 </span>
                               ) : null}
                               {grounding ? (
-                                <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-medium text-foreground/90">
+                                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/90">
                                   Grounding {grounding}
                                 </span>
                               ) : null}
                               {confidence ? (
-                                <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-medium text-foreground/90">
+                                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/90">
                                   Confidence {confidence}
                                 </span>
                               ) : null}
                               <span
                                 className={cn(
-                                  "rounded-full border px-3 py-1 text-[11px] font-medium",
+                                  "rounded-full border px-2.5 py-1 text-[11px] font-medium",
                                   traceTone.badge
                                 )}
                               >
@@ -1213,25 +1177,14 @@ const AIRagChat = ({
 
             {loading && (
               isMinimal ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <AILivePlanCard
                     title="Tracing your answer"
                     steps={buildLoadingLiveSteps(loadingPlanStep)}
                     isRunning
                   />
-                  <div className="rounded-[24px] border border-border/60 bg-card/45 px-4 py-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                      <BrandLoader size={64} label="Drafting answer" compact />
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                          <Workflow className="h-3.5 w-3.5 text-primary" />
-                          Live trace in motion
-                        </div>
-                        <p className="text-sm text-foreground">
-                          StudyShare is searching your sources and assembling a grounded answer right now.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="rounded-xl border border-border bg-card/30 px-3 py-3 text-sm text-muted-foreground">
+                    StudyShare is searching your sources and assembling a grounded answer.
                   </div>
                 </div>
               ) : (
@@ -1258,27 +1211,20 @@ const AIRagChat = ({
         <div
           className={cn(
             "border border-border/60 p-3",
-            isMinimal ? "rounded-[26px] bg-background/95 p-3 shadow-card" : "rounded-2xl bg-card/70 shadow-card"
+            isMinimal ? "rounded-2xl bg-background p-3 shadow-sm" : "rounded-2xl bg-card/70 shadow-card"
           )}
         >
           {isMinimal ? (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={`chip-${suggestion}`}
-                    type="button"
-                    onClick={() => handleSuggestion(suggestion)}
-                    className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {hasActiveFilters
+                  ? `Filters: ${activeFilterParts.join(", ")}`
+                  : "No filters applied"}
+              </p>
               <button
                 type="button"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/60 hover:text-foreground"
               >
                 <Filter className="h-3 w-3" />
                 Filters
@@ -1486,7 +1432,7 @@ const AIRagChat = ({
                   isCompact
                     ? "min-h-[64px] resize-none rounded-xl border border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
                     : isMinimal
-                      ? "min-h-[68px] max-h-[180px] resize-none rounded-[22px] border border-border/70 bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
+                      ? "min-h-[68px] max-h-[180px] resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
                       : "min-h-[84px] resize-none rounded-2xl border border-border/60 bg-background/70 focus-visible:ring-2 focus-visible:ring-primary/40",
                   isMinimal && "bg-background"
                 )}
@@ -1497,9 +1443,11 @@ const AIRagChat = ({
               disabled={loading || !question.trim()}
               className={cn(
                 isMinimal
-                  ? "h-11 shrink-0 rounded-[18px] px-4 transition sm:px-5"
+                  ? "h-11 shrink-0 rounded-xl px-4 transition sm:px-5"
                   : "h-12 w-12 rounded-2xl transition",
-                "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
+                isMinimal
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                  : "bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-hover",
                 loading && "animate-pulse"
               )}
             >

@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { Timer } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, Users } from "lucide-react";
+import { Timer, Search, SlidersHorizontal, Plus, ChevronDown, BookOpen, Menu, Users } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +91,9 @@ const Study = () => {
       })
       .catch((error) => {
         console.error("Failed to load academic catalog:", error);
+        if (active) {
+          setCatalog(null);
+        }
       });
 
     return () => {
@@ -122,15 +123,15 @@ const Study = () => {
   if (!user) return null;
 
   const availableSubjects = (selectedBranch && selectedBranch !== 'all')
-    ? (
-      catalog?.offerings
-        .filter((offering) =>
-          offering.branch === selectedBranch &&
-          (selectedSemester === "all" ? true : offering.semester === selectedSemester)
-        )
-        .map((offering) => offering.subject) ||
-      getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
-    )
+    ? Array.from(new Set(
+        catalog?.offerings
+          .filter((offering) =>
+            offering.branch === selectedBranch &&
+            (selectedSemester === "all" ? true : offering.semester === selectedSemester)
+          )
+          .map((offering) => offering.subject) ||
+        getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
+      ))
     : [];
 
   // Filter and sort resources (memoized for performance)
@@ -152,12 +153,15 @@ const Study = () => {
           return (b.votes || 0) - (a.votes || 0);
         case "recent":
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "teacher":
+        case "teacher": {
           // Teacher/admin content first, then by votes
-          const aIsTeacher = (a as any).uploaded_by_role === 'admin' || (a as any).uploaded_by_role === 'teacher' ? 1 : 0;
-          const bIsTeacher = (b as any).uploaded_by_role === 'admin' || (b as any).uploaded_by_role === 'teacher' ? 1 : 0;
+          const aRole = (a as Record<string, unknown>).uploaded_by_role;
+          const bRole = (b as Record<string, unknown>).uploaded_by_role;
+          const aIsTeacher = aRole === 'admin' || aRole === 'teacher' ? 1 : 0;
+          const bIsTeacher = bRole === 'admin' || bRole === 'teacher' ? 1 : 0;
           if (bIsTeacher !== aIsTeacher) return bIsTeacher - aIsTeacher;
           return (b.votes || 0) - (a.votes || 0);
+        }
         default:
           return (b.votes || 0) - (a.votes || 0);
       }
@@ -295,18 +299,18 @@ const Study = () => {
             <div className="flex items-center gap-2 pb-4">
               <div className="flex flex-1 min-w-0 gap-2 overflow-x-auto no-scrollbar">
                 <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-                <SelectTrigger className="w-32 h-9">
-                  <SelectValue placeholder="Semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Semesters</SelectItem>
-                  {SEMESTER_OPTIONS.map((sem) => (
-                    <SelectItem key={sem.value} value={sem.value}>
-                      {sem.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectTrigger className="w-32 h-9">
+                    <SelectValue placeholder="Semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Semesters</SelectItem>
+                    {SEMESTER_OPTIONS.map((sem) => (
+                      <SelectItem key={sem.value} value={sem.value}>
+                        {sem.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
               <Select value={selectedBranch} onValueChange={(val) => {
                 setSelectedBranch(val);
@@ -346,7 +350,7 @@ const Study = () => {
               {/* Only show Type and Sort in Resources mode */}
               {searchMode === "resources" && (
                 <>
-                  <Select value={filterType} onValueChange={(val: any) => setFilterType(val)}>
+                  <Select value={filterType} onValueChange={setFilterType as (value: string) => void}>
                     <SelectTrigger className="w-28 h-9">
                       <SelectValue />
                     </SelectTrigger>

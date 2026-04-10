@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -27,8 +27,12 @@ import DepartmentAvatar from "@/components/DepartmentAvatar";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
 import { getDepartmentList, getDepartmentMeta } from "@/lib/departmentMeta";
+import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+import NoticeContent, { getNoticePreview } from "@/components/notices/NoticeContent";
 
 const DEPARTMENTS = getDepartmentList(true);
+const NOTICE_PREVIEW_CHAR_LIMIT = 260;
+const WHO_TO_FOLLOW_DEPARTMENTS = DEPARTMENTS.filter((department) => department.value !== "all");
 const normalizeDepartmentValue = (value?: string | null) => getDepartmentMeta(value).value;
 
 
@@ -46,7 +50,6 @@ const Notices = () => {
   const [followedDeptIds, setFollowedDeptIds] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAllDepts, setShowAllDepts] = useState(false);
   const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false, url: "", title: ""
   });
@@ -225,7 +228,7 @@ const Notices = () => {
   const displayedNotices = notices
     .filter((notice) => (
       activeTab === 'following'
-        ? followedDepartmentSet.has(normalizeDepartmentValue(notice.department))
+        ? followedDepartmentSet.has(normalizeDepartmentValue(getEffectiveNoticeDepartment(notice)))
         : true
     ))
     .filter(n => {
@@ -260,14 +263,14 @@ const Notices = () => {
           <Card className="bg-secondary/20 border-border/50 rounded-2xl p-4 space-y-4">
             <h2 className="font-bold text-xl px-2">Who to follow</h2>
             <div className="space-y-3">
-              {DEPARTMENTS.filter(d => d.value !== 'all').slice(0, showAllDepts ? undefined : 5).map(dept => {
+              {WHO_TO_FOLLOW_DEPARTMENTS.map(dept => {
                 return (
                   <div key={dept.value} className="flex items-center justify-between px-2 cursor-pointer hover:bg-secondary/30 p-2 rounded-lg transition-colors" onClick={() => navigate(`/department/${dept.value}`)}>
                     <div className="flex items-center gap-3">
                       <DepartmentAvatar meta={dept} size="md" className="border-border/50" />
                       <div className="leading-tight">
                         <div className="font-bold hover:underline">{dept.label}</div>
-                        <div className="text-muted-foreground text-sm">@{dept.value}</div>
+                        <div className="text-muted-foreground text-sm">{dept.handle}</div>
                       </div>
                     </div>
                     <Button
@@ -280,12 +283,6 @@ const Notices = () => {
                   </div>
                 );
               })}
-            </div>
-            <div
-              className="px-2 text-primary text-sm cursor-pointer hover:underline"
-              onClick={() => setShowAllDepts(!showAllDepts)}
-            >
-              {showAllDepts ? 'Show less' : 'Show more'}
             </div>
           </Card>
         </div>
@@ -397,7 +394,10 @@ const Notices = () => {
               </div>
             ) : (
               displayedNotices.map((notice) => {
-                const dept = getDeptInfo(notice.department);
+                const effectiveDepartment = getEffectiveNoticeDepartment(notice);
+                const dept = getDeptInfo(effectiveDepartment);
+                const preview = getNoticePreview(notice.content || "", NOTICE_PREVIEW_CHAR_LIMIT);
+                const previewText = preview.truncated ? `${preview.text}...` : preview.text;
                 const draft = commentDrafts[notice.id] || '';
                 const isPosting = !!postingByNotice[notice.id];
                 const commentCount = (comments[notice.id]?.length ?? notice.comments ?? 0);
@@ -405,7 +405,7 @@ const Notices = () => {
                   <Card
                     key={notice.id}
                     className="group relative mb-3 overflow-hidden border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm transition hover:border-primary/30 hover:bg-card/90 hover:shadow-card cursor-pointer"
-                    onClick={() => setSelectedNotice(notice)}
+                    onClick={() => navigate(`/notices/post/${notice.id}`)}
                   >
                     <div className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-emerald-400/70 via-primary/40 to-transparent opacity-0 transition group-hover:opacity-100" />
                     <div className="flex gap-2 sm:gap-3">
@@ -432,7 +432,7 @@ const Notices = () => {
                               dept.badgeClassName
                             )}
                           >
-                            @{dept.value}
+                            {dept.handle}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
                           {notice.priority === 'urgent' && (
@@ -443,7 +443,21 @@ const Notices = () => {
                         </div>
 
                         {notice.title && <h3 className="font-bold mt-1 text-base">{notice.title}</h3>}
-                        <div className="text-foreground/90 whitespace-pre-wrap mt-1 text-[15px] leading-normal">{notice.content}</div>
+                        <div className="mt-1 text-[15px] leading-normal text-foreground/95">
+                          <NoticeContent content={previewText} className="space-y-2" />
+                          {preview.truncated && (
+                            <button
+                              type="button"
+                              className="mt-2 text-sm font-medium text-primary hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/notices/post/${notice.id}`);
+                              }}
+                            >
+                              See more
+                            </button>
+                          )}
+                        </div>
 
                         {/* Media */}
                         {notice.file_url && (
@@ -597,8 +611,11 @@ const Notices = () => {
       {/* Twitter-style Notice Modal */}
       <Dialog open={!!selectedNotice} onOpenChange={(open) => !open && setSelectedNotice(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">
+            {selectedNotice?.title ? `Notice: ${selectedNotice.title}` : "Notice details"}
+          </DialogTitle>
           {selectedNotice && (() => {
-            const dept = getDeptInfo(selectedNotice.department);
+            const dept = getDeptInfo(getEffectiveNoticeDepartment(selectedNotice));
             return (
               <div className="flex flex-col h-full">
                 {/* Modal Header */}
@@ -632,7 +649,7 @@ const Notices = () => {
                             variant="outline"
                             className={cn("uppercase tracking-wide", dept.badgeClassName)}
                           >
-                            @{dept.value}
+                            {dept.handle}
                           </Badge>
                           {selectedNotice.priority === 'urgent' && <Badge variant="destructive" className="ml-2">Urgent</Badge>}
                         </div>
@@ -642,7 +659,7 @@ const Notices = () => {
 
                     {/* Notice Content */}
                     {selectedNotice.title && <h2 className="text-xl font-bold mb-3">{selectedNotice.title}</h2>}
-                    <p className="text-lg leading-relaxed whitespace-pre-wrap mb-4">{selectedNotice.content}</p>
+                    <NoticeContent content={selectedNotice.content} className="mb-4 text-lg leading-relaxed" />
 
                     {/* Media */}
                     {selectedNotice.file_url && (

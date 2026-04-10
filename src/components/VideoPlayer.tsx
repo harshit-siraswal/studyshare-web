@@ -1,5 +1,5 @@
 import { ExternalLink, Maximize2, Minimize2, Sparkles, Video } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import AIStudyTools from "./ai/AIStudyTools";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -75,11 +75,12 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
         setTopics(nextTopics);
         setTopicsStatus(nextTopics.length > 0 ? "ready" : "empty");
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         if (cancelled) return;
         setTopics([]);
         setTopicsStatus("error");
-        setTopicsError(error?.message || "Unable to load topics");
+        const message = error instanceof Error ? error.message : "Unable to load topics";
+        setTopicsError(message);
       });
 
     return () => {
@@ -252,7 +253,6 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
             src={youtubeEmbedUrl}
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
-            allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
             title={title || "Video"}
             loading="lazy"
@@ -316,6 +316,7 @@ const VideoPlayer = ({ isOpen, onClose, videoUrl, title, resourceId }: VideoPlay
         ref={dialogRef}
         className={`${isFullscreen ? 'max-w-full h-screen w-screen rounded-none' : 'max-w-6xl h-[85vh] w-[94vw] sm:rounded-2xl'} p-0 bg-background overflow-hidden transition-all`}
       >
+        <DialogTitle className="sr-only">{title || "Video player"}</DialogTitle>
         {resourceId && showAiStudio ? (
           <ResizablePanelGroup direction={isStacked ? "vertical" : "horizontal"} className="h-full">
             <ResizablePanel
