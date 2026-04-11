@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
   BookOpen,
@@ -249,7 +249,7 @@ const AIRagChat = ({
     try {
       const response = await queryRag(q, {
         collegeId: selectedCollegeId || undefined,
-        allowWeb: false,
+        allowWeb: true,
         filters,
         history: [...getHistoryForRequest(), { role: "user", content: q }],
         generationMode: wantsQuestionPaper ? "question_paper" : "answer",
@@ -394,7 +394,7 @@ const AIRagChat = ({
     try {
       const response = await queryRag(originalQuestion, {
         collegeId: selectedCollegeId || undefined,
-        allowWeb: false,
+        allowWeb: true,
         filters,
         history: getHistoryForRequest(truncatedMessages),
         generationMode: wantsQuestionPaper ? "question_paper" : "answer",
@@ -550,10 +550,21 @@ const AIRagChat = ({
   };
 
   const renderMessageContent = (content: string) => {
+    const renderInlineMarkdown = (value: string) => {
+      const parts = value.split(/(\*\*[^*]+\*\*)/g);
+      return parts.map((part, idx) => {
+        const bold = part.match(/^\*\*([^*]+)\*\*$/);
+        if (bold) {
+          return <strong key={`bold-${idx}`}>{bold[1]}</strong>;
+        }
+        return <Fragment key={`text-${idx}`}>{part}</Fragment>;
+      });
+    };
+
     const lines = content.split(/\n+/).filter((line) => line.trim().length > 0);
     const hasBullets = lines.some((line) => /^[-*]\s+/.test(line.trim()));
     if (!hasBullets) {
-      return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+      return <div className="whitespace-pre-wrap leading-relaxed">{renderInlineMarkdown(content)}</div>;
     }
 
     return (
@@ -567,7 +578,7 @@ const AIRagChat = ({
             return (
               <div key={`bullet-${lineIdx}`} className="flex items-start gap-2">
                 <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" />
-                <span className="flex-1">{bulletMatch[1]}</span>
+                <span className="flex-1">{renderInlineMarkdown(bulletMatch[1])}</span>
               </div>
             );
           }
@@ -576,16 +587,16 @@ const AIRagChat = ({
             return (
               <div key={`label-${lineIdx}`} className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                  {labelMatch[1]}
+                  {renderInlineMarkdown(labelMatch[1])}
                 </span>
-                <span className="flex-1">{labelMatch[2]}</span>
+                <span className="flex-1">{renderInlineMarkdown(labelMatch[2])}</span>
               </div>
             );
           }
 
           return (
             <div key={`line-${lineIdx}`} className="whitespace-pre-wrap leading-relaxed">
-              {trimmed}
+              {renderInlineMarkdown(trimmed)}
             </div>
           );
         })}
