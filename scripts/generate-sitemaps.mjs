@@ -35,6 +35,30 @@ function main() {
       changefreq: "weekly",
       priority: "1.0",
     }),
+    buildUrlEntry({
+      loc: `${siteUrl}/privacy-policy`,
+      lastmod: today,
+      changefreq: "yearly",
+      priority: "0.5",
+    }),
+    buildUrlEntry({
+      loc: `${siteUrl}/terms-of-use`,
+      lastmod: today,
+      changefreq: "yearly",
+      priority: "0.5",
+    }),
+    buildUrlEntry({
+      loc: `${siteUrl}/community-guidelines`,
+      lastmod: today,
+      changefreq: "yearly",
+      priority: "0.4",
+    }),
+    buildUrlEntry({
+      loc: `${siteUrl}/account-deletion`,
+      lastmod: today,
+      changefreq: "yearly",
+      priority: "0.4",
+    }),
   ];
 
   const blogEntries = [

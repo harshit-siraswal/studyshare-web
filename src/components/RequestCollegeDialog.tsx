@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Send, Loader2 } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 interface RequestCollegeDialogProps {
   trigger: React.ReactNode;
@@ -26,28 +27,40 @@ const RequestCollegeDialog = ({ trigger }: RequestCollegeDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!collegeName.trim()) {
       toast.error("Please enter the college name");
       return;
     }
 
     setIsSubmitting(true);
-    
-    // Simulate email sending (in a real app, this would call an API)
+
     try {
-      // Mock API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast.success("Request submitted!", {
-        description: "We'll review your request and add the college soon.",
+      const mailSubject = encodeURIComponent("StudyShare College Add Request");
+      const mailBody = encodeURIComponent(
+        [
+          "Hi StudyShare Support Team,",
+          "",
+          `Please add this college: ${collegeName.trim()}`,
+          message.trim() ? `Additional details: ${message.trim()}` : null,
+          "",
+          "Thanks.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${mailSubject}&body=${mailBody}`;
+
+      toast.success("Email draft opened", {
+        description: `Send the draft to ${SUPPORT_EMAIL} so we can add your college quickly.`,
       });
-      
+
       setCollegeName("");
       setMessage("");
       setOpen(false);
     } catch (error) {
-      toast.error("Failed to submit request. Please try again.");
+      toast.error(`Could not open your email app. Please write to ${SUPPORT_EMAIL}.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -60,7 +73,7 @@ const RequestCollegeDialog = ({ trigger }: RequestCollegeDialogProps) => {
         <DialogHeader>
           <DialogTitle>Request to Add College</DialogTitle>
           <DialogDescription>
-            Can't find your college? Submit a request and we'll add it soon.
+            Can't find your college? We will open an email draft to {SUPPORT_EMAIL}.
           </DialogDescription>
         </DialogHeader>
         

@@ -159,6 +159,43 @@ function main() {
   });
   writeRouteHtml(distDir, "/blog", blogHtml);
 
+  const legalPages = [
+    {
+      path: "/privacy-policy",
+      title: "Privacy Policy",
+      description:
+        "How StudyShare collects, uses, protects, and retains user data across app and website.",
+    },
+    {
+      path: "/terms-of-use",
+      title: "Terms of Use",
+      description:
+        "Service terms, acceptable use, responsibilities, and enforcement rules for StudyShare users.",
+    },
+    {
+      path: "/community-guidelines",
+      title: "Community Guidelines",
+      description:
+        "Behavior and content standards for StudyShare rooms, notices, and collaboration.",
+    },
+    {
+      path: "/account-deletion",
+      title: "Account and Data Deletion",
+      description:
+        "How StudyShare account deletion works and what data may remain for legal and security compliance.",
+    },
+  ];
+
+  legalPages.forEach((page) => {
+    const pageHtml = applySeo(baseHtml, {
+      title: page.title,
+      description: page.description,
+      canonicalPath: page.path,
+      type: "website",
+    });
+    writeRouteHtml(distDir, page.path, pageHtml);
+  });
+
   posts.forEach((post) => {
     const postHtml = applySeo(baseHtml, {
       title: post.title,
@@ -211,7 +248,9 @@ function main() {
     writeRouteHtml(distDir, `/blog/${post.slug}`, postHtml);
   });
 
-  console.log(`[seo] Prerendered blog SEO pages (${posts.length + 1} routes).`);
+  console.log(
+    `[seo] Prerendered blog and legal SEO pages (${posts.length + 1 + legalPages.length} routes).`,
+  );
 }
 
 main();

@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "@/hooks/useTheme";
 import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
+import { formatSupportMessage } from "@/lib/support";
 import { cn } from "@/lib/utils";
 
 type NavTab = 0 | 1 | 2 | 3;
@@ -436,7 +437,11 @@ const MobileApp = () => {
   const handleDownload = async () => {
     const opened = await openAndroidApkDownload();
     if (!opened) {
-      toast.error("APK download is temporarily unavailable. Please contact support.");
+      toast.error(
+        formatSupportMessage(
+          "APK download is temporarily unavailable. Please contact support",
+        ),
+      );
     }
   };
 

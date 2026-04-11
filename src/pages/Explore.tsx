@@ -22,10 +22,10 @@ interface User {
     id: string;
     email: string;
     display_name: string;
-    username: string;
+    username?: string | null;
     profile_photo_url: string | null;
     college: string;
-    bio: string;
+    bio?: string | null;
 }
 
 const Explore = () => {
@@ -98,9 +98,9 @@ const Explore = () => {
         } else {
             const query = searchQuery.toLowerCase();
             const filtered = users.filter(user =>
-                user.display_name.toLowerCase().includes(query) ||
-                user.username.toLowerCase().includes(query) ||
-                user.bio?.toLowerCase().includes(query)
+                (user.display_name || '').toLowerCase().includes(query) ||
+                (user.username || '').toLowerCase().includes(query) ||
+                (user.bio || '').toLowerCase().includes(query)
             );
             setFilteredUsers(filtered);
         }

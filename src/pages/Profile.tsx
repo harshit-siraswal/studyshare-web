@@ -1031,7 +1031,7 @@ const Profile = () => {
     if (!authUser) return;
 
     const normalizedDisplayName = editForm.name.trim();
-    const normalizedUsername = editForm.username.trim();
+    const normalizedUsername = editForm.username.trim().toLowerCase();
     const normalizedBio = editForm.bio.trim();
     const normalizedSemester = editForm.semester.trim();
     const normalizedBranch = normalizeBranchCode(editForm.branch);
@@ -1050,14 +1050,28 @@ const Profile = () => {
 
     try {
       // Check if username is taken (via frontend read - allowed by RLS)
-      if (normalizedUsername !== userProfile?.username) {
-        const { data: existingUser } = await supabase
+      if (normalizedUsername !== (userProfile?.username || '').toLowerCase()) {
+        const { data: existingUsers, error: lookupError } = await supabase
           .from('users_safe')
-          .select('id, email')
-          .eq('username', normalizedUsername)
-          .maybeSingle();
+          .select('id, email, username')
+          .ilike('username', normalizedUsername)
+          .limit(10);
 
-        if (existingUser && existingUser.email !== authUser.email) {
+        if (lookupError) {
+          throw lookupError;
+        }
+
+        const normalizedCurrentEmail = (authUser.email || '').trim().toLowerCase();
+        const hasUsernameConflict = (existingUsers || []).some((candidate) => {
+          const candidateUsername = String(candidate.username || '').trim().toLowerCase();
+          const candidateEmail = String(candidate.email || '').trim().toLowerCase();
+          return (
+            candidateUsername === normalizedUsername &&
+            candidateEmail !== normalizedCurrentEmail
+          );
+        });
+
+        if (hasUsernameConflict) {
           toast.error('Username already taken');
           return;
         }

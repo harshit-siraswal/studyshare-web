@@ -1,0 +1,23 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudyShare favicon mark">
+  <defs>
+    <linearGradient id="strokeGradient" x1="40" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="88" fill="none" stroke="url(#strokeGradient)" stroke-width="14" stroke-linecap="round" stroke-dasharray="28 42" transform="rotate(-12 128 128)"/>
+
+  <g fill="url(#strokeGradient)">
+    <rect x="121" y="42" width="14" height="36" rx="7"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(45 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(90 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(135 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(180 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(225 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(270 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(315 128 128)"/>
+  </g>
+
+  <circle cx="128" cy="128" r="26" fill="url(#strokeGradient)"/>
+</svg>

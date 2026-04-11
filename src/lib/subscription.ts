@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { createAiTokenRechargeOrder, createPaymentOrder, verifyPayment } from './api';
+import { formatSupportMessage } from './support';
 
 interface RazorpayPaymentSuccessPayload {
     razorpay_order_id: string;
@@ -171,7 +172,11 @@ export class SubscriptionService {
         const keyId = SubscriptionService.resolveRazorpayKey(order);
 
         if (!keyId) {
-            toast.error('Payment setup incomplete. Please contact support.');
+            toast.error(
+                formatSupportMessage(
+                    'Payment setup incomplete. Please contact support',
+                ),
+            );
             console.error('Unable to resolve Razorpay key ID');
             return;
         }
@@ -231,7 +236,11 @@ export class SubscriptionService {
         const keyId = SubscriptionService.resolveRazorpayKey(order);
 
         if (!keyId) {
-            toast.error('Payment setup incomplete. Please contact support.');
+            toast.error(
+                formatSupportMessage(
+                    'Payment setup incomplete. Please contact support',
+                ),
+            );
             console.error('Unable to resolve Razorpay key ID');
             return;
         }

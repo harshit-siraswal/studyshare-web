@@ -61,6 +61,7 @@ const loadAIChat = () => import("./pages/AIChat");
 const loadBlog = () => import("./pages/Blog");
 const loadBlogPost = () => import("./pages/BlogPost");
 const loadMobileApp = () => import("./pages/MobileApp");
+const loadLegalPage = () => import("./pages/LegalPage");
 const loadNotFound = () => import("./pages/NotFound");
 const loadMobileBottomNav = () => import("@/components/mobile/MobileBottomNav");
 
@@ -81,6 +82,7 @@ const AIChat = createLazyPage(loadAIChat, "ai-chat");
 const Blog = createLazyPage(loadBlog, "blog");
 const BlogPost = createLazyPage(loadBlogPost, "blog-post");
 const MobileApp = createLazyPage(loadMobileApp, "mobile-app");
+const LegalPage = createLazyPage(loadLegalPage, "legal-page");
 const NotFound = createLazyPage(loadNotFound, "not-found");
 const MobileBottomNav = lazy(loadMobileBottomNav);
 
@@ -91,7 +93,11 @@ const isLightweightPublicPath = (pathname: string) =>
   pathname === "/select-college" ||
   pathname === "/blog" ||
   pathname.startsWith("/blog/") ||
-  pathname === "/mobile-app";
+  pathname === "/mobile-app" ||
+  pathname === "/privacy-policy" ||
+  pathname === "/terms-of-use" ||
+  pathname === "/community-guidelines" ||
+  pathname === "/account-deletion";
 
 const preloadRouteModules = () => {
   [
@@ -132,6 +138,10 @@ const AppRoutes = () => {
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
       <Route path="/mobile-app" element={<MobileApp />} />
+      <Route path="/privacy-policy" element={<LegalPage />} />
+      <Route path="/terms-of-use" element={<LegalPage />} />
+      <Route path="/community-guidelines" element={<LegalPage />} />
+      <Route path="/account-deletion" element={<LegalPage />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
       <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />

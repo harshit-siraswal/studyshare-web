@@ -10,6 +10,7 @@ import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
 import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
+import { formatSupportMessage } from "@/lib/support";
 import { toast } from "sonner";
 
 type CollegeCard = (typeof initialColleges)[number];
@@ -186,7 +187,11 @@ const SelectCollege = () => {
     const handleDownloadApk = async () => {
         const opened = await openAndroidApkDownload();
         if (!opened) {
-            toast.error("APK download is temporarily unavailable. Please contact support.");
+            toast.error(
+                formatSupportMessage(
+                    "APK download is temporarily unavailable. Please contact support",
+                ),
+            );
         }
     };
 
