@@ -37,12 +37,11 @@ const Study = () => {
   /* ---------------------------------------------------------------- */
   /* HOOKS (MUST BE FIRST) */
   /* ---------------------------------------------------------------- */
-  const { user, loading } = useAuth();
+  const { user, loading, hasElevatedAccess } = useAuth();
   const { selectedCollege, selectedCollegeId } = useCollege();
   const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedSemester, setSelectedSemester] = useState("all");
@@ -257,15 +256,17 @@ const Study = () => {
                 <>
                   {/* Upload Button - Desktop only (mobile uses bottom nav) */}
                   {searchMode === "syllabus" ? (
-                    <UploadSyllabusDialog
-                      trigger={
-                        <Button className="hidden md:flex shrink-0">
-                          <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
-                          <span className="hidden xl:inline">Upload Syllabus</span>
-                          <span className="sr-only xl:hidden">Upload Syllabus</span>
-                        </Button>
-                      }
-                    />
+                    hasElevatedAccess && (
+                      <UploadSyllabusDialog
+                        trigger={
+                          <Button className="hidden md:flex shrink-0">
+                            <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                            <span className="hidden xl:inline">Upload Syllabus</span>
+                            <span className="sr-only xl:hidden">Upload Syllabus</span>
+                          </Button>
+                        }
+                      />
+                    )
                   ) : (
                     <UploadResourceDialog
                       trigger={

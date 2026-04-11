@@ -31,10 +31,13 @@ function hasElevatedProfileAccess(profile: any): boolean {
 
   const capabilities = profile?.admin_capabilities;
   if (capabilities && typeof capabilities === 'object') {
-    return Object.values(capabilities).some((value) => value === true);
+    return Object.values(capabilities).some((value) => value === true || value === 'true');
   }
 
-  return Boolean(profile?.scope_all_colleges) || Boolean(profile?.admin_college_id);
+  const hasAllScope = profile?.scope_all_colleges === true || profile?.scope_all_colleges === 'true';
+  const hasAdminCollege = Boolean(profile?.admin_college_id) && profile?.admin_college_id !== 'false' && profile?.admin_college_id !== 'null';
+
+  return hasAllScope || hasAdminCollege;
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {

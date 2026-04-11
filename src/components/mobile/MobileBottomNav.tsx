@@ -9,6 +9,7 @@ import { lazy, Suspense, useState } from 'react';
 
 const UploadResourceDialog = lazy(() => import('@/components/UploadResourceDialog'));
 const UploadSyllabusDialog = lazy(() => import('@/components/UploadSyllabusDialog'));
+import { useAuth } from '@/context/AuthContext';
 
 interface NavItem {
     icon: React.ReactNode;
@@ -32,6 +33,7 @@ const hiddenRoutes = ['/', '/select-college', '/auth'];
 export function MobileBottomNav() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { hasElevatedAccess } = useAuth();
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const isSyllabusTab =
         location.pathname === '/study' &&
@@ -89,7 +91,7 @@ export function MobileBottomNav() {
             {/* Upload Dialog triggered by + button */}
             {uploadDialogOpen ? (
                 <Suspense fallback={null}>
-                    {isSyllabusTab ? (
+                    {(isSyllabusTab && hasElevatedAccess) ? (
                         <UploadSyllabusDialog
                             open={uploadDialogOpen}
                             onOpenChange={setUploadDialogOpen}
