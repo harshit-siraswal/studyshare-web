@@ -1,6 +1,6 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_APK_URL = "/downloads/studyshare-android-v1.0.5-b6.apk";
 const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
-const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "/downloads/studyshare-android-v1.0.5-b6.apk";
 const LEGACY_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
 const DEFAULT_ANDROID_APP_VERSION = "1.0.5";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
