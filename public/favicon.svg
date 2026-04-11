@@ -1,19 +1,24 @@
 <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudyShare favicon mark">
-  <defs>
-    <linearGradient id="bgGradient" x1="40" y1="32" x2="224" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1D4ED8"/>
-      <stop offset="1" stop-color="#06B6D4"/>
-    </linearGradient>
-  </defs>
-
-  <rect x="24" y="24" width="208" height="208" rx="56" fill="url(#bgGradient)"/>
-
-  <path
-    d="M82 90C95 70 124 62 152 69C176 75 184 92 176 106C168 121 147 124 126 129C105 134 92 142 92 157C92 173 110 184 136 184C156 184 173 177 184 166"
+  <circle
+    cx="128"
+    cy="128"
+    r="88"
     fill="none"
-    stroke="#FFFFFF"
-    stroke-width="20"
+    stroke="#3B82F6"
+    stroke-width="14"
     stroke-linecap="round"
-    stroke-linejoin="round"
+    stroke-dasharray="30 39"
+    transform="rotate(-12 128 128)"
   />
+
+  <g fill="#3B82F6">
+    <rect x="121" y="42" width="14" height="36" rx="7"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(45 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(90 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(135 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(180 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(225 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(270 128 128)"/>
+    <rect x="121" y="42" width="14" height="36" rx="7" transform="rotate(315 128 128)"/>
+  </g>
 </svg>
