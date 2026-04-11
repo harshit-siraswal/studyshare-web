@@ -38,6 +38,19 @@ interface ChatMessage {
   followUps?: RagFollowUpAction[];
   cached?: boolean;
   noLocal?: boolean;
+  quizPaper?: QuizPaper;
+}
+
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswerIndex?: number;
+}
+
+interface QuizPaper {
+  subject: string;
+  questions: QuizQuestion[];
+  totalQuestions: number;
 }
 
 const DEFAULT_FILTERS: RagFilters = {
@@ -50,6 +63,114 @@ const SUGGESTIONS = [
   "Explain stack vs queue with a real-world example.",
   "List key formulas from my notes for quick revision.",
 ];
+
+const QUESTION_PAPER_INTENT_PATTERN =
+  /\b(quiz|mcq|question\s*paper|questionpaper|mock\s*test|practice\s*test|assessment|exam\s*questions?)\b/i;
+
+function extractJsonCandidate(raw: string): string | null {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return raw.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  const firstBracket = raw.indexOf("[");
+  const lastBracket = raw.lastIndexOf("]");
+  if (firstBracket >= 0 && lastBracket > firstBracket) {
+    return raw.slice(firstBracket, lastBracket + 1).trim();
+  }
+
+  return null;
+}
+
+function toOptionArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || "").trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 4);
+}
+
+function toCorrectIndex(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    if (value >= 0 && value <= 3) return value;
+    if (value >= 1 && value <= 4) return value - 1;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toUpperCase();
+    const alphaIndex = ["A", "B", "C", "D"].indexOf(normalized);
+    if (alphaIndex >= 0) return alphaIndex;
+    const parsed = Number.parseInt(normalized, 10);
+    if (Number.isInteger(parsed)) {
+      if (parsed >= 0 && parsed <= 3) return parsed;
+      if (parsed >= 1 && parsed <= 4) return parsed - 1;
+    }
+  }
+  return undefined;
+}
+
+function parseQuizPaper(rawAnswer: string): QuizPaper | null {
+  const candidate = extractJsonCandidate(rawAnswer);
+  if (!candidate) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+
+  const parsedObject =
+    typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null;
+
+  const sourceQuestions = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsedObject?.questions)
+      ? parsedObject.questions
+      : Array.isArray(parsedObject?.mcq)
+        ? parsedObject.mcq
+        : [];
+
+  if (!Array.isArray(sourceQuestions) || sourceQuestions.length === 0) {
+    return null;
+  }
+
+  const questions: QuizQuestion[] = sourceQuestions
+    .map((entry: unknown) => {
+      const row = typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : {};
+      const question = String(row.question || row.prompt || "").trim();
+      const options = toOptionArray(row.options || row.choices);
+      if (!question || options.length < 2) return null;
+
+      return {
+        question,
+        options,
+        correctAnswerIndex: toCorrectIndex(
+          row.correctAnswerIndex ?? row.correct_answer_index ?? row.correct_answer ?? row.answer
+        ),
+      };
+    })
+    .filter((entry: QuizQuestion | null): entry is QuizQuestion => !!entry)
+    .slice(0, 25);
+
+  if (questions.length === 0) return null;
+
+  return {
+    subject: String(parsedObject?.subject || parsedObject?.topic || "Practice Quiz").trim() || "Practice Quiz",
+    questions,
+    totalQuestions:
+      typeof parsedObject?.total_questions === "number" && parsedObject.total_questions > 0
+        ? parsedObject.total_questions
+        : questions.length,
+  };
+}
+
+function buildQuizSummary(paper: QuizPaper): string {
+  return `Question paper generated for ${paper.subject}. Tap "Start Quiz" to attempt ${paper.questions.length} questions.`;
+}
 
 const AIRagChat = ({
   className,
@@ -74,6 +195,12 @@ const AIRagChat = ({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [regeneratingMessageIndex, setRegeneratingMessageIndex] = useState<number | null>(null);
   const [copiedConversation, setCopiedConversation] = useState(false);
+  const [activeQuiz, setActiveQuiz] = useState<{
+    paper: QuizPaper;
+    currentIndex: number;
+    selected: Record<number, number>;
+    submitted: boolean;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -117,23 +244,30 @@ const AIRagChat = ({
     setMessages((prev) => [...prev, { role: "user", content: q }]);
     setLoading(true);
 
+    const wantsQuestionPaper = QUESTION_PAPER_INTENT_PATTERN.test(q);
+
     try {
       const response = await queryRag(q, {
         collegeId: selectedCollegeId || undefined,
-        allowWeb: true,
+        allowWeb: false,
         filters,
         history: [...getHistoryForRequest(), { role: "user", content: q }],
+        generationMode: wantsQuestionPaper ? "question_paper" : "answer",
       });
+
+      const quizPaper = parseQuizPaper(response.answer || "");
+      const assistantContent = quizPaper ? buildQuizSummary(quizPaper) : response.answer || "No answer returned.";
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: response.answer || "No answer returned.",
+          content: assistantContent,
           sources: response.sources || [],
           followUps: response.follow_ups || [],
           cached: response.cached,
           noLocal: response.no_local,
+          quizPaper: quizPaper || undefined,
         },
       ]);
     } catch (error: unknown) {
@@ -255,23 +389,30 @@ const AIRagChat = ({
     setMessages(truncatedMessages);
     setLoading(true);
 
+    const wantsQuestionPaper = QUESTION_PAPER_INTENT_PATTERN.test(originalQuestion);
+
     try {
       const response = await queryRag(originalQuestion, {
         collegeId: selectedCollegeId || undefined,
-        allowWeb: true,
+        allowWeb: false,
         filters,
         history: getHistoryForRequest(truncatedMessages),
+        generationMode: wantsQuestionPaper ? "question_paper" : "answer",
       });
+
+      const quizPaper = parseQuizPaper(response.answer || "");
+      const assistantContent = quizPaper ? buildQuizSummary(quizPaper) : response.answer || "No answer returned.";
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: response.answer || "No answer returned.",
+          content: assistantContent,
           sources: response.sources || [],
           followUps: response.follow_ups || [],
           cached: response.cached,
           noLocal: response.no_local,
+          quizPaper: quizPaper || undefined,
         },
       ]);
     } catch (error: unknown) {
@@ -319,6 +460,53 @@ const AIRagChat = ({
       toast.error("Failed to copy conversation");
     }
   };
+
+  const handleStartQuiz = (paper: QuizPaper) => {
+    setActiveQuiz({
+      paper,
+      currentIndex: 0,
+      selected: {},
+      submitted: false,
+    });
+  };
+
+  const handleSelectQuizOption = (optionIndex: number) => {
+    setActiveQuiz((prev) => {
+      if (!prev || prev.submitted) return prev;
+      return {
+        ...prev,
+        selected: {
+          ...prev.selected,
+          [prev.currentIndex]: optionIndex,
+        },
+      };
+    });
+  };
+
+  const handleMoveQuiz = (direction: -1 | 1) => {
+    setActiveQuiz((prev) => {
+      if (!prev) return prev;
+      const nextIndex = Math.max(0, Math.min(prev.currentIndex + direction, prev.paper.questions.length - 1));
+      return {
+        ...prev,
+        currentIndex: nextIndex,
+      };
+    });
+  };
+
+  const handleSubmitQuiz = () => {
+    setActiveQuiz((prev) => (prev ? { ...prev, submitted: true } : prev));
+  };
+
+  const activeQuizQuestion = activeQuiz ? activeQuiz.paper.questions[activeQuiz.currentIndex] : null;
+  const activeQuizScore = activeQuiz
+    ? activeQuiz.paper.questions.reduce((sum, question, index) => {
+        const selected = activeQuiz.selected[index];
+        if (typeof selected !== "number") return sum;
+        if (typeof question.correctAnswerIndex !== "number") return sum;
+        return question.correctAnswerIndex === selected ? sum + 1 : sum;
+      }, 0)
+    : 0;
 
   const activeFilterParts = [
     filters.semester ? `Sem ${filters.semester}` : "",
@@ -597,6 +785,21 @@ const AIRagChat = ({
                     )}
 
                     {renderMessageContent(displayContent)}
+
+                    {msg.role === "assistant" && msg.quizPaper && (
+                      <div className="mt-3 rounded-xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs text-muted-foreground">
+                          {msg.quizPaper.subject} • {msg.quizPaper.questions.length} questions
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleStartQuiz(msg.quizPaper as QuizPaper)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs text-primary transition hover:border-primary hover:bg-primary/20"
+                        >
+                          Start Quiz
+                        </button>
+                      </div>
+                    )}
 
                     <div className={cn("mt-3 flex flex-wrap items-center gap-2", isUser && "justify-end")}>
                       <button
@@ -908,6 +1111,110 @@ const AIRagChat = ({
           )}
         </div>
       </div>
+
+      {activeQuiz && activeQuizQuestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-border/60 bg-background p-4 shadow-card sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Quiz Mode</div>
+                <h3 className="font-editorial text-xl text-foreground">{activeQuiz.paper.subject}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveQuiz(null)}
+                className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+              >
+                Close
+              </button>
+            </div>
+
+            {activeQuiz.submitted && (
+              <div className="mt-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+                Score: {activeQuizScore} / {activeQuiz.paper.questions.length}
+              </div>
+            )}
+
+            <div className="mt-4 text-xs text-muted-foreground">
+              Question {activeQuiz.currentIndex + 1} of {activeQuiz.paper.questions.length}
+            </div>
+            <div className="mt-1 text-base font-medium text-foreground">{activeQuizQuestion.question}</div>
+
+            <div className="mt-3 space-y-2">
+              {activeQuizQuestion.options.map((option, optionIndex) => {
+                const selected = activeQuiz.selected[activeQuiz.currentIndex] === optionIndex;
+                const isCorrect =
+                  activeQuiz.submitted && typeof activeQuizQuestion.correctAnswerIndex === "number"
+                    ? activeQuizQuestion.correctAnswerIndex === optionIndex
+                    : false;
+                const isWrongSelected =
+                  activeQuiz.submitted && selected && typeof activeQuizQuestion.correctAnswerIndex === "number"
+                    ? activeQuizQuestion.correctAnswerIndex !== optionIndex
+                    : false;
+
+                return (
+                  <button
+                    key={`quiz-option-${optionIndex}`}
+                    type="button"
+                    onClick={() => handleSelectQuizOption(optionIndex)}
+                    disabled={activeQuiz.submitted}
+                    className={cn(
+                      "w-full rounded-xl border px-3 py-2 text-left text-sm transition",
+                      selected
+                        ? "border-primary/60 bg-primary/10 text-foreground"
+                        : "border-border/60 bg-background text-foreground hover:border-primary/40",
+                      isCorrect && "border-emerald-500/60 bg-emerald-500/10",
+                      isWrongSelected && "border-rose-500/60 bg-rose-500/10",
+                      activeQuiz.submitted && "cursor-default"
+                    )}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleMoveQuiz(-1)}
+                  disabled={activeQuiz.currentIndex === 0}
+                  className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMoveQuiz(1)}
+                  disabled={activeQuiz.currentIndex >= activeQuiz.paper.questions.length - 1}
+                  className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+
+              {!activeQuiz.submitted ? (
+                <button
+                  type="button"
+                  onClick={handleSubmitQuiz}
+                  className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs text-primary transition hover:border-primary hover:bg-primary/20"
+                >
+                  Submit Quiz
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveQuiz(null)}
+                  className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

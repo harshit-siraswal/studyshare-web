@@ -156,7 +156,7 @@ function isAbortError(error: unknown): boolean {
  */
 async function apiRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
     const selectedCollegeHint = getSelectedCollegeHint();
     const createHeaders = (token: string | null) => {
@@ -176,8 +176,13 @@ async function apiRequest<T>(
 
     const send = async (token: string | null) => {
         const controller = options.signal ? null : new AbortController();
+        const timeoutMs =
+            typeof options.timeoutMs === 'number' && Number.isFinite(options.timeoutMs)
+                ? Math.max(1000, options.timeoutMs)
+                : API_REQUEST_TIMEOUT_MS;
+
         const timeoutId = controller
-            ? window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS)
+            ? window.setTimeout(() => controller.abort(), timeoutMs)
             : null;
 
         try {
@@ -1766,10 +1771,13 @@ export async function queryRag(
         filters?: RagFilters;
         history?: RagConversationTurn[];
         videoUrl?: string;
+        generationMode?: 'question_paper' | 'answer';
     }
 ): Promise<RagResponse> {
+    const isQuestionPaper = options?.generationMode === 'question_paper';
     return apiRequest('/api/rag/query', {
         method: 'POST',
+        timeoutMs: isQuestionPaper ? 90000 : 45000,
         body: JSON.stringify({
             question,
             college_id: options?.collegeId,
@@ -1779,6 +1787,7 @@ export async function queryRag(
             filters: options?.filters,
             history: options?.history,
             video_url: options?.videoUrl,
+            generation_mode: options?.generationMode,
         }),
     });
 }
