@@ -135,6 +135,11 @@ const Study = () => {
       ))
     : [];
 
+  const normalizedRole = (user.role || '').trim().toUpperCase();
+  const canUploadSyllabus =
+    isFullAccess &&
+    (normalizedRole === 'TEACHER' || normalizedRole === 'ADMIN' || normalizedRole === 'MODERATOR');
+
   // Filter and sort resources (memoized for performance)
   const filteredResources = resources
     .filter((resource) => {
@@ -267,32 +272,31 @@ const Study = () => {
               {/* Notification Button */}
               <NotificationButton />
 
-              {/* Policy: Hide Upload buttons for readonly users */}
-              {isFullAccess && (
-                <>
-                  {/* Upload Button - Desktop only (mobile uses bottom nav) */}
-                  {searchMode === "syllabus" ? (
-                    <UploadSyllabusDialog
-                      trigger={
-                        <Button className="hidden md:flex shrink-0">
-                          <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
-                          <span className="hidden xl:inline">Upload Syllabus</span>
-                          <span className="sr-only xl:hidden">Upload Syllabus</span>
-                        </Button>
-                      }
-                    />
-                  ) : (
-                    <UploadResourceDialog
-                      trigger={
-                        <Button className="hidden md:flex shrink-0">
-                          <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
-                          <span className="hidden xl:inline">Share Resource</span>
-                          <span className="sr-only xl:hidden">Share Resource</span>
-                        </Button>
-                      }
-                    />
-                  )}
-                </>
+              {/* Policy: Hide Upload buttons for readonly users. Syllabus upload is teacher/admin/moderator only. */}
+              {searchMode === "syllabus" ? (
+                canUploadSyllabus ? (
+                  <UploadSyllabusDialog
+                    trigger={
+                      <Button className="hidden md:flex shrink-0">
+                        <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                        <span className="hidden xl:inline">Upload Syllabus</span>
+                        <span className="sr-only xl:hidden">Upload Syllabus</span>
+                      </Button>
+                    }
+                  />
+                ) : null
+              ) : (
+                isFullAccess && (
+                  <UploadResourceDialog
+                    trigger={
+                      <Button className="hidden md:flex shrink-0">
+                        <Plus className="w-4 h-4 md:mr-0 xl:mr-2" />
+                        <span className="hidden xl:inline">Share Resource</span>
+                        <span className="sr-only xl:hidden">Share Resource</span>
+                      </Button>
+                    }
+                  />
+                )
               )}
             </div>
 
