@@ -122,7 +122,12 @@ function getErrorMessage(payload: any, fallback = 'API request failed'): string 
     return fallback;
 }
 
-const API_REQUEST_TIMEOUT_MS = 20000;
+const DEFAULT_API_REQUEST_TIMEOUT_MS = 20000;
+const RAG_QUERY_REQUEST_TIMEOUT_MS = 90000;
+
+type ApiRequestOptions = RequestInit & {
+    timeoutMs?: number;
+};
 
 function isAbortError(error: unknown): boolean {
     return error instanceof DOMException && error.name === 'AbortError';
@@ -133,12 +138,17 @@ function isAbortError(error: unknown): boolean {
  */
 async function apiRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: ApiRequestOptions = {}
 ): Promise<T> {
+    const {
+        timeoutMs = DEFAULT_API_REQUEST_TIMEOUT_MS,
+        ...requestOptions
+    } = options;
+
     const createHeaders = (token: string | null) => {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            ...(options.headers as Record<string, string>),
+            ...(requestOptions.headers as Record<string, string>),
         };
 
         if (token) {
@@ -148,16 +158,16 @@ async function apiRequest<T>(
     };
 
     const send = async (token: string | null) => {
-        const controller = options.signal ? null : new AbortController();
+        const controller = requestOptions.signal ? null : new AbortController();
         const timeoutId = controller
-            ? window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS)
+            ? window.setTimeout(() => controller.abort(), Math.max(1000, timeoutMs))
             : null;
 
         try {
             const response = await fetch(`${API_BASE}${endpoint}`, {
-                ...options,
+                ...requestOptions,
                 headers: createHeaders(token),
-                signal: options.signal ?? controller?.signal,
+                signal: requestOptions.signal ?? controller?.signal,
             });
             const payload = await parseResponsePayload(response);
             return { response, payload };
@@ -1749,6 +1759,7 @@ export async function queryRag(
 ): Promise<RagResponse> {
     return apiRequest('/api/rag/query', {
         method: 'POST',
+        timeoutMs: RAG_QUERY_REQUEST_TIMEOUT_MS,
         body: JSON.stringify({
             question,
             college_id: options?.collegeId,
