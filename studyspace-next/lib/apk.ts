@@ -1,6 +1,6 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android-v1.0.5-b6.apk";
+const DEFAULT_APK_URL = "/downloads/studyshare-android-v1.0.5-b9.apk";
 const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
-const DEFAULT_HOSTED_APK_URL = "/downloads/studyshare-android-v1.0.5-b6.apk";
+const DEFAULT_HOSTED_APK_URL = "/downloads/studyshare-android-v1.0.5-b9.apk";
 const LEGACY_HOSTED_APK_URL = "/downloads/studyshare-android.apk";
 const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
 const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
