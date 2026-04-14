@@ -1633,22 +1633,19 @@ export interface HealthStatus {
       source?: {
           type?: 'primary' | 'ocr' | 'transcript';
           text?: string;
-          ocrProvider?: 'google' | 'google_vision' | 'sarvam' | null;
+          ocrProvider?: 'google' | 'google_vision' | null;
       };
   }
 
 export async function getAiSummary(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<string>> {
     return apiRequest('/api/ai/summary', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
             college_id: options?.collegeId,
-            use_ocr: options?.useOcr,
-            ocr_provider: options?.ocrProvider,
-            force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
             video_url: options?.videoUrl,
@@ -1658,16 +1655,13 @@ export async function getAiSummary(
 
 export async function getAiQuiz(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/quiz', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
             college_id: options?.collegeId,
-            use_ocr: options?.useOcr,
-            ocr_provider: options?.ocrProvider,
-            force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
             video_url: options?.videoUrl,
@@ -1677,16 +1671,13 @@ export async function getAiQuiz(
 
 export async function getAiFlashcards(
     fileId: string,
-    options?: { useOcr?: boolean; ocrProvider?: 'google' | 'google_vision' | 'sarvam'; forceOcr?: boolean; collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
+    options?: { collegeId?: string; force?: boolean; includeSource?: boolean; videoUrl?: string }
 ): Promise<AiResponse<any[]>> {
     return apiRequest('/api/ai/flashcards', {
         method: 'POST',
         body: JSON.stringify({
             file_id: fileId,
             college_id: options?.collegeId,
-            use_ocr: options?.useOcr,
-            ocr_provider: options?.ocrProvider,
-            force_ocr: options?.forceOcr,
             force: options?.force,
             include_source: options?.includeSource,
             video_url: options?.videoUrl,

@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "data": {
+    "colors": {
+      "background": "#ffffff",
+      "foreground": "#000000",
+      "primary": "#0000ee",
+      "secondary": "#2195ff",
+      "accent": "#0087ff",
+      "text-muted": "#8a8f98",
+      "success": "#49de80",
+      "error": "#fe2c02"
+    },
+    "fonts": [
+      "sans-serif",
+      "Geist Mono",
+      "Emilio Light",
+      "Inter",
+      "Giga Sans Display Trial 400",
+      "Inter Display"
+    ],
+    "logo": null,
+    "screenshot": {
+      "url": "https://pquxfbbxflqvtidtlrhl.supabase.co/storage/v1/object/public/hmac-uploads/brand/4dccddc9-9eca-4b48-9ada-c8e2d715abee/screenshot.png",
+      "width": 1920,
+      "height": 1080,
+      "sizeBytes": 1332550,
+      "uploadedAt": "2026-04-12T07:05:13.801Z"
+    }
+  }
+}

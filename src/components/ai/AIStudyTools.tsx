@@ -21,13 +21,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
@@ -47,11 +40,8 @@ import { extractYouTubeId } from "@/lib/youtube";
 
 type OutputType = "summary" | "quiz" | "flashcards" | "chat";
 
-type OcrProvider = "google_vision" | "sarvam";
+type OcrProvider = "google_vision";
 type AiOptions = {
-  useOcr?: boolean;
-  forceOcr?: boolean;
-  ocrProvider?: OcrProvider;
   force?: boolean;
   includeSource?: boolean;
   videoUrl?: string;
@@ -114,13 +104,11 @@ const OUTPUT_META: Record<OutputType, { label: string; helper: string; icon: typ
 };
 
 function normalizeOcrProvider(provider: unknown): OcrProvider | null {
-  if (provider === "sarvam") return "sarvam";
   if (provider === "google_vision" || provider === "google") return "google_vision";
   return null;
 }
 
 function getOcrProviderLabel(provider: OcrProvider | null): string {
-  if (provider === "sarvam") return "Sarvam";
   if (provider === "google_vision") return "Google Vision";
   return "";
 }
@@ -274,7 +262,6 @@ const AIStudyTools = ({
 }: AIStudyToolsProps) => {
   const { user } = useAuth();
   const { selectedCollegeId } = useCollege();
-  const supportsOcr = resourceType !== "video";
   const usesTranscript = resourceType === "video";
   const isYouTubeVideo = useMemo(() => {
     if (!videoUrl) return false;
@@ -294,9 +281,6 @@ const AIStudyTools = ({
   const [summary, setSummary] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[] | null>(null);
-  const [useOcr, setUseOcr] = useState(true);
-  const [forceOcr, setForceOcr] = useState(false);
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("google_vision");
   const [freshRun, setFreshRun] = useState(true);
   const [showAnswers, setShowAnswers] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
@@ -310,9 +294,6 @@ const AIStudyTools = ({
   const [sourceProvider, setSourceProvider] = useState<OcrProvider | null>(null);
   const [showSource, setShowSource] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
-  const [runMeta, setRunMeta] = useState<
-    Partial<Record<OutputType, { usedOcr: boolean; provider: OcrProvider | null }>>
-  >({});
 
   const summaryParsed = useMemo(() => (summary ? parseSummary(summary) : null), [summary]);
   const summaryThemes = useMemo(() => extractSummaryThemes(summaryParsed), [summaryParsed]);
@@ -352,22 +333,16 @@ const AIStudyTools = ({
       const shouldUseVideoTranscript = usesTranscript && hasVideoUrl;
       const options = {
         collegeId,
-        useOcr: override?.useOcr ?? (supportsOcr ? (useOcr || forceOcr) : false),
-        forceOcr: override?.forceOcr ?? (supportsOcr ? forceOcr : false),
-        ocrProvider: supportsOcr ? (override?.ocrProvider ?? ocrProvider) : undefined,
         force: override?.force ?? freshRun,
         includeSource: override?.includeSource ?? false,
         videoUrl: shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
       };
-      const usedOcr = supportsOcr ? Boolean(options.useOcr || options.forceOcr) : false;
-      const usedProvider = usedOcr && supportsOcr ? (options.ocrProvider ?? null) : null;
-
       if (type === "summary") {
         const result = await getAiSummary(resourceId, options);
         let summaryText =
           typeof result.data === "string" ? result.data : JSON.stringify(result.data);
         let sourceTextValue = result.source?.text ?? null;
-        let sourceTypeValue = result.source?.type ?? "ocr";
+        let sourceTypeValue = result.source?.type ?? "primary";
         let sourceProviderValue = normalizeOcrProvider(result.source?.ocrProvider);
         let showSourceValue = Boolean(result.source?.text);
 
@@ -411,31 +386,29 @@ const AIStudyTools = ({
           );
         } else if (result.source?.text) {
           setSourceText(result.source.text);
-          setSourceType(result.source.type ?? "ocr");
+          setSourceType(result.source.type ?? "primary");
           setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
         setCachedMap((prev) => ({ ...prev, summary: !!result.cached }));
-        setRunMeta((prev) => ({ ...prev, summary: { usedOcr, provider: usedProvider } }));
       } else if (type === "quiz") {
         const result = await getAiQuiz(resourceId, options);
         setQuiz(Array.isArray(result.data) ? result.data : []);
         if (result.source?.text) {
           setSourceText(result.source.text);
-          setSourceType(result.source.type ?? "ocr");
+          setSourceType(result.source.type ?? "primary");
           setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
         setSelectedAnswers({});
         setActiveQuizIndex(0);
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
-        setRunMeta((prev) => ({ ...prev, quiz: { usedOcr, provider: usedProvider } }));
       } else {
         const result = await getAiFlashcards(resourceId, options);
         setFlashcards(Array.isArray(result.data) ? result.data : []);
         if (result.source?.text) {
           setSourceText(result.source.text);
-          setSourceType(result.source.type ?? "ocr");
+          setSourceType(result.source.type ?? "primary");
           setSourceProvider(normalizeOcrProvider(result.source.ocrProvider));
           setShowSource(true);
         }
@@ -443,7 +416,6 @@ const AIStudyTools = ({
         setIsCardFlipped(false);
         setCardDirection(null);
         setCachedMap((prev) => ({ ...prev, flashcards: !!result.cached }));
-        setRunMeta((prev) => ({ ...prev, flashcards: { usedOcr, provider: usedProvider } }));
       }
     } catch (err: unknown) {
       if (err instanceof ApiError && isAiTokenQuotaExceededPayload(err.payload)) {
@@ -622,24 +594,7 @@ const AIStudyTools = ({
     setIsCardFlipped(false);
   };
 
-  const handleSarvamOcrRetry = () => {
-    const overrides: AiOptions = {
-      useOcr: true,
-      forceOcr: true,
-      ocrProvider: "sarvam",
-      force: true,
-      includeSource: true,
-    };
-    setUseOcr(true);
-    setForceOcr(true);
-    setOcrProvider("sarvam");
-    setFreshRun(true);
-    handleGenerate(active === "chat" ? "summary" : active, overrides);
-  };
-
   const meta = OUTPUT_META[active];
-  const canRetrySarvam = (type: OutputType) =>
-    supportsOcr && runMeta[type]?.usedOcr && runMeta[type]?.provider === "google_vision";
   const isLoadingSummary = loading && loadingType === "summary";
   const isLoadingQuiz = loading && loadingType === "quiz";
   const isLoadingFlashcards = loading && loadingType === "flashcards";
@@ -707,43 +662,9 @@ const AIStudyTools = ({
                   Fresh run
                   <Switch checked={freshRun} onCheckedChange={setFreshRun} />
                 </label>
-                {supportsOcr ? (
-                  <>
-                    <label className="flex items-center gap-2">
-                      Use OCR
-                      <Switch
-                        checked={useOcr}
-                        onCheckedChange={(val) => {
-                          setUseOcr(val);
-                          if (!val) setForceOcr(false);
-                        }}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2">
-                      Force OCR
-                      <Switch
-                        checked={forceOcr}
-                        onCheckedChange={(val) => {
-                          setForceOcr(val);
-                          if (val) setUseOcr(true);
-                        }}
-                      />
-                    </label>
-                    <Select value={ocrProvider} onValueChange={(val) => setOcrProvider(val as OcrProvider)}>
-                      <SelectTrigger className="h-7 w-[140px] border-border bg-background text-[11px] text-foreground">
-                        <SelectValue placeholder="OCR provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="google_vision">Google Vision</SelectItem>
-                        <SelectItem value="sarvam">Sarvam OCR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </>
-                ) : (
-                  <span className="rounded-full border border-border bg-muted/40 px-2 py-1">
-                    {isYouTubeVideo ? "Using YouTube transcript" : "Transcript available for YouTube links"}
-                  </span>
-                )}
+                <span className="rounded-full border border-border bg-muted/40 px-2 py-1">
+                  {isYouTubeVideo ? "Using YouTube transcript" : "OCR disabled on web AI Studio"}
+                </span>
                 <span className="ml-auto hidden md:inline text-muted-foreground/80">
                   {active === "chat" ? "Live mode" : cachedMap[active] ? "Cached result" : "Fresh result"}
                 </span>
@@ -764,17 +685,6 @@ const AIStudyTools = ({
                     </div>
                   )}
                 </div>
-                {resourceType !== "video" && !quotaLimit && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleSarvamOcrRetry}
-                    className="h-7 rounded-md border border-border bg-background text-[11px] text-foreground hover:bg-muted"
-                    disabled={loading}
-                  >
-                    Run OCR (Sarvam)
-                  </Button>
-                )}
               </div>
             </div>
           )}
@@ -885,18 +795,6 @@ const AIStudyTools = ({
                         <RefreshCcw className="h-3.5 w-3.5" />
                         <span className="ml-1">Regenerate</span>
                       </Button>
-                      {canRetrySarvam("summary") && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                          disabled={loading}
-                        >
-                          <Wand2 className="h-3.5 w-3.5" />
-                          <span className="ml-1">Try Sarvam OCR</span>
-                        </Button>
-                      )}
                     </div>
                     <Button
                       onClick={handleExportSummary}
@@ -936,18 +834,6 @@ const AIStudyTools = ({
                       <div className="flex items-center justify-between">
                         <div className="text-xs text-muted-foreground">{quiz.length} questions</div>
                         <div className="flex items-center gap-2">
-                          {canRetrySarvam("quiz") && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleSarvamOcrRetry}
-                              className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                              disabled={loading}
-                            >
-                              <Wand2 className="h-3.5 w-3.5" />
-                              <span className="ml-1">Try Sarvam OCR</span>
-                            </Button>
-                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1074,18 +960,6 @@ const AIStudyTools = ({
                       Card {activeCardIndex + 1} of {flashcards.length}
                     </div>
                     <div className="flex items-center gap-2">
-                      {canRetrySarvam("flashcards") && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleSarvamOcrRetry}
-                          className="h-8 rounded-md border border-border bg-muted/40 text-xs text-foreground hover:bg-muted"
-                          disabled={loading}
-                        >
-                          <Wand2 className="h-3.5 w-3.5" />
-                          <span className="ml-1">Try Sarvam OCR</span>
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1195,7 +1069,7 @@ const AIStudyTools = ({
             <div className="mt-3 rounded-2xl border border-border bg-background/70 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {sourceType === "transcript" ? "Transcript" : "OCR Output"}
+                  {sourceType === "transcript" ? "Transcript" : "Source Context"}
                   {sourceProvider ? ` (${getOcrProviderLabel(sourceProvider)})` : ""}
                 </div>
                 <Button
@@ -1216,17 +1090,7 @@ const AIStudyTools = ({
           )}
 
           <div className="mt-2 rounded-xl border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-            {supportsOcr ? (
-              <>
-                Tip: If the output feels off, enable <span className="text-primary">Use OCR</span> or run a{" "}
-                <span className="text-primary">Fresh run</span>.
-              </>
-            ) : (
-              <>
-                Tip: If the output feels off, run a{" "}
-                <span className="text-primary">Fresh run</span> to re-fetch captions.
-              </>
-            )}
+            Tip: If the output feels off, run a <span className="text-primary">Fresh run</span>.
           </div>
           </div>
         </Tabs>

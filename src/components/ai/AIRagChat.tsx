@@ -478,6 +478,57 @@ const AIRagChat = ({
     }));
   };
 
+  const queryRagWithAutoWebFallback = async (
+    prompt: string,
+    history: Array<{ role: "user" | "assistant"; content: string }>,
+    mode: "notes" | "web"
+  ): Promise<{ response: RagResponse; usedAutoWebFallback: boolean }> => {
+    const requestFilters: RagFilters = {
+      ...filters,
+      source_type: mode === "notes" ? "pdf" : filters.source_type || "both",
+    };
+
+    const firstResponse = await queryRag(prompt, {
+      collegeId: selectedCollegeId || undefined,
+      allowWeb: mode === "web",
+      filters: requestFilters,
+      history,
+    });
+
+    const shouldAutoFallbackToWeb =
+      mode === "notes" &&
+      (firstResponse.answer_origin === "insufficient_notes" || firstResponse.no_local);
+
+    if (!shouldAutoFallbackToWeb) {
+      return { response: firstResponse, usedAutoWebFallback: false };
+    }
+
+    try {
+      const webResponse = await queryRag(prompt, {
+        collegeId: selectedCollegeId || undefined,
+        allowWeb: true,
+        filters: {
+          ...filters,
+          source_type: filters.source_type || "both",
+        },
+        history,
+      });
+
+      const webImprovedAnswer =
+        webResponse.answer_origin !== "insufficient_notes" ||
+        !webResponse.no_local ||
+        (webResponse.sources?.length || 0) > (firstResponse.sources?.length || 0);
+
+      if (webImprovedAnswer) {
+        return { response: webResponse, usedAutoWebFallback: true };
+      }
+    } catch {
+      // Keep the notes-only response if web supplementation fails.
+    }
+
+    return { response: firstResponse, usedAutoWebFallback: false };
+  };
+
   const buildQueryFromFollowUp = (action: RagFollowUpAction) => {
     switch (action.type) {
       case "find_related_topics":
@@ -590,10 +641,6 @@ const AIRagChat = ({
     const askContent = attachmentList.length
       ? `${q}\n\nAttachment context: ${attachmentList.join(", ")}`
       : q;
-    const requestFilters: RagFilters = {
-      ...filters,
-      source_type: queryMode === "notes" ? "pdf" : filters.source_type || "both",
-    };
     const traceEnabled = shouldUseLiveTrace(q);
 
     if (!presetQuestion) {
@@ -605,12 +652,17 @@ const AIRagChat = ({
     setLoading(true);
 
     try {
-      const response = await queryRag(askContent, {
-        collegeId: selectedCollegeId || undefined,
-        allowWeb: queryMode === "web",
-        filters: requestFilters,
-        history: [...getHistoryForRequest(), { role: "user", content: askContent }],
-      });
+      const historyForRequest = [...getHistoryForRequest(), { role: "user", content: askContent }];
+      const { response, usedAutoWebFallback } = await queryRagWithAutoWebFallback(
+        askContent,
+        historyForRequest,
+        queryMode
+      );
+
+      if (usedAutoWebFallback && queryMode !== "web") {
+        setQueryMode("web");
+        toast.message("Used web + notes because your notes had limited coverage for this question.");
+      }
 
       setMessages((prev) => [...prev, buildAssistantMessage(response, { traceEnabled })]);
       setAttachments([]);
@@ -769,15 +821,17 @@ const AIRagChat = ({
     setLoading(true);
 
       try {
-        const response = await queryRag(originalQuestion, {
-          collegeId: selectedCollegeId || undefined,
-          allowWeb: queryMode === "web",
-          filters: {
-            ...filters,
-            source_type: queryMode === "notes" ? "pdf" : filters.source_type || "both",
-          },
-          history: getHistoryForRequest(truncatedMessages),
-        });
+        const historyForRequest = getHistoryForRequest(truncatedMessages);
+        const { response, usedAutoWebFallback } = await queryRagWithAutoWebFallback(
+          originalQuestion,
+          historyForRequest,
+          queryMode
+        );
+
+        if (usedAutoWebFallback && queryMode !== "web") {
+          setQueryMode("web");
+          toast.message("Used web + notes because your notes had limited coverage for this question.");
+        }
 
       setMessages((prev) => [...prev, buildAssistantMessage(response, { traceEnabled })]);
     } catch (error: unknown) {
