@@ -1,4 +1,4 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_APK_URL = "/downloads/studyshare-android.apk?v=2011hf1";
 const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
 const DEFAULT_HOSTED_APK_URL = "/downloads/studyshare-android.apk";
 const LEGACY_HOSTED_APK_URL = "/downloads/studyshare-android.apk";
