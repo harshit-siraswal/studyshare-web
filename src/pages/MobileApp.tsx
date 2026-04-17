@@ -28,7 +28,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "@/hooks/useTheme";
-import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
+import { openAndroidApkDownload } from "@/lib/apk";
 import { formatSupportMessage } from "@/lib/support";
 import { cn } from "@/lib/utils";
 
@@ -147,7 +147,7 @@ const marqueeChips = [
   "Department notices",
   "Attendance",
   "Bookmarks",
-  "Smaller APK",
+  "Android APK",
 ];
 
 const bottomNavItems = [
@@ -459,7 +459,7 @@ const MobileApp = () => {
     <div className={cn("min-h-screen overflow-hidden transition-colors", isDark ? "bg-[#071019] text-[#f5f7fb]" : "bg-[#f5efe4] text-slate-950")}>
       <SEO
         title="StudyShare Android App"
-        description="See what the StudyShare Android app offers, switch between light and dark mode, and download the smaller split APK."
+        description="See what the StudyShare Android app offers, switch between light and dark mode, and download the latest Android APK."
         noIndex
       />
 
@@ -753,8 +753,8 @@ const MobileApp = () => {
                 },
                 {
                   icon: ShieldCheck,
-                  title: "A lighter Android install",
-                  copy: "Most modern devices can use the smaller arm64 build, which keeps the download leaner without changing the StudyShare experience inside the app.",
+                    title: "Latest Android APK",
+                    copy: "Download the latest StudyShare Android APK with the newest AI, notices, attendance, and campus updates included.",
                 },
               ].map((item) => {
                 const Icon = item.icon;
@@ -807,7 +807,7 @@ const MobileApp = () => {
                   className={cn(isDark ? "bg-[#7ce7d4] text-slate-950 hover:bg-[#9af3e3]" : "bg-slate-950 text-white hover:bg-slate-800")}
                 >
                   <Download className="h-4 w-4" />
-                  Download smaller APK
+                  Download APK
                 </Button>
               </div>
             </div>
