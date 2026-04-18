@@ -1,4 +1,4 @@
-const DEFAULT_APK_CACHE_KEY = "20260418-1";
+const DEFAULT_APK_CACHE_KEY = "20260418-2";
 const DEFAULT_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
 const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
 const DEFAULT_HOSTED_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
