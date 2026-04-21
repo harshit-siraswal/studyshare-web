@@ -32,11 +32,35 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
 } from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { SEO } from "@/components/SEO";
+
+const getVerificationRedirectUrl = () => {
+  const currentOrigin =
+    typeof window !== "undefined" ? window.location.origin.trim() : "";
+  const configuredSiteUrl = (
+    import.meta.env.VITE_SITE_URL as string | undefined
+  )?.trim();
+  const rawBaseUrl = currentOrigin || configuredSiteUrl || "";
+
+  if (!rawBaseUrl) {
+    return "";
+  }
+
+  const normalizedBaseUrl = /^https?:\/\//i.test(rawBaseUrl)
+    ? rawBaseUrl
+    : `https://${rawBaseUrl}`;
+
+  try {
+    return new URL("/email-verified", normalizedBaseUrl).toString();
+  } catch {
+    return currentOrigin ? `${currentOrigin}/email-verified` : "";
+  }
+};
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -45,6 +69,7 @@ const Auth = () => {
 
   const [isLogin, setIsLogin] = useState(true);
   const [verificationPending, setVerificationPending] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [resendingEmail, setResendingEmail] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
@@ -57,8 +82,34 @@ const Auth = () => {
   });
 
   const selectedCollege = JSON.parse(
-    localStorage.getItem("selectedCollege") || "{}"
+    localStorage.getItem("selectedCollege") || "{}",
   );
+  const pendingEmail =
+    verificationEmail || firebaseUser?.email || user?.email || "";
+
+  const sendVerificationEmailLink = async (targetUser: FirebaseUser) => {
+    const redirectUrl = getVerificationRedirectUrl();
+
+    if (redirectUrl) {
+      await sendEmailVerification(targetUser, {
+        url: redirectUrl,
+        handleCodeInApp: false,
+      });
+      return;
+    }
+
+    await sendEmailVerification(targetUser);
+  };
+
+  const resetVerificationState = async () => {
+    if (auth?.currentUser) {
+      await auth.signOut();
+    }
+
+    setVerificationPending(false);
+    setVerificationEmail("");
+    setIsLogin(true);
+  };
 
   // Redirect to /study only when user is authenticated, email verified, AND NOT banned
   useEffect(() => {
@@ -75,6 +126,7 @@ const Auth = () => {
       } else {
         // User exists but email not verified - show verification pending
         setVerificationPending(true);
+        setVerificationEmail(firebaseUser?.email || user.email || "");
       }
     }
   }, [user, loading, isBanned, navigate, firebaseUser?.emailVerified]);
@@ -85,7 +137,7 @@ const Auth = () => {
 
     setResendingEmail(true);
     try {
-      await sendEmailVerification(firebaseUser);
+      await sendVerificationEmailLink(firebaseUser);
       toast.success("Verification email sent! Check your inbox.");
     } catch (error: any) {
       console.error("Resend error:", error);
@@ -106,8 +158,8 @@ const Auth = () => {
     try {
       await firebaseUser.reload();
       if (auth?.currentUser?.emailVerified) {
-        toast.success("Email verified! Redirecting...");
-        navigate("/study", { replace: true });
+        toast.success("Email verified! Please sign in again.");
+        navigate("/email-verified", { replace: true });
       } else {
         toast.info("Email not verified yet. Check your inbox.");
       }
@@ -136,7 +188,7 @@ const Auth = () => {
       const user = result.user;
 
       const selectedCollege = JSON.parse(
-        localStorage.getItem("selectedCollege") || "{}"
+        localStorage.getItem("selectedCollege") || "{}",
       );
 
       await setDoc(
@@ -148,7 +200,7 @@ const Auth = () => {
           college: selectedCollege?.name || "",
           createdAt: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       toast.success("Signed in with Google");
@@ -162,7 +214,6 @@ const Auth = () => {
     }
   };
 
-
   /* ---------------------------------------------------------------- */
   /* 🔴 EMAIL LOGIN (STILL MOCK — SAFE) */
   /* ---------------------------------------------------------------- */
@@ -171,6 +222,11 @@ const Auth = () => {
   /* ---------------------------------------------------------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!auth || !db) {
+      toast.error("Authentication is temporarily unavailable.");
+      return;
+    }
 
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all required fields");
@@ -185,14 +241,29 @@ const Auth = () => {
     try {
       if (isLogin) {
         // LOGIN
-        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password,
+        );
+
+        await userCredential.user.reload();
+
+        if (!userCredential.user.emailVerified) {
+          setVerificationPending(true);
+          setVerificationEmail(userCredential.user.email || formData.email);
+          await auth.signOut();
+          toast.error("Please verify your email before signing in.");
+          return;
+        }
+
         toast.success("Welcome back!");
       } else {
         // SIGN UP
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           formData.email,
-          formData.password
+          formData.password,
         );
         const user = userCredential.user;
 
@@ -203,7 +274,7 @@ const Auth = () => {
 
         // Save to Firestore (matching Google Login pattern)
         const selectedCollege = JSON.parse(
-          localStorage.getItem("selectedCollege") || "{}"
+          localStorage.getItem("selectedCollege") || "{}",
         );
 
         await setDoc(
@@ -215,14 +286,16 @@ const Auth = () => {
             college: selectedCollege?.name || "",
             createdAt: new Date(),
           },
-          { merge: true }
+          { merge: true },
         );
 
         // Send verification email
-        await sendEmailVerification(user);
+        await sendVerificationEmailLink(user);
 
+        setVerificationEmail(user.email || formData.email);
         toast.success("Account created! Check your email to verify.");
         setVerificationPending(true);
+        setIsLogin(true);
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -241,7 +314,7 @@ const Auth = () => {
   };
 
   // Show verification pending UI if user exists but email not verified
-  if (verificationPending && user && !firebaseUser?.emailVerified) {
+  if (verificationPending && pendingEmail && !firebaseUser?.emailVerified) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
         <SEO
@@ -261,39 +334,50 @@ const Auth = () => {
               <CardDescription className="mt-2">
                 We've sent a verification email to:
                 <span className="block mt-2 font-medium text-foreground">
-                  {user.email}
+                  {pendingEmail}
                 </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground text-center">
-                Click the link in the email to verify your account.
-                Check your spam folder if you don't see it.
+                Click the link in the email to verify your account. Check your
+                spam folder if you don't see it.
               </p>
 
-              <Button
-                className="w-full"
-                onClick={handleCheckVerification}
-              >
-                I've Verified - Continue
-              </Button>
+              {firebaseUser ? (
+                <>
+                  <Button className="w-full" onClick={handleCheckVerification}>
+                    I've Verified - Continue
+                  </Button>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleResendVerification}
-                disabled={resendingEmail}
-              >
-                {resendingEmail ? "Sending..." : "Resend Verification Email"}
-              </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleResendVerification}
+                    disabled={resendingEmail}
+                  >
+                    {resendingEmail
+                      ? "Sending..."
+                      : "Resend Verification Email"}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setVerificationPending(false);
+                    setVerificationEmail("");
+                    setIsLogin(true);
+                  }}
+                >
+                  Go to Sign in
+                </Button>
+              )}
 
               <div className="text-center">
                 <Button
                   variant="link"
-                  onClick={async () => {
-                    if (auth) await auth.signOut();
-                    setVerificationPending(false);
-                  }}
+                  onClick={resetVerificationState}
                   className="text-muted-foreground"
                 >
                   Use a different email
@@ -340,7 +424,8 @@ const Auth = () => {
                 </p>
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                If you believe this is a mistake, please contact the administrator.
+                If you believe this is a mistake, please contact the
+                administrator.
               </p>
               <Button
                 variant="outline"
@@ -385,9 +470,7 @@ const Auth = () => {
               </div>
             </div>
 
-            <CardTitle>
-              {isLogin ? "Welcome back" : "Create account"}
-            </CardTitle>
+            <CardTitle>{isLogin ? "Welcome back" : "Create account"}</CardTitle>
 
             <CardDescription>
               {selectedCollege?.name && (
@@ -500,7 +583,9 @@ const Auth = () => {
                       setSendingResetEmail(true);
                       try {
                         await sendPasswordResetEmail(auth, formData.email);
-                        toast.success("Password reset email sent! Check your inbox.");
+                        toast.success(
+                          "Password reset email sent! Check your inbox.",
+                        );
                         setForgotPasswordMode(false);
                       } catch (error: any) {
                         console.error("Reset error:", error);
@@ -536,10 +621,7 @@ const Auth = () => {
 
             <div className="text-center text-sm">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <Button
-                variant="link"
-                onClick={() => setIsLogin(!isLogin)}
-              >
+              <Button variant="link" onClick={() => setIsLogin(!isLogin)}>
                 {isLogin ? "Sign up" : "Sign in"}
               </Button>
             </div>

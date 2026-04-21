@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 const createLazyPage = <T extends Record<string, unknown>>(
   loader: () => Promise<T>,
-  key: string
+  key: string,
 ) =>
   lazy(async () => {
     try {
@@ -28,7 +28,7 @@ const createLazyPage = <T extends Record<string, unknown>>(
       const message = error instanceof Error ? error.message : String(error);
       const isChunkLoadFailure =
         /Failed to fetch dynamically imported module|ChunkLoadError|Importing a module script failed/i.test(
-          message
+          message,
         );
 
       if (isChunkLoadFailure && typeof window !== "undefined") {
@@ -47,6 +47,7 @@ const createLazyPage = <T extends Record<string, unknown>>(
 
 const loadSelectCollege = () => import("./pages/SelectCollege");
 const loadAuth = () => import("./pages/Auth");
+const loadEmailVerified = () => import("./pages/EmailVerified");
 const loadStudy = () => import("./pages/Study");
 const loadNotices = () => import("./pages/Notices");
 const loadNoticePost = () => import("./pages/NoticePost");
@@ -68,6 +69,7 @@ const loadMobileBottomNav = () => import("@/components/mobile/MobileBottomNav");
 // Lazy load all pages for code splitting
 const SelectCollege = createLazyPage(loadSelectCollege, "select-college");
 const Auth = createLazyPage(loadAuth, "auth");
+const EmailVerified = createLazyPage(loadEmailVerified, "email-verified");
 const Study = createLazyPage(loadStudy, "study");
 const Notices = createLazyPage(loadNotices, "notices");
 const NoticePost = createLazyPage(loadNoticePost, "notice-post");
@@ -76,7 +78,10 @@ const ChatPostDetail = createLazyPage(loadChatPostDetail, "chat-post-detail");
 const Profile = createLazyPage(loadProfile, "profile");
 const Messages = createLazyPage(loadMessages, "messages");
 const Explore = createLazyPage(loadExplore, "explore");
-const DepartmentProfile = createLazyPage(loadDepartmentProfile, "department-profile");
+const DepartmentProfile = createLazyPage(
+  loadDepartmentProfile,
+  "department-profile",
+);
 const Bookmarks = createLazyPage(loadBookmarks, "bookmarks");
 const AIChat = createLazyPage(loadAIChat, "ai-chat");
 const Blog = createLazyPage(loadBlog, "blog");
@@ -97,7 +102,8 @@ const isLightweightPublicPath = (pathname: string) =>
   pathname === "/privacy-policy" ||
   pathname === "/terms-of-use" ||
   pathname === "/community-guidelines" ||
-  pathname === "/account-deletion";
+  pathname === "/account-deletion" ||
+  pathname === "/email-verified";
 
 const preloadRouteModules = () => {
   [
@@ -143,21 +149,127 @@ const AppRoutes = () => {
       <Route path="/community-guidelines" element={<LegalPage />} />
       <Route path="/account-deletion" element={<LegalPage />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
-      <Route path="/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-      <Route path="/notices/:accountHandle" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
-      <Route path="/notices/post/:noticeId" element={<ProtectedRoute><NoticePost /></ProtectedRoute>} />
-      <Route path="/department/:deptId" element={<ProtectedRoute><DepartmentProfile /></ProtectedRoute>} />
-      <Route path="/chatroom" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-      <Route path="/chatroom/:roomId" element={<ProtectedRoute><Chatroom /></ProtectedRoute>} />
-      <Route path="/chatroom/:roomId/post/:postId" element={<ProtectedRoute><ChatPostDetail /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
-      <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
-      <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/messages/:username" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+      <Route path="/email-verified" element={<EmailVerified />} />
+      <Route
+        path="/study"
+        element={
+          <ProtectedRoute>
+            <Study />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notices"
+        element={
+          <ProtectedRoute>
+            <Notices />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notices/:accountHandle"
+        element={
+          <ProtectedRoute>
+            <Notices />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notices/post/:noticeId"
+        element={
+          <ProtectedRoute>
+            <NoticePost />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/department/:deptId"
+        element={
+          <ProtectedRoute>
+            <DepartmentProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatroom"
+        element={
+          <ProtectedRoute>
+            <Chatroom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatroom/:roomId"
+        element={
+          <ProtectedRoute>
+            <Chatroom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatroom/:roomId/post/:postId"
+        element={
+          <ProtectedRoute>
+            <ChatPostDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile/:username"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/explore"
+        element={
+          <ProtectedRoute>
+            <Explore />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bookmarks"
+        element={
+          <ProtectedRoute>
+            <Bookmarks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ai-chat"
+        element={
+          <ProtectedRoute>
+            <AIChat />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages/:username"
+        element={
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -202,7 +314,8 @@ const AppProviders = ({
 const App = () => {
   const location = useLocation();
   const lightweightPublicRoute = isLightweightPublicPath(location.pathname);
-  const shouldRenderMobileNav = !lightweightPublicRoute && location.pathname !== "/auth";
+  const shouldRenderMobileNav =
+    !lightweightPublicRoute && location.pathname !== "/auth";
 
   return (
     <ThemeProvider>
@@ -231,13 +344,18 @@ const AppWithPreload = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (typeof window === "undefined" || isLightweightPublicPath(location.pathname)) {
+    if (
+      typeof window === "undefined" ||
+      isLightweightPublicPath(location.pathname)
+    ) {
       return;
     }
 
     const usesIdleCallback = "requestIdleCallback" in window;
     const schedule = usesIdleCallback
-      ? window.requestIdleCallback(() => preloadRouteModules(), { timeout: 1500 })
+      ? window.requestIdleCallback(() => preloadRouteModules(), {
+          timeout: 1500,
+        })
       : window.setTimeout(() => preloadRouteModules(), 800);
 
     return () => {
