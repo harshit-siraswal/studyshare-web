@@ -1,12 +1,45 @@
 import { useState, useEffect } from "react";
 import {
-  Bookmark, MessageSquare, Bell, ChevronDown, ChevronRight, Hash, Users, LogOut,
-  Plus, Lock, PanelLeftClose, PanelLeft, KeyRound, ExternalLink, Trash2, User, Search, Sparkles, Moon, Sun, Smartphone
+  Bookmark,
+  MessageSquare,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  Hash,
+  Users,
+  LogOut,
+  Plus,
+  Lock,
+  PanelLeftClose,
+  PanelLeft,
+  KeyRound,
+  ExternalLink,
+  Trash2,
+  User,
+  Search,
+  Sparkles,
+  Moon,
+  Sun,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -49,17 +82,29 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   const localUser = JSON.parse(localStorage.getItem("user") || "{}");
   // Use authUser from context, fallback to localStorage
   const user = authUser || localUser;
-  const selectedCollege = JSON.parse(localStorage.getItem("selectedCollege") || "{}");
+  const selectedCollege = JSON.parse(
+    localStorage.getItem("selectedCollege") || "{}",
+  );
 
   const getInitials = (name: string) => {
-    if (!name) return 'U';
+    if (!name) return "U";
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const normalizePhotoUrl = (value?: string | null) => {
+    const normalized = typeof value === "string" ? value.trim() : "";
+    return normalized || null;
+  };
+
+  const sidebarPhotoUrl =
+    normalizePhotoUrl(userProfile?.profile_photo_url) ||
+    normalizePhotoUrl(authUser?.photoURL) ||
+    normalizePhotoUrl(user?.photoURL);
 
   // Fetch user profile from Supabase
   useEffect(() => {
@@ -69,16 +114,16 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
 
       try {
         const { data } = await supabase
-          .from('users_safe')
+          .from("users_safe")
           .select(SIDEBAR_USER_SELECT)
-          .eq('id', userId)
+          .eq("id", userId)
           .maybeSingle();
 
         if (data) {
           setUserProfile(data);
         }
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.error("Error fetching user profile:", error);
       }
     };
 
@@ -86,7 +131,9 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
   }, [authUser?.uid, localUser?.uid]);
 
   useEffect(() => {
-    const storedBookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+    const storedBookmarks = JSON.parse(
+      localStorage.getItem("bookmarks") || "[]",
+    );
     setBookmarks(storedBookmarks);
 
     const handleStorageChange = () => {
@@ -171,20 +218,31 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Avatar className="h-8 w-8">
-                      {userProfile?.profile_photo_url ? (
+                      {sidebarPhotoUrl ? (
                         <AvatarImage
-                          src={userProfile.profile_photo_url}
+                          src={sidebarPhotoUrl}
                           alt={userProfile.display_name || user.displayName}
                         />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {getInitials(userProfile?.display_name || user.displayName || user.name || user.email || 'User')}
+                          {getInitials(
+                            userProfile?.display_name ||
+                              user.displayName ||
+                              user.name ||
+                              user.email ||
+                              "User",
+                          )}
                         </AvatarFallback>
                       )}
                     </Avatar>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">{userProfile?.display_name || user.displayName || user.name || "Profile"}</TooltipContent>
+                <TooltipContent side="right">
+                  {userProfile?.display_name ||
+                    user.displayName ||
+                    user.name ||
+                    "Profile"}
+                </TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -315,14 +373,18 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
         <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
           <AlertDialogContent className="mx-4 max-w-sm sm:max-w-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Are you sure you want to logout?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 You will be redirected to the college selection page.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleLogout}>Logout</AlertDialogAction>
+              <AlertDialogAction onClick={handleLogout}>
+                Logout
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -340,23 +402,35 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
           >
             <Avatar className="w-10 h-10 shrink-0">
-              {userProfile?.profile_photo_url ? (
+              {sidebarPhotoUrl ? (
                 <AvatarImage
-                  src={userProfile.profile_photo_url}
+                  src={sidebarPhotoUrl}
                   alt={userProfile.display_name || user.name}
                 />
               ) : (
                 <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
-                  {getInitials(userProfile?.display_name || user.name || user.displayName || user.email || 'User')}
+                  {getInitials(
+                    userProfile?.display_name ||
+                      user.name ||
+                      user.displayName ||
+                      user.email ||
+                      "User",
+                  )}
                 </AvatarFallback>
               )}
             </Avatar>
             <div className="flex-1 min-w-0 text-left">
               <p className="font-medium text-sidebar-foreground truncate">
-                {userProfile?.display_name || user.displayName || user.name || user.email?.split('@')[0] || "User"}
+                {userProfile?.display_name ||
+                  user.displayName ||
+                  user.name ||
+                  user.email?.split("@")[0] ||
+                  "User"}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {selectedCollege?.name || userProfile?.college || "Your College"}
+                {selectedCollege?.name ||
+                  userProfile?.college ||
+                  "Your College"}
               </p>
             </div>
           </button>
@@ -479,7 +553,9 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent className="mx-4 max-w-sm sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Are you sure you want to logout?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               You will be redirected to the college selection page.
             </AlertDialogDescription>

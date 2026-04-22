@@ -3,7 +3,26 @@ import { useCollege } from "@/context/CollegeContext";
 import * as api from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Crown, CreditCard, FileText, Video, HelpCircle, Users, LogOut, Edit2, Search, Camera, X, Check, MoreVertical, Trash2, Bookmark, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Crown,
+  CreditCard,
+  FileText,
+  Video,
+  HelpCircle,
+  Users,
+  LogOut,
+  Edit2,
+  Search,
+  Camera,
+  X,
+  Check,
+  MoreVertical,
+  Trash2,
+  Bookmark,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +31,39 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import PDFViewer from "@/components/PDFViewer";
 import EditResourceDialog from "@/components/EditResourceDialog";
@@ -25,8 +72,12 @@ import ImageCropper from "@/components/ImageCropper";
 import { supabase } from "../supabase";
 import { SEO } from "@/components/SEO";
 import PremiumModal from "@/components/PremiumModal";
-import { buildAiTokenBudgetSnapshot, formatVisibleAiTokens } from "@/lib/aiTokens";
+import {
+  buildAiTokenBudgetSnapshot,
+  formatVisibleAiTokens,
+} from "@/lib/aiTokens";
 import VideoPlayer from "@/components/VideoPlayer";
+import ImageViewer from "@/components/ImageViewer";
 import {
   BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
@@ -182,6 +233,38 @@ function getContributionDescription(description?: string): string | null {
   return normalized;
 }
 
+function mapResourceToContribution(
+  resource: api.Resource,
+  fallbackEmail = "",
+): Contribution {
+  const createdAt =
+    resource.createdAt || resource.created_at || new Date().toISOString();
+  const uploadedByEmail =
+    resource.uploadedByEmail || resource.uploaded_by_email || fallbackEmail;
+
+  return {
+    id: resource.id,
+    title: resource.title,
+    type: resource.type,
+    votes: (resource.upvotes || 0) - (resource.downvotes || 0),
+    status:
+      resource.status ||
+      (resource.isApproved || resource.is_approved ? "approved" : "pending"),
+    date: new Date(createdAt).toLocaleDateString(),
+    url: resource.video_url || resource.url || undefined,
+    pdfUrl: resource.file_url || resource.filePath || undefined,
+    semester: resource.semester,
+    branch: resource.branch,
+    subject: resource.subject,
+    chapter: resource.chapter,
+    topic: resource.topic,
+    description: resource.description,
+    uploaded_by_email: uploadedByEmail,
+    uploaded_by_name:
+      resource.uploadedByName || resource.uploaded_by_name || undefined,
+  };
+}
+
 function normalizeProfilePhotoUrl(value?: string | null): string | null {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) return null;
@@ -270,7 +353,9 @@ function extractCollegeName(value?: string | null): string {
 
 function isPremiumTierActive(profile?: Partial<UserProfile> | null): boolean {
   if (!profile) return false;
-  const tier = String(profile.subscription_tier ?? "").trim().toLowerCase();
+  const tier = String(profile.subscription_tier ?? "")
+    .trim()
+    .toLowerCase();
   if (!["pro", "max", "premium"].includes(tier)) return false;
   if (!profile.subscription_end_date) return false;
   const expiry = new Date(profile.subscription_end_date);
@@ -328,10 +413,42 @@ function toOptionalNumber(value: unknown): number | undefined {
 }
 
 const mockContributions: Contribution[] = [
-  { id: 1, title: "Complete Guide to Arrays", type: "video", votes: 156, status: "approved", date: "2024-03-10", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-  { id: 2, title: "OS Process Management Notes", type: "notes", votes: 89, status: "pending", date: "2024-03-08", pdfUrl: "https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-intro.pdf" },
-  { id: 3, title: "DBMS Mid-Sem 2023", type: "pyq", votes: 234, status: "approved", date: "2024-03-05", pdfUrl: "https://www.db-book.com/slides-dir/PDF-dir/ch1.pdf" },
-  { id: 4, title: "Network Protocols Summary", type: "notes", votes: 67, status: "approved", date: "2024-03-01", pdfUrl: "https://intronetworks.cs.luc.edu/current2/ComputerNetworks.pdf" },
+  {
+    id: 1,
+    title: "Complete Guide to Arrays",
+    type: "video",
+    votes: 156,
+    status: "approved",
+    date: "2024-03-10",
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  },
+  {
+    id: 2,
+    title: "OS Process Management Notes",
+    type: "notes",
+    votes: 89,
+    status: "pending",
+    date: "2024-03-08",
+    pdfUrl: "https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-intro.pdf",
+  },
+  {
+    id: 3,
+    title: "DBMS Mid-Sem 2023",
+    type: "pyq",
+    votes: 234,
+    status: "approved",
+    date: "2024-03-05",
+    pdfUrl: "https://www.db-book.com/slides-dir/PDF-dir/ch1.pdf",
+  },
+  {
+    id: 4,
+    title: "Network Protocols Summary",
+    type: "notes",
+    votes: 67,
+    status: "approved",
+    date: "2024-03-01",
+    pdfUrl: "https://intronetworks.cs.luc.edu/current2/ComputerNetworks.pdf",
+  },
 ];
 
 const mockFollowers: User[] = [
@@ -342,18 +459,71 @@ const mockFollowers: User[] = [
 ];
 
 const mockFollowing: User[] = [
-  { id: 1, name: "Prof. Sharma", username: "prof_sharma_cs", college: "Computer Science Dept." },
+  {
+    id: 1,
+    name: "Prof. Sharma",
+    username: "prof_sharma_cs",
+    college: "Computer Science Dept.",
+  },
   { id: 2, name: "Vikram R.", username: "vikram_r_24", college: "IIT Delhi" },
-  { id: 3, name: "Study Group", username: "cse_2024_group", college: "CSE 2024" },
+  {
+    id: 3,
+    name: "Study Group",
+    username: "cse_2024_group",
+    college: "CSE 2024",
+  },
 ];
 
 const allUsers: User[] = [
-  { id: 5, name: "Neha Singh", username: "neha_singh_cs", college: "IIT Kanpur", contributions: mockContributions.slice(0, 2), followers: mockFollowers.slice(0, 2), following: mockFollowing.slice(0, 1) },
-  { id: 6, name: "Arjun Verma", username: "arjun_v_2024", college: "NIT Surathkal", contributions: mockContributions.slice(1, 3), followers: mockFollowers.slice(1, 3), following: mockFollowing.slice(0, 2) },
-  { id: 7, name: "Pooja Reddy", username: "pooja_r_aiml", college: "IIIT Hyderabad", contributions: mockContributions.slice(0, 3), followers: mockFollowers.slice(0, 3), following: mockFollowing },
-  { id: 8, name: "Prof. Kumar", username: "prof_kumar_ml", college: "ML Department", contributions: mockContributions, followers: mockFollowers, following: mockFollowing, isTeacher: true },
-  ...mockFollowers.map(f => ({ ...f, contributions: mockContributions.slice(0, 2), followers: mockFollowers.slice(0, 2), following: mockFollowing.slice(0, 1) })),
-  ...mockFollowing.map(f => ({ ...f, contributions: mockContributions.slice(1, 3), followers: mockFollowers.slice(1, 3), following: mockFollowing.slice(0, 2) })),
+  {
+    id: 5,
+    name: "Neha Singh",
+    username: "neha_singh_cs",
+    college: "IIT Kanpur",
+    contributions: mockContributions.slice(0, 2),
+    followers: mockFollowers.slice(0, 2),
+    following: mockFollowing.slice(0, 1),
+  },
+  {
+    id: 6,
+    name: "Arjun Verma",
+    username: "arjun_v_2024",
+    college: "NIT Surathkal",
+    contributions: mockContributions.slice(1, 3),
+    followers: mockFollowers.slice(1, 3),
+    following: mockFollowing.slice(0, 2),
+  },
+  {
+    id: 7,
+    name: "Pooja Reddy",
+    username: "pooja_r_aiml",
+    college: "IIIT Hyderabad",
+    contributions: mockContributions.slice(0, 3),
+    followers: mockFollowers.slice(0, 3),
+    following: mockFollowing,
+  },
+  {
+    id: 8,
+    name: "Prof. Kumar",
+    username: "prof_kumar_ml",
+    college: "ML Department",
+    contributions: mockContributions,
+    followers: mockFollowers,
+    following: mockFollowing,
+    isTeacher: true,
+  },
+  ...mockFollowers.map((f) => ({
+    ...f,
+    contributions: mockContributions.slice(0, 2),
+    followers: mockFollowers.slice(0, 2),
+    following: mockFollowing.slice(0, 1),
+  })),
+  ...mockFollowing.map((f) => ({
+    ...f,
+    contributions: mockContributions.slice(1, 3),
+    followers: mockFollowers.slice(1, 3),
+    following: mockFollowing.slice(0, 2),
+  })),
 ];
 
 const typeIcons = {
@@ -383,10 +553,28 @@ const Profile = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [selectedPdf, setSelectedPdf] = useState<{ title: string; url: string; resourceId?: string } | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<{ title: string; url: string; resourceId?: string } | null>(null);
+  const [selectedPdf, setSelectedPdf] = useState<{
+    title: string;
+    url: string;
+    resourceId?: string;
+  } | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<{
+    title: string;
+    url: string;
+    resourceId?: string;
+  } | null>(null);
+  const [profilePhotoViewer, setProfilePhotoViewer] = useState<{
+    isOpen: boolean;
+    url: string;
+    title: string;
+  }>({
+    isOpen: false,
+    url: "",
+    title: "",
+  });
   const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
+  const [editingContribution, setEditingContribution] =
+    useState<Contribution | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [savedPosts, setSavedPosts] = useState<SavedPost[]>([]);
 
@@ -398,26 +586,34 @@ const Profile = () => {
   const [following, setFollowing] = useState<Record<string, unknown>[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [viewFollowers, setViewFollowers] = useState<Record<string, unknown>[]>([]);
-  const [viewFollowing, setViewFollowing] = useState<Record<string, unknown>[]>([]);
+  const [viewFollowers, setViewFollowers] = useState<Record<string, unknown>[]>(
+    [],
+  );
+  const [viewFollowing, setViewFollowing] = useState<Record<string, unknown>[]>(
+    [],
+  );
   const [viewFollowersCount, setViewFollowersCount] = useState(0);
   const [viewFollowingCount, setViewFollowingCount] = useState(0);
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
   const [showFollowingDialog, setShowFollowingDialog] = useState(false);
-  const [viewingOtherProfile, setViewingOtherProfile] = useState<UserProfile | null>(null);
+  const [viewingOtherProfile, setViewingOtherProfile] =
+    useState<UserProfile | null>(null);
   const [aiTokenUsage, setAiTokenUsage] = useState<AiTokenUsage | null>(null);
 
   // Discover Users State
   const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
-  const [discoverUsers, setDiscoverUsers] = useState<Record<string, unknown>[]>([]);
+  const [discoverUsers, setDiscoverUsers] = useState<Record<string, unknown>[]>(
+    [],
+  );
   const [discoverSearch, setDiscoverSearch] = useState("");
 
   // Image Cropper State
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [premiumModalMode, setPremiumModalMode] = useState<"premium" | "recharge">("premium");
-
+  const [premiumModalMode, setPremiumModalMode] = useState<
+    "premium" | "recharge"
+  >("premium");
 
   /* === EDIT FORM === */
   const [editForm, setEditForm] = useState({
@@ -451,7 +647,10 @@ const Profile = () => {
           const profileResult = await api.getMyProfile();
           profile = (profileResult?.profile ?? null) as UserProfile | null;
         } catch (apiError) {
-          console.warn("Primary profile fetch failed, falling back to users table", apiError);
+          console.warn(
+            "Primary profile fetch failed, falling back to users table",
+            apiError,
+          );
         }
 
         if (!profile) {
@@ -467,12 +666,16 @@ const Profile = () => {
             profile = {
               id: authUser.uid,
               email: authUser.email || "",
-              display_name: authUser.displayName || authUser.email?.split("@")[0] || "User",
+              display_name:
+                authUser.displayName || authUser.email?.split("@")[0] || "User",
               bio: "",
               profile_photo_url: authUser.photoURL || null,
               college: localStorage.getItem("selectedCollege") || "",
               username:
-                authUser.email?.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "user",
+                authUser.email
+                  ?.split("@")[0]
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]/g, "") || "user",
               branch: "",
               semester: "",
               subject: "",
@@ -494,11 +697,16 @@ const Profile = () => {
           bio: profile?.bio || "",
           college: extractCollegeName(
             profile?.college ||
-              (selectedCollege?.name ? selectedCollege.name : localStorage.getItem("selectedCollege")),
+              (selectedCollege?.name
+                ? selectedCollege.name
+                : localStorage.getItem("selectedCollege")),
           ),
           username:
             profile?.username ||
-            authUser.email?.split("@")[0]?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
+            authUser.email
+              ?.split("@")[0]
+              ?.toLowerCase()
+              .replace(/[^a-z0-9]/g, "") ||
             "user",
           profile_photo_url:
             resolveProfilePhotoUrl(profile, [authUser.photoURL]) || undefined,
@@ -511,14 +719,17 @@ const Profile = () => {
         };
 
         setUserProfile(resolvedProfile);
-        setEditForm(prev => ({
+        setEditForm((prev) => ({
           ...prev,
           name: resolvedProfile.display_name,
           bio: resolvedProfile.bio || "",
           username: resolvedProfile.username || prev.username,
           profilePhoto: resolvedProfile.profile_photo_url || prev.profilePhoto,
           semester: resolvedProfile.semester || "",
-          branch: normalizeBranchCode(resolvedProfile.branch) || resolvedProfile.branch || "",
+          branch:
+            normalizeBranchCode(resolvedProfile.branch) ||
+            resolvedProfile.branch ||
+            "",
           subject: resolvedProfile.subject || "",
         }));
       } catch (error) {
@@ -532,22 +743,36 @@ const Profile = () => {
   }, [authUser]);
 
   // Fetch followers, following, and contributions in PARALLEL for faster load
+  const loadOwnContributions = async () => {
+    const response = await api.getMyResources();
+    return (response.resources || []).map((resource) =>
+      mapResourceToContribution(resource, authUser?.email || ""),
+    );
+  };
+
+  const loadViewedContributions = async (email: string) => {
+    const response = await api.getUserResources(email, {
+      approvedOnly: true,
+      limit: 200,
+      offset: 0,
+    });
+    return (response.resources || []).map((resource) =>
+      mapResourceToContribution(resource, email),
+    );
+  };
+
   const fetchProfileData = async () => {
     if (!authUser?.email) return;
 
     try {
       // Parallel fetch - reduces load time by 50-70%
-      const [followersData, followingData, savedPostsData, contributionsData] = await Promise.all([
-        api.getFollowers(),
-        api.getFollowing(),
-        api.getSavedChatPosts(),
-        // Fetch contributions from Supabase
-        supabase
-          .from('resources')
-          .select('*')
-          .eq('uploaded_by_email', authUser.email)
-          .order('created_at', { ascending: false }),
-      ]);
+      const [followersData, followingData, savedPostsData, contributionsData] =
+        await Promise.all([
+          api.getFollowers(),
+          api.getFollowing(),
+          api.getSavedChatPosts(),
+          loadOwnContributions(),
+        ]);
 
       // Update followers/following
       setFollowersCount(followersData.followers.length);
@@ -556,32 +781,9 @@ const Profile = () => {
       setFollowing(followingData.following);
       setSavedPosts(savedPostsData.savedPosts || []);
 
-      // Transform and update contributions
-      if (contributionsData.data && !contributionsData.error) {
-        const transformed = contributionsData.data.map(r => ({
-          id: r.id,
-          title: r.title,
-          type: r.type,
-          votes: (r.upvotes || 0) - (r.downvotes || 0),
-          status: r.status || 'pending',
-          date: new Date(r.created_at).toLocaleDateString(),
-          url: r.video_url || undefined,
-          pdfUrl: r.file_url || undefined,
-          semester: r.semester,
-          branch: r.branch,
-          subject: r.subject,
-          chapter: r.chapter,
-          topic: r.topic,
-          description: r.description,
-          uploaded_by_email: r.uploaded_by_email || authUser?.email || '',
-        }));
-        setContributions(transformed);
-      } else if (contributionsData.error) {
-        console.error('Error fetching contributions:', contributionsData.error);
-        setContributions([]);
-      }
+      setContributions(contributionsData);
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      console.error("Error fetching profile data:", error);
     }
   };
 
@@ -605,7 +807,7 @@ const Profile = () => {
       setViewFollowing(followingData.following || []);
       setViewFollowingCount(followingData.following?.length || 0);
     } catch (error) {
-      console.error('Error fetching viewed profile social data:', error);
+      console.error("Error fetching viewed profile social data:", error);
       setViewFollowers([]);
       setViewFollowing([]);
       setViewFollowersCount(0);
@@ -628,26 +830,62 @@ const Profile = () => {
       try {
         const profileResult = await api.getMyProfile();
         const profile = (profileResult?.profile || {}) as Partial<UserProfile>;
-        setUserProfile(prev => ({
-          ...(prev ?? {}),
-          ...profile,
-          profile_photo_url: resolveProfilePhotoUrl(profile, [
-            prev?.profile_photo_url,
-            authUser.photoURL,
-          ]) || undefined,
-        } as UserProfile));
+        setUserProfile(
+          (prev) =>
+            ({
+              ...(prev ?? {}),
+              ...profile,
+              profile_photo_url:
+                resolveProfilePhotoUrl(profile, [
+                  prev?.profile_photo_url,
+                  authUser.photoURL,
+                ]) || undefined,
+            }) as UserProfile,
+        );
         const balance = await api.getAiTokenBalance();
-        const snapshot = buildAiTokenBudgetSnapshot(profile as Record<string, unknown>);
-        const budgetFromApi = toSafeInt(balance.budget ?? profile.ai_token_budget);
+        const snapshot = buildAiTokenBudgetSnapshot(
+          profile as Record<string, unknown>,
+        );
+        const hasBudgetValue =
+          balance.budget != null || profile.ai_token_budget != null;
+        const hasUsedValue =
+          balance.used != null || profile.ai_token_used != null;
+        const hasRemainingValue =
+          balance.remaining != null || profile.ai_token_remaining != null;
+        const budgetFromApi = toSafeInt(
+          balance.budget ?? profile.ai_token_budget,
+        );
         const usedFromApi = toSafeInt(balance.used ?? profile.ai_token_used);
-        const remainingFromApi = toSafeInt(balance.remaining ?? profile.ai_token_remaining);
-        const budget = budgetFromApi > 0 ? budgetFromApi : snapshot.currentBudget;
-        const used = clamp(usedFromApi, 0, Math.max(budget, 0));
-        let remaining = budget > 0
-          ? clamp(remainingFromApi, 0, budget)
-          : 0;
-        if (budget > 0 && remaining === 0 && used < budget) {
-          remaining = clamp(budget - used, 0, budget);
+        const remainingFromApi = toSafeInt(
+          balance.remaining ?? profile.ai_token_remaining,
+        );
+        const budget =
+          hasBudgetValue && budgetFromApi > 0
+            ? budgetFromApi
+            : snapshot.currentBudget;
+
+        let used = hasUsedValue
+          ? clamp(usedFromApi, 0, Math.max(budget, 0))
+          : null;
+        let remaining =
+          hasRemainingValue && budget > 0
+            ? clamp(remainingFromApi, 0, budget)
+            : null;
+
+        if (budget > 0) {
+          if (used === null && remaining !== null) {
+            used = clamp(budget - remaining, 0, budget);
+          }
+          if (remaining === null && used !== null) {
+            remaining = clamp(budget - used, 0, budget);
+          }
+        }
+
+        if (used === null) {
+          used = 0;
+        }
+        if (remaining === null) {
+          remaining = Math.max(budget - used, 0);
         }
 
         const cycleDaysRaw = toSafeInt(profile.ai_token_cycle_days);
@@ -663,20 +901,25 @@ const Profile = () => {
           budget,
           used,
           remaining,
-          baseBudget: snapshot.baseBudget > 0 ? snapshot.baseBudget : DEFAULT_AI_TOKEN_BASE_BUDGET,
+          baseBudget:
+            snapshot.baseBudget > 0
+              ? snapshot.baseBudget
+              : DEFAULT_AI_TOKEN_BASE_BUDGET,
           budgetMultiplier: snapshot.budgetMultiplier,
           premiumMultiplier: snapshot.premiumMultiplier,
           cycleDays,
-          cycleStartedAt: cycleStartedAt && !Number.isNaN(cycleStartedAt.getTime())
-            ? cycleStartedAt.toISOString()
-            : null,
-          cycleEndsAt: cycleEndsAt && !Number.isNaN(cycleEndsAt.getTime())
-            ? cycleEndsAt.toISOString()
-            : null,
+          cycleStartedAt:
+            cycleStartedAt && !Number.isNaN(cycleStartedAt.getTime())
+              ? cycleStartedAt.toISOString()
+              : null,
+          cycleEndsAt:
+            cycleEndsAt && !Number.isNaN(cycleEndsAt.getTime())
+              ? cycleEndsAt.toISOString()
+              : null,
           budgetInr: snapshot.budgetInr,
         });
       } catch (error) {
-        console.error('Failed to fetch AI token usage:', error);
+        console.error("Failed to fetch AI token usage:", error);
         setAiTokenUsage({
           budget: DEFAULT_AI_TOKEN_BUDGET,
           used: 0,
@@ -702,22 +945,23 @@ const Profile = () => {
     try {
       // Fetch users from the same college, excluding current user
       const { data: allUsersData, error } = await supabase
-        .from('users_safe')
+        .from("users_safe")
         .select(DISCOVER_USER_SELECT)
-        .neq('email', authUser.email)
-        .order('created_at', { ascending: false })
+        .neq("email", authUser.email)
+        .order("created_at", { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
       // Filter out already followed users
-      const followingEmails = new Set(following.map(f => f.email));
-      const notFollowed = allUsersData?.filter(u => !followingEmails.has(u.email)) || [];
+      const followingEmails = new Set(following.map((f) => f.email));
+      const notFollowed =
+        allUsersData?.filter((u) => !followingEmails.has(u.email)) || [];
 
       setDiscoverUsers(notFollowed);
     } catch (error) {
-      console.error('Error fetching discover users:', error);
-      toast.error('Failed to load users');
+      console.error("Error fetching discover users:", error);
+      toast.error("Failed to load users");
     }
   };
 
@@ -743,16 +987,15 @@ const Profile = () => {
         return;
       }
 
-
       // Clear old data before fetching new profile
       setContributions([]);
       setViewingOtherProfile(null);
 
       // Fetch the other user's profile
       const { data: otherProfile } = await supabase
-        .from('users_safe')
+        .from("users_safe")
         .select(USER_PROFILE_SELECT)
-        .eq('username', viewingUsername)
+        .eq("username", viewingUsername)
         .maybeSingle();
 
       if (otherProfile) {
@@ -762,7 +1005,6 @@ const Profile = () => {
           profile_photo_url: resolveProfilePhotoUrl(otherProfile) || undefined,
           role: otherProfile.role || "student",
         });
-
       }
     };
 
@@ -787,42 +1029,15 @@ const Profile = () => {
       if (!isViewingOther || !viewingOtherProfile) return;
 
       try {
-        // Query by uploaded_by_email to match how resources are stored
-        const { data, error } = await supabase
-          .from('resources')
-          .select('*')
-          .eq('uploaded_by_email', viewingOtherProfile.email)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-
-        const transformed = data?.map(r => ({
-          id: r.id,
-          title: r.title,
-          type: r.type,
-          votes: (r.upvotes || 0) - (r.downvotes || 0),
-          status: r.status || 'pending',
-          date: new Date(r.created_at).toLocaleDateString(),
-          url: r.video_url || undefined,
-          pdfUrl: r.file_url || undefined,
-          semester: r.semester,
-          branch: r.branch,
-          subject: r.subject,
-          chapter: r.chapter,
-          topic: r.topic,
-          description: r.description,
-          uploaded_by_email: r.uploaded_by_email || viewingOtherProfile.email,
-        })) || [];
-
-        setContributions(transformed);
+        const nextContributions = await loadViewedContributions(
+          viewingOtherProfile.email,
+        );
+        setContributions(nextContributions);
       } catch (error) {
-        console.error('Error fetching viewed user contributions:', error);
+        console.error("Error fetching viewed user contributions:", error);
         setContributions([]); // Clear contributions on error
       }
     };
-
-
 
     if (isViewingOther && viewingOtherProfile) {
       fetchViewedUserContributions();
@@ -834,8 +1049,6 @@ const Profile = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isViewingOther, viewingOtherProfile]);
-
-
 
   if (loading || loadingProfile) {
     return (
@@ -853,9 +1066,8 @@ const Profile = () => {
   }
 
   /* === VIEW MODE - Phase 2: Fix profile routing === */
-  const activeProfile = isViewingOther && viewingOtherProfile
-    ? viewingOtherProfile
-    : userProfile;
+  const activeProfile =
+    isViewingOther && viewingOtherProfile ? viewingOtherProfile : userProfile;
   const profileUser: ProfileUser = {
     name:
       activeProfile?.display_name ||
@@ -866,7 +1078,7 @@ const Profile = () => {
     email: activeProfile?.email || authUser.email || "",
     college: extractCollegeName(
       activeProfile?.college ||
-      (selectedCollege?.name ? selectedCollege.name : "College"),
+        (selectedCollege?.name ? selectedCollege.name : "College"),
     ),
     bio: activeProfile?.bio || "",
     profilePhoto:
@@ -875,6 +1087,14 @@ const Profile = () => {
         editForm.profilePhoto,
       ]) || "",
     role: activeProfile?.role || "student",
+  };
+  const openProfilePhotoViewer = () => {
+    if (!profileUser.profilePhoto) return;
+    setProfilePhotoViewer({
+      isOpen: true,
+      url: profileUser.profilePhoto,
+      title: `${profileUser.name}'s profile photo`,
+    });
   };
 
   /* === DISPLAY VALUES === */
@@ -891,9 +1111,19 @@ const Profile = () => {
     editForm.subject && !availableProfileSubjects.includes(editForm.subject)
       ? [editForm.subject, ...availableProfileSubjects]
       : availableProfileSubjects;
-  const displaySemester = (activeProfile?.semester || editForm.semester || "").trim();
-  const displayBranch = getBranchBadgeLabel(activeProfile?.branch || editForm.branch);
-  const displaySubject = (activeProfile?.subject || editForm.subject || "").trim();
+  const displaySemester = (
+    activeProfile?.semester ||
+    editForm.semester ||
+    ""
+  ).trim();
+  const displayBranch = getBranchBadgeLabel(
+    activeProfile?.branch || editForm.branch,
+  );
+  const displaySubject = (
+    activeProfile?.subject ||
+    editForm.subject ||
+    ""
+  ).trim();
   const premiumActive = isPremiumTierActive(activeProfile);
   const premiumTierLabel = premiumActive
     ? String(activeProfile?.subscription_tier ?? "")
@@ -909,18 +1139,24 @@ const Profile = () => {
   const displayContributions = contributions;
   const activeFollowers = isViewingOther ? viewFollowers : followers;
   const activeFollowing = isViewingOther ? viewFollowing : following;
-  const activeFollowersCount = isViewingOther ? viewFollowersCount : followersCount;
-  const activeFollowingCount = isViewingOther ? viewFollowingCount : followingCount;
+  const activeFollowersCount = isViewingOther
+    ? viewFollowersCount
+    : followersCount;
+  const activeFollowingCount = isViewingOther
+    ? viewFollowingCount
+    : followingCount;
 
   /* === ROLE === */
-  const isTeacher = ["teacher", "admin", "moderator"].includes(profileUser.role.toLowerCase());
+  const isTeacher = ["teacher", "admin", "moderator"].includes(
+    profileUser.role.toLowerCase(),
+  );
 
   const getInitials = (name: string) => {
-    if (!name) return 'U';
+    if (!name) return "U";
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -934,31 +1170,33 @@ const Profile = () => {
 
     try {
       // Escape SQL LIKE wildcards
-      const escapeLike = (str: string) => str.replace(/[\\%_]/g, '\\$&');
+      const escapeLike = (str: string) => str.replace(/[\\%_]/g, "\\$&");
       const escapedQuery = escapeLike(query);
 
       // Search users from database
       const { data, error } = await supabase
-        .from('users_safe')
-        .select('id, email, display_name, username, profile_photo_url, college')
-        .or(`username.ilike.%${escapedQuery}%,display_name.ilike.%${escapedQuery}%`)
+        .from("users_safe")
+        .select("id, email, display_name, username, profile_photo_url, college")
+        .or(
+          `username.ilike.%${escapedQuery}%,display_name.ilike.%${escapedQuery}%`,
+        )
         .limit(10);
 
       if (error) throw error;
 
       // Transform to User interface
-      const results = (data || []).map(u => ({
+      const results = (data || []).map((u) => ({
         id: u.id,
-        name: u.display_name || u.email?.split('@')[0] || 'User',
-        username: u.username || u.email?.split('@')[0] || 'user',
-        college: u.college || 'College',
+        name: u.display_name || u.email?.split("@")[0] || "User",
+        username: u.username || u.email?.split("@")[0] || "user",
+        college: u.college || "College",
         email: u.email,
         profilePhoto: u.profile_photo_url,
       }));
 
       setSearchResults(results);
     } catch (error) {
-      console.error('Search error:', error);
+      console.error("Search error:", error);
       setSearchResults([]);
     }
   };
@@ -967,13 +1205,14 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file || !authUser) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit before crop
-      toast.error('Image must be less than 5MB');
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit before crop
+      toast.error("Image must be less than 5MB");
       return;
     }
 
@@ -987,7 +1226,7 @@ const Profile = () => {
 
     // Reset file input
     if (e.target) {
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
@@ -1011,17 +1250,19 @@ const Profile = () => {
       await api.updateProfile({ profile_photo_url: base64 });
 
       // Update local state
-      setUserProfile(prev => prev ? { ...prev, profile_photo_url: base64 } : null);
-      setEditForm(prev => ({ ...prev, profilePhoto: base64 }));
+      setUserProfile((prev) =>
+        prev ? { ...prev, profile_photo_url: base64 } : null,
+      );
+      setEditForm((prev) => ({ ...prev, profilePhoto: base64 }));
 
       // Close cropper
       setShowCropper(false);
       setCropperImage(null);
 
-      toast.success('Profile photo updated!');
+      toast.success("Profile photo updated!");
     } catch (error: unknown) {
-      console.error('Photo upload error:', error);
-      toast.error((error as Error).message || 'Failed to upload photo');
+      console.error("Photo upload error:", error);
+      toast.error((error as Error).message || "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -1039,32 +1280,40 @@ const Profile = () => {
 
     // Validate username
     if (!normalizedUsername || normalizedUsername.length < 3) {
-      toast.error('Username must be at least 3 characters');
+      toast.error("Username must be at least 3 characters");
       return;
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
-      toast.error('Username can only contain letters, numbers, and underscores');
+      toast.error(
+        "Username can only contain letters, numbers, and underscores",
+      );
       return;
     }
 
     try {
       // Check if username is taken (via frontend read - allowed by RLS)
-      if (normalizedUsername !== (userProfile?.username || '').toLowerCase()) {
+      if (normalizedUsername !== (userProfile?.username || "").toLowerCase()) {
         const { data: existingUsers, error: lookupError } = await supabase
-          .from('users_safe')
-          .select('id, email, username')
-          .ilike('username', normalizedUsername)
+          .from("users_safe")
+          .select("id, email, username")
+          .ilike("username", normalizedUsername)
           .limit(10);
 
         if (lookupError) {
           throw lookupError;
         }
 
-        const normalizedCurrentEmail = (authUser.email || '').trim().toLowerCase();
+        const normalizedCurrentEmail = (authUser.email || "")
+          .trim()
+          .toLowerCase();
         const hasUsernameConflict = (existingUsers || []).some((candidate) => {
-          const candidateUsername = String(candidate.username || '').trim().toLowerCase();
-          const candidateEmail = String(candidate.email || '').trim().toLowerCase();
+          const candidateUsername = String(candidate.username || "")
+            .trim()
+            .toLowerCase();
+          const candidateEmail = String(candidate.email || "")
+            .trim()
+            .toLowerCase();
           return (
             candidateUsername === normalizedUsername &&
             candidateEmail !== normalizedCurrentEmail
@@ -1072,7 +1321,7 @@ const Profile = () => {
         });
 
         if (hasUsernameConflict) {
-          toast.error('Username already taken');
+          toast.error("Username already taken");
           return;
         }
       }
@@ -1096,21 +1345,25 @@ const Profile = () => {
 
       const result = await api.updateProfile(profileUpdates);
 
-      setUserProfile(prev => prev ? {
-        ...prev,
-        display_name: normalizedDisplayName,
-        bio: normalizedBio || undefined,
-        username: normalizedUsername,
-        semester: normalizedSemester || undefined,
-        branch: normalizedBranch || undefined,
-        subject: normalizedSubject || undefined,
-      } : null);
+      setUserProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              display_name: normalizedDisplayName,
+              bio: normalizedBio || undefined,
+              username: normalizedUsername,
+              semester: normalizedSemester || undefined,
+              branch: normalizedBranch || undefined,
+              subject: normalizedSubject || undefined,
+            }
+          : null,
+      );
 
       setIsEditing(false);
-      toast.success('Profile updated!');
+      toast.success("Profile updated!");
     } catch (error: unknown) {
-      console.error('Save profile error:', error);
-      toast.error((error as Error).message || 'Failed to update profile');
+      console.error("Save profile error:", error);
+      toast.error((error as Error).message || "Failed to update profile");
     }
   };
 
@@ -1118,11 +1371,11 @@ const Profile = () => {
     try {
       await api.deleteResource(id.toString());
 
-      setContributions(prev => prev.filter(c => c.id !== id));
-      toast.success('Resource deleted');
+      setContributions((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Resource deleted");
     } catch (error) {
-      console.error('Error deleting resource:', error);
-      toast.error('Failed to delete resource');
+      console.error("Error deleting resource:", error);
+      toast.error("Failed to delete resource");
     }
   };
 
@@ -1130,31 +1383,8 @@ const Profile = () => {
     // Refresh contributions after edit
     if (!authUser) return;
 
-    const { data } = await supabase
-      .from('resources')
-      .select('*')
-      .eq('uploaded_by_email', authUser.email)
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      const transformed = data.map(r => ({
-        id: r.id,
-        title: r.title,
-        type: r.type,
-        votes: (r.upvotes || 0) - (r.downvotes || 0),
-        status: r.status || 'pending',
-        date: new Date(r.created_at).toLocaleDateString(),
-        url: r.video_url || undefined,
-        pdfUrl: r.file_url || undefined,
-        semester: r.semester,
-        branch: r.branch,
-        subject: r.subject,
-        chapter: r.chapter,
-        topic: r.topic,
-        description: r.description,
-      }));
-      setContributions(transformed);
-    }
+    const refreshedContributions = await loadOwnContributions();
+    setContributions(refreshedContributions);
 
     setEditDialogOpen(false);
   };
@@ -1202,7 +1432,10 @@ const Profile = () => {
       return;
     }
 
-    if ((contribution.type === "notes" || contribution.type === "pyq") && contribution.pdfUrl) {
+    if (
+      (contribution.type === "notes" || contribution.type === "pyq") &&
+      contribution.pdfUrl
+    ) {
       setSelectedPdf({
         title: contribution.title,
         url: contribution.pdfUrl,
@@ -1215,9 +1448,10 @@ const Profile = () => {
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <SEO
         title={isViewingOther ? `${displayName}'s Profile` : "Your Profile"}
-        description={isViewingOther
-          ? `View ${displayName}'s profile and contributions on StudyShare.`
-          : "Manage your profile, view your contributions, and connect with other students."
+        description={
+          isViewingOther
+            ? `View ${displayName}'s profile and contributions on StudyShare.`
+            : "Manage your profile, view your contributions, and connect with other students."
         }
         noIndex
       />
@@ -1225,10 +1459,16 @@ const Profile = () => {
       <div className="sticky top-0 z-10 bg-card/90 backdrop-blur-lg border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/study")}
+            >
               <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
-            <h1 className="text-lg sm:text-xl font-semibold">{isViewingOther ? `${profileUser.name}'s Profile` : "My Profile"}</h1>
+            <h1 className="text-lg sm:text-xl font-semibold">
+              {isViewingOther ? `${profileUser.name}'s Profile` : "My Profile"}
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             {!isViewingOther && (
@@ -1249,400 +1489,533 @@ const Profile = () => {
         <div className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
           <div className="min-w-0 space-y-4 sm:space-y-6">
             <Card className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
-              <div className="relative mx-auto sm:mx-0">
-                <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
-                  {profileUser.profilePhoto ? (
-                    <AvatarImage
-                      src={profileUser.profilePhoto}
-                      alt={displayName}
-                    />
+              <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+                <div className="relative mx-auto sm:mx-0">
+                  {!isViewingOther ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="rounded-full transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          aria-label="Open profile photo options"
+                        >
+                          <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
+                            {profileUser.profilePhoto ? (
+                              <AvatarImage
+                                src={profileUser.profilePhoto}
+                                alt={displayName}
+                              />
+                            ) : (
+                              <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                                {getInitials(displayName)}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center">
+                        {profileUser.profilePhoto && (
+                          <DropdownMenuItem onClick={openProfilePhotoViewer}>
+                            View photo
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Change photo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   ) : (
-                    <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                      {getInitials(displayName)}
-                    </AvatarFallback>
+                    <button
+                      type="button"
+                      className="rounded-full transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-default disabled:opacity-100"
+                      onClick={openProfilePhotoViewer}
+                      disabled={!profileUser.profilePhoto}
+                      aria-label={
+                        profileUser.profilePhoto
+                          ? `View ${displayName}'s profile photo`
+                          : `${displayName}'s profile photo`
+                      }
+                    >
+                      <Avatar className="w-20 h-20 sm:w-24 sm:h-24">
+                        {profileUser.profilePhoto ? (
+                          <AvatarImage
+                            src={profileUser.profilePhoto}
+                            alt={displayName}
+                          />
+                        ) : (
+                          <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                            {getInitials(displayName)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                    </button>
                   )}
-                </Avatar>
-                {!isViewingOther && (
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingPhoto}
-                  >
-                    {uploadingPhoto ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Camera className="w-3 h-3" />
-                    )}
-                  </Button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </div>
-
-              <div className="flex-1 text-center sm:text-left w-full">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h2>
-                      <Badge
-                        variant={premiumActive ? "default" : "secondary"}
-                        className={premiumActive ? "border-amber-500/30 bg-amber-500/15 text-amber-300" : ""}
-                      >
-                        {premiumTierLabel}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">@{displayUsername}</p>
-                  </div>
                   {!isViewingOther && (
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      className="w-full sm:w-auto"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingPhoto}
                     >
-                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                      Edit Profile
+                      {uploadingPhoto ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Camera className="w-3 h-3" />
+                      )}
                     </Button>
                   )}
-                  {isViewingOther && viewingOtherProfile?.email && (
-                    <FollowButton
-                      targetUserEmail={viewingOtherProfile.email}
-                      targetUserName={viewingOtherProfile?.display_name}
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onStatusChange={handleFollowStatusChange}
-                    />
-                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-3">{displayEmail}</p>
-                {displayBio && (
-                  <p className="text-sm text-foreground mb-3">{displayBio}</p>
-                )}
-                {(displaySemester || displayBranch || displaySubject) && (
-                  <div className="mb-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    {displaySemester && (
-                      <Badge variant="secondary" className="font-medium">
-                        Sem {displaySemester}
-                      </Badge>
+
+                <div className="flex-1 text-center sm:text-left w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl sm:text-2xl font-bold truncate">
+                          {displayName}
+                        </h2>
+                        <Badge
+                          variant={premiumActive ? "default" : "secondary"}
+                          className={
+                            premiumActive
+                              ? "border-amber-500/30 bg-amber-500/15 text-amber-300"
+                              : ""
+                          }
+                        >
+                          {premiumTierLabel}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        @{displayUsername}
+                      </p>
+                    </div>
+                    {!isViewingOther && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditing(true)}
+                        className="w-full sm:w-auto"
+                      >
+                        <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                        Edit Profile
+                      </Button>
                     )}
-                    {displayBranch && (
-                      <Badge variant="outline" className="font-medium">
-                        {displayBranch}
-                      </Badge>
-                    )}
-                    {displaySubject && (
-                      <Badge variant="outline" className="max-w-full">
-                        <span className="truncate">{displaySubject}</span>
-                      </Badge>
+                    {isViewingOther && viewingOtherProfile?.email && (
+                      <FollowButton
+                        targetUserEmail={viewingOtherProfile.email}
+                        targetUserName={viewingOtherProfile?.display_name}
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onStatusChange={handleFollowStatusChange}
+                      />
                     )}
                   </div>
-                )}
-                {premiumExpiryLabel && (
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Premium active until {premiumExpiryLabel}
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                    {displayEmail}
                   </p>
-                )}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
-                  <div className="flex gap-3 sm:gap-4">
-                    <span className="text-foreground font-medium">
-                      <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                      {contributions.length} contributions
-                    </span>
-                    <button
-                      className="text-foreground font-medium hover:underline cursor-pointer"
-                      onClick={() => setShowFollowersDialog(true)}
-                    >
-                      <Users className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                      {activeFollowersCount} followers
-                    </button>
-                    <button
-                      className="text-foreground font-medium hover:underline cursor-pointer"
-                      onClick={() => setShowFollowingDialog(true)}
-                    >
-                      {activeFollowingCount} following
-                    </button>
+                  {displayBio && (
+                    <p className="text-sm text-foreground mb-3">{displayBio}</p>
+                  )}
+                  {(displaySemester || displayBranch || displaySubject) && (
+                    <div className="mb-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      {displaySemester && (
+                        <Badge variant="secondary" className="font-medium">
+                          Sem {displaySemester}
+                        </Badge>
+                      )}
+                      {displayBranch && (
+                        <Badge variant="outline" className="font-medium">
+                          {displayBranch}
+                        </Badge>
+                      )}
+                      {displaySubject && (
+                        <Badge variant="outline" className="max-w-full">
+                          <span className="truncate">{displaySubject}</span>
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {premiumExpiryLabel && (
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      Premium active until {premiumExpiryLabel}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm">
+                    <div className="flex gap-3 sm:gap-4">
+                      <span className="text-foreground font-medium">
+                        <FileText className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                        {contributions.length} contributions
+                      </span>
+                      <button
+                        className="text-foreground font-medium hover:underline cursor-pointer"
+                        onClick={() => setShowFollowersDialog(true)}
+                      >
+                        <Users className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                        {activeFollowersCount} followers
+                      </button>
+                      <button
+                        className="text-foreground font-medium hover:underline cursor-pointer"
+                        onClick={() => setShowFollowingDialog(true)}
+                      >
+                        {activeFollowingCount} following
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             </Card>
 
             {/* Search Bar for Contributions */}
             <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search contributions (notes, title, subject)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-10 sm:h-11"
-          />
-        </div>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search contributions (notes, title, subject)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 sm:h-11"
+              />
+            </div>
 
-        {/* Content Tabs */}
+            {/* Content Tabs */}
             <Tabs defaultValue="contributions" className="mt-0">
-          <TabsList className="w-full grid grid-cols-3 h-auto">
-            <TabsTrigger value="contributions" className="text-xs sm:text-sm py-2">
-              Contributions
-            </TabsTrigger>
-            {!isViewingOther && (
-              <TabsTrigger value="saved" className="text-xs sm:text-sm py-2">
-                Saved
-              </TabsTrigger>
-            )}
-            {!isViewingOther && isTeacher && (
-              <TabsTrigger value="pending" className="text-xs sm:text-sm py-2">
-                Pending
-              </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsList className="w-full grid grid-cols-3 h-auto">
+                <TabsTrigger
+                  value="contributions"
+                  className="text-xs sm:text-sm py-2"
+                >
+                  Contributions
+                </TabsTrigger>
+                {!isViewingOther && (
+                  <TabsTrigger
+                    value="saved"
+                    className="text-xs sm:text-sm py-2"
+                  >
+                    Saved
+                  </TabsTrigger>
+                )}
+                {!isViewingOther && isTeacher && (
+                  <TabsTrigger
+                    value="pending"
+                    className="text-xs sm:text-sm py-2"
+                  >
+                    Pending
+                  </TabsTrigger>
+                )}
+              </TabsList>
 
-          <TabsContent value="contributions">
-            <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(() => {
-                  // Phase 3: Filter contributions by search query
-                  const filteredContributions = contributions.filter(c =>
-                    searchQuery === "" ||
-                    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    c.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    c.chapter?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    c.topic?.toLowerCase().includes(searchQuery.toLowerCase())
-                  );
+              <TabsContent value="contributions">
+                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(() => {
+                      // Phase 3: Filter contributions by search query
+                      const filteredContributions = contributions.filter(
+                        (c) =>
+                          searchQuery === "" ||
+                          c.title
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          c.subject
+                            ?.toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          c.chapter
+                            ?.toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          c.topic
+                            ?.toLowerCase()
+                            .includes(searchQuery.toLowerCase()),
+                      );
 
-                  if (filteredContributions.length === 0) {
-                    return (
-                      <div className="col-span-2 text-center py-12 bg-card rounded-lg">
-                        <FileText className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground mb-4">
-                          {searchQuery ? `No contributions found matching "${searchQuery}"` : "No contributions yet"}
-                        </p>
-                        {!searchQuery && !isViewingOther && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate('/study')}
-                          >
-                            Share Your First Resource
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return filteredContributions.map((contribution) => {
-                    const Icon = typeIcons[contribution.type as keyof typeof typeIcons];
-                    const contributionDescription = getContributionDescription(contribution.description);
-                    const previewable =
-                      (contribution.type === "video" && !!contribution.url) ||
-                      ((contribution.type === "notes" || contribution.type === "pyq") && !!contribution.pdfUrl);
-
-                    return (
-                      <Card
-                        key={contribution.id}
-                        variant="interactive"
-                        role={previewable ? "button" : undefined}
-                        tabIndex={previewable ? 0 : -1}
-                        onClick={previewable ? () => openContributionPreview(contribution) : undefined}
-                        onKeyDown={previewable ? (event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            openContributionPreview(contribution);
-                          }
-                        } : undefined}
-                        className={`p-4 transition-shadow ${previewable ? "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Icon className="w-6 h-6 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-semibold text-foreground text-base line-clamp-2 flex-1">
-                                {contribution.title}
-                              </h3>
-                              {!isViewingOther && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 shrink-0"
-                                      onClick={(event) => event.stopPropagation()}
-                                    >
-                                      <MoreVertical className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    onClick={(event) => event.stopPropagation()}
-                                  >
-                                    <DropdownMenuItem
-                                      onSelect={(event) => {
-                                        event.stopPropagation();
-                                        setEditingContribution(contribution);
-                                        setEditDialogOpen(true);
-                                      }}
-                                    >
-                                      <Edit2 className="w-4 h-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={(event) => {
-                                        event.stopPropagation();
-                                        handleDeleteContribution(contribution.id);
-                                      }}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </div>
-                            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <Badge variant={contribution.status === "approved" ? "default" : "secondary"} className="text-xs">
-                                {contribution.status}
-                              </Badge>
-                              {contribution.semester && (
-                                <span>Sem {contribution.semester}</span>
-                              )}
-                              {contribution.branch && (
-                                <span className="rounded-full border border-border/60 bg-background/60 px-2 py-0.5 uppercase tracking-wide">
-                                  {getBranchBadgeLabel(contribution.branch)}
-                                </span>
-                              )}
-                              {contribution.subject && (
-                                <span className="text-foreground/80">{contribution.subject}</span>
-                              )}
-                            </div>
-                            {contributionDescription && (
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                {contributionDescription}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between mt-3">
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>{contribution.votes || 0} votes</span>
-                                <span>{contribution.date}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  });
-                })()}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-
-          {!isViewingOther && (
-            <TabsContent value="saved">
-              <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-500px)]">
-                <div className="space-y-3">
-                  {savedPosts.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Bookmark className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                      <p className="text-muted-foreground">No saved posts yet</p>
-                      <p className="text-sm text-muted-foreground mt-1">Posts you save from chat rooms will appear here</p>
-                    </div>
-                  ) : (
-                    savedPosts.map((saved) => (
-                      <Card
-                        key={saved.id}
-                        className="p-3 sm:p-4 cursor-pointer transition-colors hover:bg-accent/20"
-                        onClick={() => {
-                          if (saved.roomId && saved.messageId) {
-                            navigate(`/chatroom/${saved.roomId}/post/${saved.messageId}`);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                          <span>#{saved.roomName}</span>
-                          {saved.savedAt && (
-                            <span>{new Date(saved.savedAt).toLocaleDateString()}</span>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-foreground line-clamp-2">
-                          {saved.content?.trim() || `Saved post from ${saved.roomName}`}
-                        </p>
-                        {saved.authorName && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            by {saved.authorName}
-                          </p>
-                        )}
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          )}
-
-          {
-            !isViewingOther && isTeacher && (
-              <TabsContent value="pending">
-                <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-500px)]">
-                  <div className="space-y-3">
-                    {contributions
-                      .filter((c) => c.status === "pending")
-                      .map((contribution) => {
-                        const Icon = typeIcons[contribution.type as keyof typeof typeIcons];
+                      if (filteredContributions.length === 0) {
                         return (
-                          <Card key={contribution.id} variant="interactive" className="p-3 sm:p-4">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                  <h3 className="font-medium text-foreground text-sm sm:text-base truncate">{contribution.title}</h3>
-                                  <p className="text-xs sm:text-sm text-muted-foreground">
-                                    Submitted on {contribution.date}
-                                  </p>
-                                </div>
+                          <div className="col-span-2 text-center py-12 bg-card rounded-lg">
+                            <FileText className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                            <p className="text-muted-foreground mb-4">
+                              {searchQuery
+                                ? `No contributions found matching "${searchQuery}"`
+                                : "No contributions yet"}
+                            </p>
+                            {!searchQuery && !isViewingOther && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate("/study")}
+                              >
+                                Share Your First Resource
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return filteredContributions.map((contribution) => {
+                        const Icon =
+                          typeIcons[
+                            contribution.type as keyof typeof typeIcons
+                          ];
+                        const contributionDescription =
+                          getContributionDescription(contribution.description);
+                        const previewable =
+                          (contribution.type === "video" &&
+                            !!contribution.url) ||
+                          ((contribution.type === "notes" ||
+                            contribution.type === "pyq") &&
+                            !!contribution.pdfUrl);
+
+                        return (
+                          <Card
+                            key={contribution.id}
+                            variant="interactive"
+                            role={previewable ? "button" : undefined}
+                            tabIndex={previewable ? 0 : -1}
+                            onClick={
+                              previewable
+                                ? () => openContributionPreview(contribution)
+                                : undefined
+                            }
+                            onKeyDown={
+                              previewable
+                                ? (event) => {
+                                    if (
+                                      event.key === "Enter" ||
+                                      event.key === " "
+                                    ) {
+                                      event.preventDefault();
+                                      openContributionPreview(contribution);
+                                    }
+                                  }
+                                : undefined
+                            }
+                            className={`p-4 transition-shadow ${previewable ? "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2" : ""}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <Icon className="w-6 h-6 text-primary" />
                               </div>
-                              <div className="flex gap-2 w-full sm:w-auto">
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => {
-                                    toast.error('Use the Admin Dashboard to approve resources.');
-                                  }}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => {
-                                    toast.error('Use the Admin Dashboard to reject resources.');
-                                  }}
-                                >
-                                  Reject
-                                </Button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <h3 className="font-semibold text-foreground text-base line-clamp-2 flex-1">
+                                    {contribution.title}
+                                  </h3>
+                                  {!isViewingOther && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 shrink-0"
+                                          onClick={(event) =>
+                                            event.stopPropagation()
+                                          }
+                                        >
+                                          <MoreVertical className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        align="end"
+                                        onClick={(event) =>
+                                          event.stopPropagation()
+                                        }
+                                      >
+                                        <DropdownMenuItem
+                                          onSelect={(event) => {
+                                            event.stopPropagation();
+                                            setEditingContribution(
+                                              contribution,
+                                            );
+                                            setEditDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit2 className="w-4 h-4 mr-2" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onSelect={(event) => {
+                                            event.stopPropagation();
+                                            handleDeleteContribution(
+                                              contribution.id,
+                                            );
+                                          }}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  <Badge
+                                    variant={
+                                      contribution.status === "approved"
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {contribution.status}
+                                  </Badge>
+                                  {contribution.semester && (
+                                    <span>Sem {contribution.semester}</span>
+                                  )}
+                                  {contribution.branch && (
+                                    <span className="rounded-full border border-border/60 bg-background/60 px-2 py-0.5 uppercase tracking-wide">
+                                      {getBranchBadgeLabel(contribution.branch)}
+                                    </span>
+                                  )}
+                                  {contribution.subject && (
+                                    <span className="text-foreground/80">
+                                      {contribution.subject}
+                                    </span>
+                                  )}
+                                </div>
+                                {contributionDescription && (
+                                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                    {contributionDescription}
+                                  </p>
+                                )}
+                                <div className="flex items-center justify-between mt-3">
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span>{contribution.votes || 0} votes</span>
+                                    <span>{contribution.date}</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </Card>
                         );
-                      })}
+                      });
+                    })()}
                   </div>
                 </ScrollArea>
               </TabsContent>
-            )
-          }
+
+              {!isViewingOther && (
+                <TabsContent value="saved">
+                  <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-500px)]">
+                    <div className="space-y-3">
+                      {savedPosts.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Bookmark className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                          <p className="text-muted-foreground">
+                            No saved posts yet
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Posts you save from chat rooms will appear here
+                          </p>
+                        </div>
+                      ) : (
+                        savedPosts.map((saved) => (
+                          <Card
+                            key={saved.id}
+                            className="p-3 sm:p-4 cursor-pointer transition-colors hover:bg-accent/20"
+                            onClick={() => {
+                              if (saved.roomId && saved.messageId) {
+                                navigate(
+                                  `/chatroom/${saved.roomId}/post/${saved.messageId}`,
+                                );
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <span>#{saved.roomName}</span>
+                              {saved.savedAt && (
+                                <span>
+                                  {new Date(saved.savedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-foreground line-clamp-2">
+                              {saved.content?.trim() ||
+                                `Saved post from ${saved.roomName}`}
+                            </p>
+                            {saved.authorName && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                by {saved.authorName}
+                              </p>
+                            )}
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
+
+              {!isViewingOther && isTeacher && (
+                <TabsContent value="pending">
+                  <ScrollArea className="h-[calc(100vh-520px)] sm:h-[calc(100vh-500px)]">
+                    <div className="space-y-3">
+                      {contributions
+                        .filter((c) => c.status === "pending")
+                        .map((contribution) => {
+                          const Icon =
+                            typeIcons[
+                              contribution.type as keyof typeof typeIcons
+                            ];
+                          return (
+                            <Card
+                              key={contribution.id}
+                              variant="interactive"
+                              className="p-3 sm:p-4"
+                            >
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="font-medium text-foreground text-sm sm:text-base truncate">
+                                      {contribution.title}
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">
+                                      Submitted on {contribution.date}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="flex-1 sm:flex-none"
+                                    onClick={() => {
+                                      toast.error(
+                                        "Use the Admin Dashboard to approve resources.",
+                                      );
+                                    }}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 sm:flex-none"
+                                    onClick={() => {
+                                      toast.error(
+                                        "Use the Admin Dashboard to reject resources.",
+                                      );
+                                    }}
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
 
@@ -1656,10 +2029,21 @@ const Profile = () => {
                       AI Tokens
                     </div>
                     <h3 className="mt-3 text-xl font-semibold text-foreground">
-                      {aiTokenUsage ? `${aiVisibleRemaining} left this cycle` : "AI tokens"}
+                      {aiTokenUsage
+                        ? `${aiVisibleRemaining} left this cycle`
+                        : "AI tokens"}
                     </h3>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Plan: <span className={premiumActive ? "font-semibold text-amber-300" : "font-medium text-foreground"}>{premiumTierLabel}</span>
+                      Plan:{" "}
+                      <span
+                        className={
+                          premiumActive
+                            ? "font-semibold text-amber-300"
+                            : "font-medium text-foreground"
+                        }
+                      >
+                        {premiumTierLabel}
+                      </span>
                     </p>
                     {premiumExpiryLabel && (
                       <p className="text-xs text-muted-foreground">
@@ -1688,23 +2072,43 @@ const Profile = () => {
 
                     <div className="mt-4 grid grid-cols-3 gap-3">
                       <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Remaining</p>
-                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleRemaining}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Remaining
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {aiVisibleRemaining}
+                        </p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Used</p>
-                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleUsed}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Used
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {aiVisibleUsed}
+                        </p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-background/70 p-3">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
-                        <p className="mt-2 text-lg font-semibold text-foreground">{aiVisibleBudget}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Total
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {aiVisibleBudget}
+                        </p>
                       </div>
                     </div>
 
                     <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
-                      <p>Cycle: {aiTokenUsage.cycleDays} days. Resets on {formatCycleDate(aiTokenUsage.cycleEndsAt)}.</p>
+                      <p>
+                        Cycle: {aiTokenUsage.cycleDays} days. Resets on{" "}
+                        {formatCycleDate(aiTokenUsage.cycleEndsAt)}.
+                      </p>
                       <p>1 AI token = 2,000 raw billable tokens.</p>
-                      <p>Base budget: {formatVisibleCreditCount(aiTokenUsage.baseBudget)} tokens. Premium multiplier: {aiTokenUsage.premiumMultiplier}x.</p>
+                      <p>
+                        Base budget:{" "}
+                        {formatVisibleCreditCount(aiTokenUsage.baseBudget)}{" "}
+                        tokens. Premium multiplier:{" "}
+                        {aiTokenUsage.premiumMultiplier}x.
+                      </p>
                     </div>
 
                     <div className="mt-4 flex flex-col gap-2">
@@ -1727,7 +2131,10 @@ const Profile = () => {
                     <div className="h-2.5 w-full animate-pulse rounded-full bg-muted" />
                     <div className="grid grid-cols-3 gap-3">
                       {[0, 1, 2].map((value) => (
-                        <div key={value} className="rounded-xl border border-border/60 bg-background/70 p-3">
+                        <div
+                          key={value}
+                          className="rounded-xl border border-border/60 bg-background/70 p-3"
+                        >
                           <div className="h-3 w-16 animate-pulse rounded bg-muted" />
                           <div className="mt-3 h-6 w-10 animate-pulse rounded bg-muted" />
                         </div>
@@ -1751,13 +2158,18 @@ const Profile = () => {
       </div>
 
       {/* Logout Confirmation Dialog */}
-      < AlertDialog open={showLogoutDialog} onOpenChange={(open) => {
-        console.log("Dialog state changing to:", open);
-        setShowLogoutDialog(open);
-      }}>
+      <AlertDialog
+        open={showLogoutDialog}
+        onOpenChange={(open) => {
+          console.log("Dialog state changing to:", open);
+          setShowLogoutDialog(open);
+        }}
+      >
         <AlertDialogContent className="mx-4 max-w-sm sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Are you sure you want to logout?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               You will be redirected to the college selection page.
             </AlertDialogDescription>
@@ -1767,7 +2179,7 @@ const Profile = () => {
             <AlertDialogAction onClick={handleLogout}>Yes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog >
+      </AlertDialog>
 
       <PremiumModal
         isOpen={showPremiumModal}
@@ -1776,12 +2188,13 @@ const Profile = () => {
       />
 
       {/* Edit Profile Dialog */}
-      < Dialog open={isEditing} onOpenChange={setIsEditing} >
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="mx-4 flex w-[min(94vw,720px)] max-w-2xl flex-col overflow-hidden rounded-3xl border border-border/70 bg-background/95 p-0 shadow-2xl backdrop-blur sm:mx-0">
           <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
-              Update your public profile details, branch, semester, and primary subject.
+              Update your public profile details, branch, semester, and primary
+              subject.
             </DialogDescription>
           </DialogHeader>
 
@@ -1818,7 +2231,9 @@ const Profile = () => {
                 <Label>Name</Label>
                 <Input
                   value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   placeholder="Your name"
                 />
               </div>
@@ -1827,10 +2242,17 @@ const Profile = () => {
                 <Label>Username</Label>
                 <Input
                   value={editForm.username}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      username: e.target.value,
+                    }))
+                  }
                   placeholder="username"
                 />
-                <p className="text-xs text-muted-foreground">This is how others can find you</p>
+                <p className="text-xs text-muted-foreground">
+                  This is how others can find you
+                </p>
               </div>
             </div>
 
@@ -1838,7 +2260,9 @@ const Profile = () => {
               <Label>Bio</Label>
               <Textarea
                 value={editForm.bio}
-                onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, bio: e.target.value }))
+                }
                 placeholder="Tell us about yourself..."
                 className="min-h-[80px]"
               />
@@ -1849,7 +2273,13 @@ const Profile = () => {
                 <Label>Semester</Label>
                 <Select
                   value={editForm.semester}
-                  onValueChange={(value) => setEditForm(prev => ({ ...prev, semester: value, subject: "" }))}
+                  onValueChange={(value) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      semester: value,
+                      subject: "",
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select semester" />
@@ -1868,7 +2298,13 @@ const Profile = () => {
                 <Label>Branch</Label>
                 <Select
                   value={normalizedEditBranch}
-                  onValueChange={(value) => setEditForm(prev => ({ ...prev, branch: value, subject: "" }))}
+                  onValueChange={(value) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      branch: value,
+                      subject: "",
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select branch" />
@@ -1888,7 +2324,9 @@ const Profile = () => {
               <Label>Subject</Label>
               <Select
                 value={editForm.subject}
-                onValueChange={(value) => setEditForm(prev => ({ ...prev, subject: value }))}
+                onValueChange={(value) =>
+                  setEditForm((prev) => ({ ...prev, subject: value }))
+                }
                 disabled={!normalizedEditBranch || !editForm.semester}
               >
                 <SelectTrigger>
@@ -1911,7 +2349,11 @@ const Profile = () => {
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
-              <Button variant="outline" onClick={() => setIsEditing(false)} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                className="w-full sm:w-auto"
+              >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
@@ -1922,32 +2364,37 @@ const Profile = () => {
             </div>
           </div>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Edit Contribution Dialog */}
-      {
-        editingContribution && (
-          <EditResourceDialog
-            resource={editingContribution as unknown as Record<string, unknown>}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            onSuccess={handleEditSuccess}
-          />
-        )
-      }
+      {editingContribution && (
+        <EditResourceDialog
+          resource={editingContribution as unknown as Record<string, unknown>}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={handleEditSuccess}
+        />
+      )}
 
       {/* PDF Viewer */}
-      {
-        selectedPdf && (
-          <PDFViewer
-            isOpen={!!selectedPdf}
-            onClose={() => setSelectedPdf(null)}
-            title={selectedPdf.title}
-            pdfUrl={selectedPdf.url}
-            resourceId={selectedPdf.resourceId}
-          />
-        )
-      }
+      {selectedPdf && (
+        <PDFViewer
+          isOpen={!!selectedPdf}
+          onClose={() => setSelectedPdf(null)}
+          title={selectedPdf.title}
+          pdfUrl={selectedPdf.url}
+          resourceId={selectedPdf.resourceId}
+        />
+      )}
+
+      <ImageViewer
+        isOpen={profilePhotoViewer.isOpen}
+        onClose={() =>
+          setProfilePhotoViewer({ isOpen: false, url: "", title: "" })
+        }
+        imageUrl={profilePhotoViewer.url}
+        title={profilePhotoViewer.title}
+      />
 
       {selectedVideo && (
         <VideoPlayer
@@ -1986,16 +2433,16 @@ const Profile = () => {
                         <AvatarImage src={follower.profile_photo_url} />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary">
-                          {follower.display_name?.[0]?.toUpperCase() || 'U'}
+                          {follower.display_name?.[0]?.toUpperCase() || "U"}
                         </AvatarFallback>
                       )}
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">
-                        {follower.display_name || follower.email?.split('@')[0]}
+                        {follower.display_name || follower.email?.split("@")[0]}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        @{follower.username || follower.email?.split('@')[0]}
+                        @{follower.username || follower.email?.split("@")[0]}
                       </p>
                     </div>
                     {follower.email && (
@@ -2029,7 +2476,9 @@ const Profile = () => {
               {activeFollowing.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                  <p className="text-muted-foreground">Not following anyone yet</p>
+                  <p className="text-muted-foreground">
+                    Not following anyone yet
+                  </p>
                 </div>
               ) : (
                 activeFollowing.map((followed) => (
@@ -2042,16 +2491,16 @@ const Profile = () => {
                         <AvatarImage src={followed.profile_photo_url} />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary">
-                          {followed.display_name?.[0]?.toUpperCase() || 'U'}
+                          {followed.display_name?.[0]?.toUpperCase() || "U"}
                         </AvatarFallback>
                       )}
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">
-                        {followed.display_name || followed.email?.split('@')[0]}
+                        {followed.display_name || followed.email?.split("@")[0]}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        @{followed.username || followed.email?.split('@')[0]}
+                        @{followed.username || followed.email?.split("@")[0]}
                       </p>
                     </div>
                     {followed.email && (
@@ -2092,11 +2541,18 @@ const Profile = () => {
           <ScrollArea className="max-h-[500px]">
             <div className="space-y-2">
               {discoverUsers
-                .filter(user =>
-                  !discoverSearch ||
-                  user.display_name?.toLowerCase().includes(discoverSearch.toLowerCase()) ||
-                  user.username?.toLowerCase().includes(discoverSearch.toLowerCase()) ||
-                  user.college?.toLowerCase().includes(discoverSearch.toLowerCase())
+                .filter(
+                  (user) =>
+                    !discoverSearch ||
+                    user.display_name
+                      ?.toLowerCase()
+                      .includes(discoverSearch.toLowerCase()) ||
+                    user.username
+                      ?.toLowerCase()
+                      .includes(discoverSearch.toLowerCase()) ||
+                    user.college
+                      ?.toLowerCase()
+                      .includes(discoverSearch.toLowerCase()),
                 )
                 .map((user) => (
                   <div
@@ -2106,7 +2562,9 @@ const Profile = () => {
                     <Avatar
                       className="w-12 h-12 cursor-pointer"
                       onClick={() => {
-                        navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`);
+                        navigate(
+                          `/profile/${encodeURIComponent(user.username || user.email?.split("@")[0] || "user")}`,
+                        );
                         setShowDiscoverDialog(false);
                       }}
                     >
@@ -2114,15 +2572,19 @@ const Profile = () => {
                         <AvatarImage src={user.profile_photo_url} />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary">
-                          {user.display_name?.[0]?.toUpperCase() || 'U'}
+                          {user.display_name?.[0]?.toUpperCase() || "U"}
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <div className="flex-1 min-w-0 cursor-pointer"
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
-                        navigate(`/profile/${encodeURIComponent(user.username || user.email?.split('@')[0] || 'user')}`);
+                        navigate(
+                          `/profile/${encodeURIComponent(user.username || user.email?.split("@")[0] || "user")}`,
+                        );
                         setShowDiscoverDialog(false);
-                      }}>
+                      }}
+                    >
                       <p className="font-medium text-foreground truncate">
                         {user.display_name}
                       </p>
@@ -2159,9 +2621,8 @@ const Profile = () => {
           aspectRatio={1}
         />
       )}
-    </div >
+    </div>
   );
 };
 
 export default Profile;
-

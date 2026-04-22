@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bookmark, Loader2, MessageCircle, Play, Share, FileText, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  Bookmark,
+  Loader2,
+  MessageCircle,
+  Play,
+  Share,
+  FileText,
+  Send,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,6 +30,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import NoticeContent from "@/components/notices/NoticeContent";
 import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+import { useCollege } from "@/context/CollegeContext";
 
 const WHO_TO_FOLLOW_DEPARTMENTS = getDepartmentList(false);
 
@@ -44,29 +54,43 @@ const NoticePost = () => {
   const navigate = useNavigate();
   const { noticeId } = useParams<{ noticeId: string }>();
   const { user } = useAuth();
+  const { isReadOnly } = useCollege();
   const { notices, isLoading, isError, error } = useNotices();
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const canCommentOnNotices = !isReadOnly;
 
   const notice = useMemo(
     () => notices.find((entry) => entry.id === noticeId),
-    [notices, noticeId]
+    [notices, noticeId],
   );
 
   const [comments, setComments] = useState<api.NoticeComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
-  const [imageViewer, setImageViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
+  const [imageViewer, setImageViewer] = useState<{
+    isOpen: boolean;
+    url: string;
+    title: string;
+  }>({
     isOpen: false,
     url: "",
     title: "",
   });
-  const [videoPlayer, setVideoPlayer] = useState<{ isOpen: boolean; url: string; title: string }>({
+  const [videoPlayer, setVideoPlayer] = useState<{
+    isOpen: boolean;
+    url: string;
+    title: string;
+  }>({
     isOpen: false,
     url: "",
     title: "",
   });
-  const [pdfViewer, setPdfViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
+  const [pdfViewer, setPdfViewer] = useState<{
+    isOpen: boolean;
+    url: string;
+    title: string;
+  }>({
     isOpen: false,
     url: "",
     title: "",
@@ -108,10 +132,21 @@ const NoticePost = () => {
       if (!user) toast.error("Please login to comment");
       return;
     }
+    if (!canCommentOnNotices) {
+      toast.error(
+        "Notice comments require a verified college or teacher account.",
+      );
+      return;
+    }
 
     setPosting(true);
     try {
-      const response = await api.postNoticeComment(notice.id, content.trim(), undefined, parentId);
+      const response = await api.postNoticeComment(
+        notice.id,
+        content.trim(),
+        undefined,
+        parentId,
+      );
       setComments((prev) => [...prev, response.comment]);
       if (!parentId) setDraft("");
       toast.success("Comment posted");
@@ -171,11 +206,17 @@ const NoticePost = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-lg rounded-2xl border-destructive/30 bg-destructive/5 p-5 text-center">
-          <h2 className="text-lg font-semibold text-destructive">Could not load notice</h2>
+          <h2 className="text-lg font-semibold text-destructive">
+            Could not load notice
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {error instanceof Error ? error.message : "Please try again."}
           </p>
-          <Button className="mt-4" variant="outline" onClick={() => navigate("/notices")}>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => navigate("/notices")}
+          >
             Back to Notices
           </Button>
         </Card>
@@ -188,8 +229,14 @@ const NoticePost = () => {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-lg rounded-2xl p-5 text-center">
           <h2 className="text-lg font-semibold">Notice not found</h2>
-          <p className="mt-2 text-sm text-muted-foreground">The notice may have been removed.</p>
-          <Button className="mt-4" variant="outline" onClick={() => navigate("/notices")}>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The notice may have been removed.
+          </p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => navigate("/notices")}
+          >
             Back to Notices
           </Button>
         </Card>
@@ -219,10 +266,18 @@ const NoticePost = () => {
                   onClick={() => navigate(`/department/${dept.value}`)}
                 >
                   <div className="flex items-center gap-3">
-                    <DepartmentAvatar meta={dept} size="md" className="border-border/50" />
+                    <DepartmentAvatar
+                      meta={dept}
+                      size="md"
+                      className="border-border/50"
+                    />
                     <div className="leading-tight">
-                      <div className="font-bold hover:underline">{dept.label}</div>
-                      <div className="text-muted-foreground text-sm">{dept.handle}</div>
+                      <div className="font-bold hover:underline">
+                        {dept.label}
+                      </div>
+                      <div className="text-muted-foreground text-sm">
+                        {dept.handle}
+                      </div>
                     </div>
                   </div>
                   <Button
@@ -244,7 +299,12 @@ const NoticePost = () => {
         <main className="flex-1 min-w-0 h-screen overflow-y-auto">
           <div className="mx-auto min-h-full w-full max-w-[780px] border-x border-border/50">
             <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/50 bg-background/95 px-4 py-3 backdrop-blur">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => navigate("/notices")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                onClick={() => navigate("/notices")}
+              >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -255,22 +315,46 @@ const NoticePost = () => {
 
             <article className="border-b border-border/50 px-4 py-4">
               <div className="flex gap-3">
-                <DepartmentAvatar meta={department} size="lg" className="h-10 w-10" iconClassName="h-4 w-4" />
+                <DepartmentAvatar
+                  meta={department}
+                  size="lg"
+                  className="h-10 w-10"
+                  iconClassName="h-4 w-4"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">{department.label}</span>
-                    <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", department.badgeClassName)}>
+                    <span className="font-semibold text-foreground">
+                      {department.label}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] uppercase tracking-wide",
+                        department.badgeClassName,
+                      )}
+                    >
                       {department.handle}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{formatTimeAgo(notice.created_at)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatTimeAgo(notice.created_at)}
+                    </span>
                     {notice.priority === "urgent" ? (
-                      <Badge variant="destructive" className="h-5 text-[10px]">Urgent</Badge>
+                      <Badge variant="destructive" className="h-5 text-[10px]">
+                        Urgent
+                      </Badge>
                     ) : null}
                   </div>
 
-                  {notice.title ? <h2 className="mt-2 text-xl font-semibold leading-snug">{notice.title}</h2> : null}
+                  {notice.title ? (
+                    <h2 className="mt-2 text-xl font-semibold leading-snug">
+                      {notice.title}
+                    </h2>
+                  ) : null}
 
-                  <NoticeContent content={notice.content} className="mt-3 text-[15px] leading-7" />
+                  <NoticeContent
+                    content={notice.content}
+                    className="mt-3 text-[15px] leading-7"
+                  />
 
                   {notice.file_url ? (
                     <div className="mt-4 overflow-hidden rounded-2xl border border-border/60">
@@ -310,8 +394,12 @@ const NoticePost = () => {
                         <div className="flex items-center gap-3 bg-secondary/20 p-4">
                           <FileText className="h-8 w-8 text-primary" />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-foreground">PDF Attachment</p>
-                            <p className="text-xs text-muted-foreground">Open it inside StudyShare</p>
+                            <p className="truncate text-sm font-medium text-foreground">
+                              PDF Attachment
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Open it inside StudyShare
+                            </p>
                           </div>
                           <Button
                             size="sm"
@@ -332,22 +420,41 @@ const NoticePost = () => {
                   ) : null}
 
                   <div className="mt-4 flex items-center justify-between text-muted-foreground">
-                    <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 text-muted-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 rounded-full px-2 text-muted-foreground"
+                    >
                       <MessageCircle className="h-4 w-4" />
-                      <span className="text-xs font-medium">{comments.length || notice.comments || 0}</span>
+                      <span className="text-xs font-medium">
+                        {comments.length || notice.comments || 0}
+                      </span>
                     </Button>
 
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={cn("gap-2 rounded-full px-2 hover:text-primary", isBookmarked(notice.id) && "text-primary")}
+                      className={cn(
+                        "gap-2 rounded-full px-2 hover:text-primary",
+                        isBookmarked(notice.id) && "text-primary",
+                      )}
                       onClick={() => toggleBookmark(notice.id, "notice")}
                     >
-                      <Bookmark className={cn("h-4 w-4", isBookmarked(notice.id) && "fill-current")} />
+                      <Bookmark
+                        className={cn(
+                          "h-4 w-4",
+                          isBookmarked(notice.id) && "fill-current",
+                        )}
+                      />
                       <span className="text-xs font-medium">Save</span>
                     </Button>
 
-                    <Button variant="ghost" size="sm" className="gap-2 rounded-full px-2 hover:text-green-600" onClick={() => void handleShare()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 rounded-full px-2 hover:text-green-600"
+                      onClick={() => void handleShare()}
+                    >
                       <Share className="h-4 w-4" />
                       <span className="text-xs font-medium">Share</span>
                     </Button>
@@ -357,30 +464,46 @@ const NoticePost = () => {
             </article>
 
             <section className="px-4 py-4">
-              <div className="mb-4 flex gap-2">
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {user?.email?.charAt(0).toUpperCase() || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-1 gap-2">
-                  <Input
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="Post your reply"
-                    className="h-9"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        void handleReply(draft);
-                      }
-                    }}
-                  />
-                  <Button size="icon" className="h-9 w-9" onClick={() => void handleReply(draft)} disabled={!draft.trim() || posting}>
-                    {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  </Button>
+              {canCommentOnNotices ? (
+                <div className="mb-4 flex gap-2">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {user?.email?.charAt(0).toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-1 gap-2">
+                    <Input
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      placeholder="Post your reply"
+                      className="h-9"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          void handleReply(draft);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => void handleReply(draft)}
+                      disabled={!draft.trim() || posting}
+                    >
+                      {posting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="mb-4 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+                  Notice comments are available only to verified college and
+                  teacher accounts.
+                </p>
+              )}
 
               {loadingComments ? (
                 <div className="flex justify-center py-6">
@@ -390,8 +513,11 @@ const NoticePost = () => {
                 <CommentThread
                   comments={comments}
                   currentUserEmail={user?.email}
-                  onReply={(content, parentId) => handleReply(content, parentId)}
+                  onReply={(content, parentId) =>
+                    handleReply(content, parentId)
+                  }
                   onDelete={handleDeleteComment}
+                  canReply={canCommentOnNotices}
                 />
               )}
             </section>
