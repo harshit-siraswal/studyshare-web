@@ -39,13 +39,18 @@ import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { SEO } from "@/components/SEO";
 
+const isEmailVerificationReason = (reason: string | null | undefined) =>
+  /verify\s+your\s+email|email\s+not\s+verified|verification\s+link/i.test(
+    reason || "",
+  );
+
 const getVerificationRedirectUrl = () => {
-  const currentOrigin =
-    typeof window !== "undefined" ? window.location.origin.trim() : "";
   const configuredSiteUrl = (
     import.meta.env.VITE_SITE_URL as string | undefined
   )?.trim();
-  const rawBaseUrl = currentOrigin || configuredSiteUrl || "";
+  const currentOrigin =
+    typeof window !== "undefined" ? window.location.origin.trim() : "";
+  const rawBaseUrl = configuredSiteUrl || currentOrigin || "";
 
   if (!rawBaseUrl) {
     return "";
@@ -90,15 +95,31 @@ const Auth = () => {
   const sendVerificationEmailLink = async (targetUser: FirebaseUser) => {
     const redirectUrl = getVerificationRedirectUrl();
 
-    if (redirectUrl) {
+    if (!redirectUrl) {
+      await sendEmailVerification(targetUser);
+      return;
+    }
+
+    try {
       await sendEmailVerification(targetUser, {
         url: redirectUrl,
         handleCodeInApp: false,
       });
-      return;
-    }
+    } catch (error: any) {
+      if (
+        error?.code === "auth/unauthorized-continue-uri" ||
+        error?.code === "auth/invalid-continue-uri"
+      ) {
+        console.error(
+          "Firebase rejected the verification redirect URL. Retrying without a custom continue URL.",
+          error,
+        );
+        await sendEmailVerification(targetUser);
+        return;
+      }
 
-    await sendEmailVerification(targetUser);
+      throw error;
+    }
   };
 
   const resetVerificationState = async () => {
@@ -114,8 +135,11 @@ const Auth = () => {
   // Redirect to /study only when user is authenticated, email verified, AND NOT banned
   useEffect(() => {
     if (!loading && user) {
+      const emailNeedsVerification =
+        !firebaseUser?.emailVerified || isEmailVerificationReason(banReason);
+
       // Don't redirect if user is banned - they'll see the ban message
-      if (isBanned) {
+      if (isBanned && !emailNeedsVerification) {
         return;
       }
 
@@ -129,7 +153,14 @@ const Auth = () => {
         setVerificationEmail(firebaseUser?.email || user.email || "");
       }
     }
-  }, [user, loading, isBanned, navigate, firebaseUser?.emailVerified]);
+  }, [
+    user,
+    loading,
+    isBanned,
+    banReason,
+    navigate,
+    firebaseUser?.emailVerified,
+  ]);
 
   // Handle resend verification email
   const handleResendVerification = async () => {
@@ -272,25 +303,33 @@ const Auth = () => {
           displayName: formData.name,
         });
 
+        // Send the verification email before any optional profile sync so the
+        // user still receives it even if Firestore is temporarily unavailable.
+        await sendVerificationEmailLink(user);
+
         // Save to Firestore (matching Google Login pattern)
         const selectedCollege = JSON.parse(
           localStorage.getItem("selectedCollege") || "{}",
         );
 
-        await setDoc(
-          doc(db, "users", user.uid),
-          {
-            name: formData.name,
-            email: user.email || "",
-            photoURL: "",
-            college: selectedCollege?.name || "",
-            createdAt: new Date(),
-          },
-          { merge: true },
-        );
-
-        // Send verification email
-        await sendVerificationEmailLink(user);
+        try {
+          await setDoc(
+            doc(db, "users", user.uid),
+            {
+              name: formData.name,
+              email: user.email || "",
+              photoURL: "",
+              college: selectedCollege?.name || "",
+              createdAt: new Date(),
+            },
+            { merge: true },
+          );
+        } catch (profileSyncError) {
+          console.error(
+            "Account created and verification mail sent, but profile sync failed:",
+            profileSyncError,
+          );
+        }
 
         setVerificationEmail(user.email || formData.email);
         toast.success("Account created! Check your email to verify.");
@@ -332,7 +371,8 @@ const Auth = () => {
               </div>
               <CardTitle>Verify Your Email</CardTitle>
               <CardDescription className="mt-2">
-                We've sent a verification email to:
+                Kindly verify the email by clicking on the verification link
+                sent to your email and then try signing in.
                 <span className="block mt-2 font-medium text-foreground">
                   {pendingEmail}
                 </span>
@@ -340,8 +380,8 @@ const Auth = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground text-center">
-                Click the link in the email to verify your account. Check your
-                spam folder if you don't see it.
+                Check your inbox and spam folder for the verification email.
+                After verifying, return here and sign in again.
               </p>
 
               {firebaseUser ? (
@@ -391,7 +431,7 @@ const Auth = () => {
   }
 
   // Show banned message if user is banned
-  if (isBanned && user) {
+  if (isBanned && user && !isEmailVerificationReason(banReason)) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
         <SEO

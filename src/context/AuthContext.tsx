@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+} from "firebase/auth";
 import { ApiError, UserInfo, getMe } from "@/lib/api";
 
 export interface AuthUser {
@@ -31,6 +35,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function isEmailVerificationAccessIssue(
+  reason: string | null | undefined,
+): boolean {
+  if (!reason) return false;
+  return /verify\s+your\s+email|email\s+not\s+verified|verification\s+link/i.test(
+    reason,
+  );
+}
+
 function buildAuthUser(
   firebaseUser: FirebaseUser,
   me: UserInfo | null = null,
@@ -43,12 +56,10 @@ function buildAuthUser(
     email.split("@")[0] ||
     "User";
   const avatarUrl =
-    me?.profile?.avatarUrl?.trim() ||
-    firebaseUser.photoURL ||
-    null;
+    me?.profile?.avatarUrl?.trim() || firebaseUser.photoURL || null;
   const collegeDomain =
     me?.collegeDomain ??
-    (email.includes("@") ? email.split("@")[1]?.toLowerCase() ?? null : null);
+    (email.includes("@") ? (email.split("@")[1]?.toLowerCase() ?? null) : null);
   const isBanned = overrides.isBanned ?? Boolean(me?.isBanned);
   const banReason = overrides.banReason ?? me?.banReason ?? null;
 
@@ -105,16 +116,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (error instanceof ApiError && error.status === 403) {
           const reason =
-            (typeof error.payload?.reason === "string" && error.payload.reason.trim()) ||
-            (typeof error.payload?.message === "string" && error.payload.message.trim()) ||
+            (typeof error.payload?.reason === "string" &&
+              error.payload.reason.trim()) ||
+            (typeof error.payload?.message === "string" &&
+              error.payload.message.trim()) ||
             "You have been banned by an administrator";
-          const bannedUser = buildAuthUser(firebaseUser, null, {
-            isBanned: true,
-            banReason: reason,
-          });
-          setUser(bannedUser);
-          setIsBanned(true);
-          setBanReason(reason);
+
+          if (
+            !firebaseUser.emailVerified ||
+            isEmailVerificationAccessIssue(reason)
+          ) {
+            const unverifiedUser = buildAuthUser(firebaseUser, null, {
+              isBanned: false,
+              banReason: null,
+            });
+            setUser(unverifiedUser);
+            setIsBanned(false);
+            setBanReason(null);
+          } else {
+            const bannedUser = buildAuthUser(firebaseUser, null, {
+              isBanned: true,
+              banReason: reason,
+            });
+            setUser(bannedUser);
+            setIsBanned(true);
+            setBanReason(reason);
+          }
         } else {
           const fallbackUser = buildAuthUser(firebaseUser);
           setUser(fallbackUser);
