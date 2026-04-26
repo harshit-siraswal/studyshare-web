@@ -222,6 +222,19 @@ async function apiRequest<T>(
     throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
 
+  if (
+    payload &&
+    typeof payload === "object" &&
+    typeof payload.status_code === "number" &&
+    payload.status_code >= 400
+  ) {
+    throw new ApiError(
+      getErrorMessage(payload),
+      payload.status_code,
+      payload,
+    );
+  }
+
   return payload as T;
 }
 

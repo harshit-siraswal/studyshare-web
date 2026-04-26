@@ -147,6 +147,16 @@ function shouldFallbackToRagSummary(summaryText: string): boolean {
   return normalized.split(/\s+/).filter(Boolean).length < 24;
 }
 
+function coerceSummaryText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+
+  const serialized = JSON.stringify(value);
+  if (typeof serialized === "string") return serialized;
+
+  return String(value ?? "");
+}
+
 const SUMMARY_BULLET_PREFIX_RE = /^([-*\u2022]|\d+[.)])\s+/;
 
 function summaryPlain(input: string): string {
@@ -339,8 +349,10 @@ const AIStudyTools = ({
       };
       if (type === "summary") {
         const result = await getAiSummary(resourceId, options);
-        let summaryText =
-          typeof result.data === "string" ? result.data : JSON.stringify(result.data);
+        let summaryText = coerceSummaryText(result.data).trim();
+        if (!summaryText) {
+          throw new Error("No summary was returned for this resource.");
+        }
         let sourceTextValue = result.source?.text ?? null;
         let sourceTypeValue = result.source?.type ?? "primary";
         let sourceProviderValue = normalizeOcrProvider(result.source?.ocrProvider);
