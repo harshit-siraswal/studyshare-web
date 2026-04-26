@@ -105,6 +105,15 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
     normalizePhotoUrl(userProfile?.profile_photo_url) ||
     normalizePhotoUrl(authUser?.photoURL) ||
     normalizePhotoUrl(user?.photoURL);
+  const sidebarDisplayName =
+    userProfile?.display_name ||
+    user?.displayName ||
+    user?.name ||
+    user?.email?.split("@")[0] ||
+    "User";
+  const sidebarAvatarAlt = sidebarDisplayName;
+  const sidebarCollegeName =
+    selectedCollege?.name || userProfile?.college || "Your College";
 
   // Fetch user profile from Supabase
   useEffect(() => {
@@ -221,27 +230,18 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
                       {sidebarPhotoUrl ? (
                         <AvatarImage
                           src={sidebarPhotoUrl}
-                          alt={userProfile.display_name || user.displayName}
+                          alt={sidebarAvatarAlt}
                         />
                       ) : (
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {getInitials(
-                            userProfile?.display_name ||
-                              user.displayName ||
-                              user.name ||
-                              user.email ||
-                              "User",
-                          )}
+                          {getInitials(sidebarDisplayName)}
                         </AvatarFallback>
                       )}
                     </Avatar>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  {userProfile?.display_name ||
-                    user.displayName ||
-                    user.name ||
-                    "Profile"}
+                  {sidebarDisplayName}
                 </TooltipContent>
               </Tooltip>
 
@@ -405,32 +405,20 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
               {sidebarPhotoUrl ? (
                 <AvatarImage
                   src={sidebarPhotoUrl}
-                  alt={userProfile.display_name || user.name}
+                  alt={sidebarAvatarAlt}
                 />
               ) : (
                 <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
-                  {getInitials(
-                    userProfile?.display_name ||
-                      user.name ||
-                      user.displayName ||
-                      user.email ||
-                      "User",
-                  )}
+                  {getInitials(sidebarDisplayName)}
                 </AvatarFallback>
               )}
             </Avatar>
             <div className="flex-1 min-w-0 text-left">
               <p className="font-medium text-sidebar-foreground truncate">
-                {userProfile?.display_name ||
-                  user.displayName ||
-                  user.name ||
-                  user.email?.split("@")[0] ||
-                  "User"}
+                {sidebarDisplayName}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {selectedCollege?.name ||
-                  userProfile?.college ||
-                  "Your College"}
+                {sidebarCollegeName}
               </p>
             </div>
           </button>
