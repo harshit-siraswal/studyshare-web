@@ -21,8 +21,8 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useCollege } from "@/context/CollegeContext";
 import { createResource, getAcademicCatalog, planResourceUpload, type AcademicCatalog } from "@/lib/api";
 import {
-  BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
+  getBranchOptionsForCollege,
   getSubjectsForBranchAndSemester,
 } from "@/lib/academicSubjects";
 
@@ -50,7 +50,12 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
 
   const { executeRecaptcha } = useGoogleReCaptcha();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const { selectedCollegeId } = useCollege();
+  const { selectedCollegeId, selectedCollege } = useCollege();
+  const branchOptions = getBranchOptionsForCollege({
+    collegeId: selectedCollegeId,
+    collegeDomain: selectedCollege?.domain,
+    collegeName: selectedCollege?.name,
+  });
 
   const [formData, setFormData] = useState({
     title: "",
@@ -353,7 +358,11 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
           catalog?.offerings
             .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
             .map((offering) => offering.subject) ||
-          getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+          getSubjectsForBranchAndSemester(formData.branch, formData.semester, {
+            collegeId: selectedCollegeId,
+            collegeDomain: selectedCollege?.domain,
+            collegeName: selectedCollege?.name,
+          })
         ).filter(Boolean)
       )
     )
@@ -435,7 +444,7 @@ const UploadResourceDialog = ({ trigger, open: controlledOpen, onOpenChange }: U
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BRANCH_OPTIONS.map(branch => (
+                  {branchOptions.map(branch => (
                     <SelectItem key={branch.value} value={branch.value}>
                       {branch.label}
                     </SelectItem>

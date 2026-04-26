@@ -9,8 +9,8 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useCollege } from "@/context/CollegeContext";
 import {
-  BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
+  getBranchOptionsForCollege,
   getSubjectsForBranchAndSemester,
 } from "@/lib/academicSubjects";
 import { getAcademicCatalog, type AcademicCatalog, updateResource as updateResourceApi } from "@/lib/api";
@@ -37,7 +37,12 @@ interface EditResourceDialogProps {
 const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditResourceDialogProps) => {
   const [updating, setUpdating] = useState(false);
   const [catalog, setCatalog] = useState<AcademicCatalog | null>(null);
-  const { selectedCollegeId } = useCollege();
+  const { selectedCollegeId, selectedCollege } = useCollege();
+  const branchOptions = getBranchOptionsForCollege({
+    collegeId: selectedCollegeId,
+    collegeDomain: selectedCollege?.domain,
+    collegeName: selectedCollege?.name,
+  });
   const [formData, setFormData] = useState({
     title: resource?.title || "",
     semester: resource?.semester || "",
@@ -129,7 +134,11 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
       catalog?.offerings
         .filter((offering) => offering.branch === formData.branch && offering.semester === formData.semester)
         .map((offering) => offering.subject) ||
-      getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+      getSubjectsForBranchAndSemester(formData.branch, formData.semester, {
+        collegeId: selectedCollegeId,
+        collegeDomain: selectedCollege?.domain,
+        collegeName: selectedCollege?.name,
+      })
     )
     : [];
 
@@ -191,7 +200,7 @@ const EditResourceDialog = ({ resource, open, onOpenChange, onSuccess }: EditRes
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BRANCH_OPTIONS.map(branch => (
+                  {branchOptions.map(branch => (
                     <SelectItem key={branch.value} value={branch.value}>
                       {branch.label}
                     </SelectItem>

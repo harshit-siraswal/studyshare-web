@@ -79,9 +79,9 @@ import {
 import VideoPlayer from "@/components/VideoPlayer";
 import ImageViewer from "@/components/ImageViewer";
 import {
-  BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
   getBranchLabel,
+  getBranchOptionsForCollege,
   getSubjectsForBranchAndSemester,
   normalizeBranchCode,
 } from "@/lib/academicSubjects";
@@ -547,6 +547,11 @@ const Profile = () => {
   /* === AUTH === */
   const { user: authUser, loading, logout } = useAuth();
   const { selectedCollege } = useCollege();
+  const branchOptions = getBranchOptionsForCollege({
+    collegeId: selectedCollege?.collegeId,
+    collegeDomain: selectedCollege?.domain,
+    collegeName: selectedCollege?.name,
+  });
 
   /* === STATE === */
   const [isEditing, setIsEditing] = useState(false);
@@ -1103,10 +1108,14 @@ const Profile = () => {
   const displayUsername = profileUser.username;
   const displayBio = profileUser.bio;
   const normalizedEditBranch = normalizeBranchCode(editForm.branch);
-  const availableProfileSubjects =
-    normalizedEditBranch && editForm.semester
-      ? getSubjectsForBranchAndSemester(normalizedEditBranch, editForm.semester)
-      : [];
+    const availableProfileSubjects =
+      normalizedEditBranch && editForm.semester
+        ? getSubjectsForBranchAndSemester(normalizedEditBranch, editForm.semester, {
+            collegeId: selectedCollege?.collegeId,
+            collegeDomain: selectedCollege?.domain,
+            collegeName: selectedCollege?.name,
+          })
+        : [];
   const profileSubjectOptions =
     editForm.subject && !availableProfileSubjects.includes(editForm.subject)
       ? [editForm.subject, ...availableProfileSubjects]
@@ -2310,7 +2319,7 @@ const Profile = () => {
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    {BRANCH_OPTIONS.map((branch) => (
+                    {branchOptions.map((branch) => (
                       <SelectItem key={branch.value} value={branch.value}>
                         {branch.label}
                       </SelectItem>

@@ -28,7 +28,7 @@ import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useResources } from "@/hooks/useResources";
-import { BRANCH_OPTIONS, SEMESTER_OPTIONS, getBranchLabel, getSubjectsForBranchAndSemester } from "@/lib/academicSubjects";
+import { SEMESTER_OPTIONS, getBranchLabel, getBranchOptionsForCollege, getSubjectsForBranchAndSemester } from "@/lib/academicSubjects";
 import { getAcademicCatalog, type AcademicCatalog } from "@/lib/api";
 
 type SortOption = "teacher" | "votes" | "recent";
@@ -39,6 +39,11 @@ const Study = () => {
   /* ---------------------------------------------------------------- */
   const { user, loading } = useAuth();
   const { selectedCollege, selectedCollegeId } = useCollege();
+  const branchOptions = getBranchOptionsForCollege({
+    collegeId: selectedCollegeId,
+    collegeDomain: selectedCollege?.domain,
+    collegeName: selectedCollege?.name,
+  });
   const { isFullAccess, canViewFollowing } = usePermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -131,7 +136,11 @@ const Study = () => {
             (selectedSemester === "all" ? true : offering.semester === selectedSemester)
           )
           .map((offering) => offering.subject) ||
-        getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester)
+        getSubjectsForBranchAndSemester(selectedBranch, selectedSemester === "all" ? undefined : selectedSemester, {
+          collegeId: selectedCollegeId,
+          collegeDomain: selectedCollege?.domain,
+          collegeName: selectedCollege?.name,
+        })
       ))
     : [];
 
@@ -326,7 +335,7 @@ const Study = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Branches</SelectItem>
-                  {BRANCH_OPTIONS.map((branch) => (
+                  {branchOptions.map((branch) => (
                     <SelectItem key={branch.value} value={branch.value}>
                       {getBranchLabel(branch.value)}
                     </SelectItem>

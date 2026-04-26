@@ -27,8 +27,8 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { getSyllabusUploadUrl, createSyllabus } from "@/lib/api";
 import { useCollege } from "@/context/CollegeContext";
 import {
-  BRANCH_OPTIONS,
   SEMESTER_OPTIONS,
+  getBranchOptionsForCollege,
   getSubjectsForBranchAndSemester,
 } from "@/lib/academicSubjects";
 
@@ -45,7 +45,12 @@ const UploadSyllabusDialog = ({
   onOpenChange,
   onSuccess,
 }: UploadSyllabusDialogProps) => {
-  const { selectedCollegeId } = useCollege();
+  const { selectedCollegeId, selectedCollege } = useCollege();
+  const branchOptions = getBranchOptionsForCollege({
+    collegeId: selectedCollegeId,
+    collegeDomain: selectedCollege?.domain,
+    collegeName: selectedCollege?.name,
+  });
   const [internalOpen, setInternalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -62,7 +67,11 @@ const UploadSyllabusDialog = ({
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const availableSubjects = formData.branch && formData.semester
-    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester)
+    ? getSubjectsForBranchAndSemester(formData.branch, formData.semester, {
+        collegeId: selectedCollegeId,
+        collegeDomain: selectedCollege?.domain,
+        collegeName: selectedCollege?.name,
+      })
     : [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,7 +210,7 @@ const UploadSyllabusDialog = ({
               <SelectValue placeholder="Branch" />
             </SelectTrigger>
             <SelectContent>
-              {BRANCH_OPTIONS.map((branch) => (
+              {branchOptions.map((branch) => (
                 <SelectItem key={branch.value} value={branch.value}>
                   {branch.label}
                 </SelectItem>

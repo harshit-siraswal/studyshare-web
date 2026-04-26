@@ -71,6 +71,18 @@ export const COLLEGES: College[] = [
     name: "Manipal Institute of Technology",
     domain: "learner.manipal.edu",
   },
+  {
+    id: "thapar",
+    name: "Thapar Institute of Engineering and Technology",
+    domain: "thapar.edu",
+  },
+  {
+    id: "coep",
+    name: "COEP Technological University",
+    domain: "coeptech.ac.in",
+  },
+  { id: "iiitn", name: "IIIT Nagpur", domain: "iiitn.ac.in" },
+  { id: "usar", name: "USAR, GGSIPU", domain: "ipu.ac.in" },
   { id: "du", name: "Delhi University", domain: "du.ac.in" },
   {
     id: "du-students",
