@@ -37,6 +37,7 @@ import {
 import BrandLoader from "@/components/BrandLoader";
 import AIRagChat from "@/components/ai/AIRagChat";
 import { extractYouTubeId } from "@/lib/youtube";
+import { fetchYouTubeTranscriptClient } from "@/lib/youtubeTranscriptClient";
 
 type OutputType = "summary" | "quiz" | "flashcards" | "chat";
 
@@ -45,6 +46,11 @@ type AiOptions = {
   force?: boolean;
   includeSource?: boolean;
   videoUrl?: string;
+};
+
+type ClientTranscriptPayload = {
+  sourceText?: string;
+  sourceType?: "transcript";
 };
 
 interface QuizQuestion {
@@ -155,6 +161,17 @@ function coerceSummaryText(value: unknown): string {
   if (typeof serialized === "string") return serialized;
 
   return String(value ?? "");
+}
+
+async function resolveClientTranscript(videoUrl?: string): Promise<ClientTranscriptPayload> {
+  const normalizedUrl = normalizeVideoSummaryUrl(videoUrl);
+  if (!normalizedUrl) return {};
+
+  const transcript = await fetchYouTubeTranscriptClient(normalizedUrl);
+  return {
+    sourceText: transcript.text,
+    sourceType: "transcript",
+  };
 }
 
 const SUMMARY_BULLET_PREFIX_RE = /^([-*\u2022]|\d+[.)])\s+/;
@@ -341,11 +358,24 @@ const AIStudyTools = ({
       const resolvedVideoUrl = normalizeVideoSummaryUrl(override?.videoUrl ?? videoUrl);
       const hasVideoUrl = Boolean(resolvedVideoUrl && resolvedVideoUrl.trim().length > 0);
       const shouldUseVideoTranscript = usesTranscript && hasVideoUrl;
+      let clientTranscript: ClientTranscriptPayload = {};
+      if (shouldUseVideoTranscript && resolvedVideoUrl) {
+        try {
+          clientTranscript = await resolveClientTranscript(resolvedVideoUrl);
+        } catch (transcriptError) {
+          console.warn(
+            "[AI Study Tools] Client transcript fetch failed:",
+            transcriptError instanceof Error ? transcriptError.message : transcriptError
+          );
+        }
+      }
       const options = {
         collegeId,
         force: override?.force ?? freshRun,
         includeSource: override?.includeSource ?? false,
         videoUrl: shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
+        sourceText: clientTranscript.sourceText,
+        sourceType: clientTranscript.sourceType,
       };
       if (type === "summary") {
         const result = await getAiSummary(resourceId, options);

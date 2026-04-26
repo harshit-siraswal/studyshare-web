@@ -1826,6 +1826,8 @@ export async function getAiSummary(
     force?: boolean;
     includeSource?: boolean;
     videoUrl?: string;
+    sourceText?: string;
+    sourceType?: "primary" | "ocr" | "transcript";
   },
 ): Promise<AiResponse<string>> {
   return apiRequest("/api/ai/summary", {
@@ -1836,6 +1838,8 @@ export async function getAiSummary(
       force: options?.force,
       include_source: options?.includeSource,
       video_url: options?.videoUrl,
+      source_text: options?.sourceText,
+      source_type: options?.sourceType,
     }),
   });
 }
@@ -1847,6 +1851,8 @@ export async function getAiQuiz(
     force?: boolean;
     includeSource?: boolean;
     videoUrl?: string;
+    sourceText?: string;
+    sourceType?: "primary" | "ocr" | "transcript";
   },
 ): Promise<AiResponse<any[]>> {
   return apiRequest("/api/ai/quiz", {
@@ -1857,6 +1863,8 @@ export async function getAiQuiz(
       force: options?.force,
       include_source: options?.includeSource,
       video_url: options?.videoUrl,
+      source_text: options?.sourceText,
+      source_type: options?.sourceType,
     }),
   });
 }
@@ -1868,6 +1876,8 @@ export async function getAiFlashcards(
     force?: boolean;
     includeSource?: boolean;
     videoUrl?: string;
+    sourceText?: string;
+    sourceType?: "primary" | "ocr" | "transcript";
   },
 ): Promise<AiResponse<any[]>> {
   return apiRequest("/api/ai/flashcards", {
@@ -1878,6 +1888,8 @@ export async function getAiFlashcards(
       force: options?.force,
       include_source: options?.includeSource,
       video_url: options?.videoUrl,
+      source_text: options?.sourceText,
+      source_type: options?.sourceType,
     }),
   });
 }

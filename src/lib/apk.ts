@@ -1,9 +1,9 @@
-const DEFAULT_APK_CACHE_KEY = "20260426-4";
+const DEFAULT_APK_CACHE_KEY = "20260427-1";
 const DEFAULT_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
 const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
 const DEFAULT_HOSTED_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
 const LEGACY_HOSTED_APK_URL = "https://file.studyshare.in/downloads/studyshare-android.apk";
-const DEFAULT_ANDROID_APP_VERSION = "1.0.16";
+const DEFAULT_ANDROID_APP_VERSION = "1.0.17";
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
 function normalizeConfiguredApkUrl(value: unknown): string {
