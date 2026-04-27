@@ -369,6 +369,11 @@ const AIStudyTools = ({
           );
         }
       }
+      if (shouldUseVideoTranscript && !clientTranscript.sourceText) {
+        throw new Error(
+          "This YouTube video transcript is not readable from the website browser path. The browser cannot reliably read YouTube's caption/watch endpoints for this video, so the request would fall back to the blocked server path. Use the Android app for this video or try a different link."
+        );
+      }
       const options = {
         collegeId,
         force: override?.force ?? freshRun,
