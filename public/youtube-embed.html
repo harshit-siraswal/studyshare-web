@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>StudyShare Video</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+      }
+
+      .player-shell {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
+
+      iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #000;
+      }
+
+      .message {
+        display: none;
+        margin: auto;
+        max-width: 320px;
+        padding: 20px 24px;
+        color: rgba(255, 255, 255, 0.88);
+        text-align: center;
+        line-height: 1.5;
+        font-size: 15px;
+      }
+
+      body.error .player-shell {
+        display: none;
+      }
+
+      body.error .message {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="player-shell">
+      <iframe
+        id="player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        referrerpolicy="strict-origin-when-cross-origin"
+        title="YouTube video player"
+      ></iframe>
+    </div>
+    <div class="message" id="message">
+      Unable to load this YouTube video.
+    </div>
+
+    <script>
+      (function initializeEmbed() {
+        const params = new URLSearchParams(window.location.search);
+        const rawVideoId = (params.get("videoId") || "").trim();
+        const rawStart = (params.get("start") || "").trim();
+        const title = (params.get("title") || "YouTube video").trim();
+
+        const isValidVideoId = /^[A-Za-z0-9_-]{11}$/.test(rawVideoId);
+        if (!isValidVideoId) {
+          document.body.classList.add("error");
+          document.getElementById("message").textContent =
+            "This YouTube video link is invalid.";
+          return;
+        }
+
+        document.title = title || "StudyShare Video";
+
+        const start = Number.parseInt(rawStart, 10);
+        const query = new URLSearchParams({
+          autoplay: "1",
+          controls: "1",
+          enablejsapi: "1",
+          fs: "1",
+          modestbranding: "1",
+          playsinline: "1",
+          rel: "0",
+          iv_load_policy: "3",
+          origin: window.location.origin,
+        });
+
+        if (Number.isFinite(start) && start > 0) {
+          query.set("start", String(start));
+        }
+
+        const iframe = document.getElementById("player");
+        iframe.src = `https://www.youtube.com/embed/${rawVideoId}?${query.toString()}`;
+      })();
+    </script>
+  </body>
+</html>
