@@ -38,11 +38,12 @@ interface ResourceFilters {
 }
 
 async function fetchResources(
-    collegeId: string,
+    collegeScope: string,
     filters: ResourceFilters
 ): Promise<Resource[]> {
     const result = await listResourcesApi({
-        collegeId,
+        collegeId: collegeScope,
+        college: collegeScope,
         semester: filters.semester,
         branch: filters.branch,
         subject: filters.subject,
@@ -75,7 +76,7 @@ async function fetchResources(
             uploaded_by_email: uploadedByEmail,
             created_at: createdAt,
             status: resource.status || (resource.isApproved ? 'approved' : 'pending'),
-            college_id: resource.collegeId || resource.college_id || collegeId,
+            college_id: resource.collegeId || resource.college_id || collegeScope,
             primaryScope: resource.primaryScope,
             scopes: resource.scopes,
             contributorsCount: resource.contributorsCount,
@@ -90,17 +91,21 @@ async function fetchResources(
  * Replaces manual useEffect + useState pattern for better performance.
  */
 export function useResources(filters: ResourceFilters) {
-    const { selectedCollegeId } = useCollege();
+    const { selectedCollegeId, selectedCollege } = useCollege();
     const { user, loading } = useAuth();
     const queryClient = useQueryClient();
-    const collegeId = selectedCollegeId;
-    const collegeScope = collegeId || 'none';
+    const collegeScope =
+        selectedCollegeId ||
+        selectedCollege?.domain ||
+        selectedCollege?.name ||
+        '';
+    const queryScopeKey = collegeScope || 'none';
     const userScope = user?.uid || 'guest';
 
     const query = useQuery({
-        queryKey: ['resources', collegeScope, userScope, filters],
-        queryFn: () => fetchResources(collegeId as string, filters),
-        enabled: !!collegeId && !!user && !loading,
+        queryKey: ['resources', queryScopeKey, userScope, filters],
+        queryFn: () => fetchResources(collegeScope, filters),
+        enabled: !!collegeScope && !!user && !loading,
         // Error handling via meta
         meta: {
             errorMessage: 'Failed to load resources',
@@ -115,7 +120,7 @@ export function useResources(filters: ResourceFilters) {
 
     // Manual refresh function (invalidates cache and refetches)
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['resources', collegeScope, filters] });
+        queryClient.invalidateQueries({ queryKey: ['resources', queryScopeKey, userScope] });
         toast.success('Resources refreshed');
     };
 
@@ -134,8 +139,12 @@ export function useResources(filters: ResourceFilters) {
  */
 export function useInvalidateResources() {
     const queryClient = useQueryClient();
-    const { selectedCollegeId } = useCollege();
-    const collegeScope = selectedCollegeId || 'none';
+    const { selectedCollegeId, selectedCollege } = useCollege();
+    const collegeScope =
+        selectedCollegeId ||
+        selectedCollege?.domain ||
+        selectedCollege?.name ||
+        'none';
 
     return () => {
         queryClient.invalidateQueries({ queryKey: ['resources', collegeScope] });

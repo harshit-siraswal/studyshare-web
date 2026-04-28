@@ -107,7 +107,7 @@ interface Contribution {
 }
 
 interface User {
-  id: number;
+  id: number | string;
   name: string;
   username: string;
   college: string;
@@ -546,7 +546,7 @@ const Profile = () => {
 
   /* === AUTH === */
   const { user: authUser, loading, logout } = useAuth();
-  const { selectedCollege } = useCollege();
+  const { selectedCollege, selectedCollegeId } = useCollege();
   const branchOptions = getBranchOptionsForCollege({
     collegeId: selectedCollege?.collegeId,
     collegeDomain: selectedCollege?.domain,
@@ -760,6 +760,8 @@ const Profile = () => {
       approvedOnly: true,
       limit: 200,
       offset: 0,
+      collegeId: selectedCollegeId,
+      college: selectedCollege?.domain,
     });
     return (response.resources || []).map((resource) =>
       mapResourceToContribution(resource, email),
@@ -948,20 +950,16 @@ const Profile = () => {
     if (!authUser?.email) return;
 
     try {
-      // Fetch users from the same college, excluding current user
-      const { data: allUsersData, error } = await supabase
-        .from("users_safe")
-        .select(DISCOVER_USER_SELECT)
-        .neq("email", authUser.email)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      // Filter out already followed users
+      const response = await api.discoverUsers({
+        limit: 50,
+        collegeId: selectedCollegeId,
+        college: selectedCollege?.domain,
+      });
       const followingEmails = new Set(following.map((f) => f.email));
-      const notFollowed =
-        allUsersData?.filter((u) => !followingEmails.has(u.email)) || [];
+      const notFollowed = (response.users || []).filter((candidate) => {
+        const email = candidate.email || "";
+        return email && email !== authUser.email && !followingEmails.has(email);
+      });
 
       setDiscoverUsers(notFollowed);
     } catch (error) {
@@ -996,25 +994,53 @@ const Profile = () => {
       setContributions([]);
       setViewingOtherProfile(null);
 
-      // Fetch the other user's profile
-      const { data: otherProfile } = await supabase
-        .from("users_safe")
-        .select(USER_PROFILE_SELECT)
-        .eq("username", viewingUsername)
-        .maybeSingle();
+      try {
+        const response = await api.discoverUsers({
+          query: viewingUsername,
+          limit: 20,
+          collegeId: selectedCollegeId,
+          college: selectedCollege?.domain,
+        });
+        const normalizedUsername = viewingUsername.trim().toLowerCase();
+        const otherProfile =
+          (response.users || []).find((candidate) => {
+            const username = (candidate.username || "").trim().toLowerCase();
+            const emailLocalPart = (candidate.email || "")
+              .split("@")[0]
+              ?.trim()
+              .toLowerCase();
+            return (
+              username === normalizedUsername ||
+              emailLocalPart === normalizedUsername
+            );
+          }) ||
+          (response.users || [])[0];
 
-      if (otherProfile) {
+        if (!otherProfile) {
+          setViewingOtherProfile(null);
+          return;
+        }
+
         setViewingOtherProfile({
           ...otherProfile,
           college: extractCollegeName(otherProfile.college),
           profile_photo_url: resolveProfilePhotoUrl(otherProfile) || undefined,
           role: otherProfile.role || "student",
         });
+      } catch (error) {
+        console.error("Error fetching viewed profile:", error);
+        setViewingOtherProfile(null);
       }
     };
 
     fetchViewedProfile();
-  }, [isViewingOther, viewingUsername, authUser]);
+  }, [
+    authUser,
+    isViewingOther,
+    selectedCollege?.domain,
+    selectedCollegeId,
+    viewingUsername,
+  ]);
 
   useEffect(() => {
     if (!isViewingOther || !viewingOtherProfile?.email) {
@@ -1178,24 +1204,15 @@ const Profile = () => {
     }
 
     try {
-      // Escape SQL LIKE wildcards
-      const escapeLike = (str: string) => str.replace(/[\\%_]/g, "\\$&");
-      const escapedQuery = escapeLike(query);
+      const response = await api.discoverUsers({
+        query,
+        limit: 10,
+        collegeId: selectedCollegeId,
+        college: selectedCollege?.domain,
+      });
 
-      // Search users from database
-      const { data, error } = await supabase
-        .from("users_safe")
-        .select("id, email, display_name, username, profile_photo_url, college")
-        .or(
-          `username.ilike.%${escapedQuery}%,display_name.ilike.%${escapedQuery}%`,
-        )
-        .limit(10);
-
-      if (error) throw error;
-
-      // Transform to User interface
-      const results = (data || []).map((u) => ({
-        id: u.id,
+      const results = (response.users || []).map((u) => ({
+        id: u.id || u.email || u.username || "user",
         name: u.display_name || u.email?.split("@")[0] || "User",
         username: u.username || u.email?.split("@")[0] || "user",
         college: u.college || "College",

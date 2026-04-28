@@ -52,8 +52,15 @@ const DepartmentProfile = () => {
       collectCollegeIdScopes(
         selectedCollegeId,
         selectedCollege?.collegeId || null,
+        selectedCollege?.domain || null,
+        selectedCollege?.name || null,
       ),
-    [selectedCollegeId, selectedCollege?.collegeId],
+    [
+      selectedCollegeId,
+      selectedCollege?.collegeId,
+      selectedCollege?.domain,
+      selectedCollege?.name,
+    ],
   );
   const departmentValue = (deptId || "").trim().toLowerCase();
   const department = departmentValue ? getDepartmentMeta(deptId) : undefined;

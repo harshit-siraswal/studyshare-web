@@ -10,9 +10,7 @@ export function collectCollegeIdScopes(...values: Array<string | null | undefine
   for (const value of values) {
     const trimmed = (value || "").trim();
     if (!trimmed) continue;
-    if (isUuid(trimmed)) {
-      scopes.add(trimmed.toLowerCase());
-    }
+    scopes.add(trimmed.toLowerCase());
   }
   return Array.from(scopes);
 }

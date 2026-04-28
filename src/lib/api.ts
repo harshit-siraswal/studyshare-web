@@ -133,6 +133,61 @@ function getErrorMessage(
   return fallback;
 }
 
+type SelectedCollegeScope = {
+  collegeId?: string;
+  collegeDomain?: string;
+  collegeName?: string;
+};
+
+function readSelectedCollegeScope(): SelectedCollegeScope {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem("selectedCollege");
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const candidateCollegeId =
+      typeof parsed?.collegeId === "string"
+        ? parsed.collegeId.trim()
+        : typeof parsed?.college_id === "string"
+          ? parsed.college_id.trim()
+          : "";
+    const candidateDomain =
+      typeof parsed?.domain === "string" ? parsed.domain.trim().toLowerCase() : "";
+    const candidateName =
+      typeof parsed?.name === "string" ? parsed.name.trim() : "";
+
+    return {
+      collegeId: isUuid(candidateCollegeId)
+        ? candidateCollegeId.toLowerCase()
+        : undefined,
+      collegeDomain: candidateDomain || undefined,
+      collegeName: candidateName || undefined,
+    };
+  } catch (error) {
+    console.error("[API] Failed to read selectedCollege scope:", error);
+    return {};
+  }
+}
+
+function appendCollegeScopeParams(
+  query: URLSearchParams,
+  scope?: string | null,
+): void {
+  const normalizedScope = (scope || "").trim();
+  if (!normalizedScope) return;
+
+  if (isUuid(normalizedScope)) {
+    query.set("college_id", normalizedScope.toLowerCase());
+    return;
+  }
+
+  query.set("college", normalizedScope);
+}
+
 const DEFAULT_API_REQUEST_TIMEOUT_MS = 20000;
 const RAG_QUERY_REQUEST_TIMEOUT_MS = 90000;
 
@@ -159,6 +214,16 @@ async function apiRequest<T>(
       "Content-Type": "application/json",
       ...(requestOptions.headers as Record<string, string>),
     };
+    const selectedCollegeScope = readSelectedCollegeScope();
+    if (selectedCollegeScope.collegeId) {
+      headers["x-college-id"] = selectedCollegeScope.collegeId;
+    }
+    if (selectedCollegeScope.collegeDomain) {
+      headers["x-college-domain"] = selectedCollegeScope.collegeDomain;
+    }
+    if (selectedCollegeScope.collegeName) {
+      headers["x-college"] = selectedCollegeScope.collegeName;
+    }
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -511,10 +576,13 @@ export async function getUserResources(
     approvedOnly?: boolean;
     limit?: number;
     offset?: number;
+    collegeId?: string | null;
+    college?: string | null;
   },
 ): Promise<{ resources: Resource[]; count?: number; total?: number }> {
   const query = new URLSearchParams();
   query.set("email", email);
+  appendCollegeScopeParams(query, options?.collegeId || options?.college);
 
   if (typeof options?.approvedOnly === "boolean") {
     query.set("approvedOnly", String(options.approvedOnly));
@@ -527,6 +595,23 @@ export async function getUserResources(
   }
 
   return apiRequest(`/api/users/resources?${query.toString()}`);
+}
+
+export async function discoverUsers(params?: {
+  query?: string;
+  limit?: number;
+  collegeId?: string | null;
+  college?: string | null;
+}): Promise<{ users: UserProfile[] }> {
+  const query = new URLSearchParams();
+  if (params?.query?.trim()) {
+    query.set("query", params.query.trim());
+  }
+  if (typeof params?.limit === "number" && Number.isFinite(params.limit)) {
+    query.set("limit", String(params.limit));
+  }
+  appendCollegeScopeParams(query, params?.collegeId || params?.college);
+  return apiRequest(`/api/users/discover?${query.toString()}`);
 }
 
 // ============================================
@@ -821,6 +906,7 @@ export async function planResourceUpload(input: {
 
 export async function listResources(params?: {
   collegeId?: string;
+  college?: string;
   branch?: string;
   semester?: string;
   subject?: string;
@@ -830,8 +916,7 @@ export async function listResources(params?: {
   limit?: number;
 }): Promise<{ resources: Resource[]; count: number }> {
   const query = new URLSearchParams();
-  if (params?.collegeId && isUuid(params.collegeId))
-    query.set("college_id", params.collegeId);
+  appendCollegeScopeParams(query, params?.collegeId || params?.college);
   if (params?.branch && params.branch !== "all")
     query.set("branch", params.branch);
   if (params?.semester && params.semester !== "all")
@@ -2068,9 +2153,13 @@ export async function getNotices(params?: {
       : [];
 
   for (const rawCollegeId of collegeIds) {
-    const collegeId = rawCollegeId?.trim();
-    if (collegeId) {
-      query.append("college_id", collegeId);
+    const collegeScope = rawCollegeId?.trim();
+    if (collegeScope) {
+      if (isUuid(collegeScope)) {
+        query.append("college_id", collegeScope.toLowerCase());
+      } else {
+        query.append("college", collegeScope);
+      }
     }
   }
 

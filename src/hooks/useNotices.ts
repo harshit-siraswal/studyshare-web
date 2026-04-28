@@ -20,7 +20,9 @@ export function useNotices() {
     const queryClient = useQueryClient();
     const collegeScopes = collectCollegeIdScopes(
         selectedCollegeId,
-        selectedCollege?.collegeId || null
+        selectedCollege?.collegeId || null,
+        selectedCollege?.domain || null,
+        selectedCollege?.name || null
     );
     const collegeScopeKey = collegeScopes.length > 0 ? collegeScopes.join('|') : 'none';
 

@@ -13,7 +13,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useCollege } from "@/context/CollegeContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import * as api from "@/lib/api";
-import { supabase } from "../supabase";
 import { toast } from "sonner";
 import FollowButton from "@/components/FollowButton";
 import { SEO } from "@/components/SEO";
@@ -52,23 +51,27 @@ const Explore = () => {
         if (!selectedCollege) return;
 
         try {
-            // FIX: Filter by email domain to show only same-college users
-            const domain = selectedCollege.domain;
-            const escapeLike = (str: string) => str.replace(/[\\%_]/g, '\\$&');
-            const escapedDomain = escapeLike(domain);
-
-            const { data, error } = await supabase
-                .from('users_safe')
-                .select('id, email, display_name, username, profile_photo_url, college, bio')
-                .ilike('email', `%@${escapedDomain}`) // Only users with matching domain
-                .order('display_name', { ascending: true })
-                .order('id', { ascending: true })
-                .limit(50);
-
-            if (error) throw error;
-
-            // Filter out current user
-            const filteredData = data?.filter(u => u.email !== authUser?.email) || [];
+            const response = await api.discoverUsers({
+                limit: 50,
+                collegeId: selectedCollege.collegeId || undefined,
+                college: selectedCollege.domain,
+            });
+            const filteredData = (response.users || [])
+                .filter(
+                    (candidate) => candidate.email && candidate.email !== authUser?.email,
+                )
+                .map((candidate) => ({
+                    id: candidate.id,
+                    email: candidate.email || "",
+                    display_name:
+                        candidate.display_name ||
+                        candidate.email?.split("@")[0] ||
+                        "User",
+                    username: candidate.username || null,
+                    profile_photo_url: candidate.profile_photo_url || null,
+                    college: candidate.college || "",
+                    bio: candidate.bio || null,
+                }));
             setUsers(filteredData);
             setFilteredUsers(filteredData);
         } catch (error) {
