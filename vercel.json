@@ -57,7 +57,7 @@
         },
         {
             "source": "/((?!.*\\.).*)",
-            "destination": "/index.html?v=2600978"
+            "destination": "/index.html?v=2600979"
         }
     ]
 }

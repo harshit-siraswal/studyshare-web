@@ -963,11 +963,36 @@ const AIRagChat = ({
       .trim();
   };
 
+  const renderInlineMarkdown = (value: string) => {
+    const parts = String(value || "").split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, partIdx) => {
+      const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+      if (boldMatch) {
+        return (
+          <strong key={`bold-${partIdx}`} className="font-semibold text-foreground">
+            {boldMatch[1]}
+          </strong>
+        );
+      }
+      return <span key={`text-${partIdx}`}>{part}</span>;
+    });
+  };
+
+  const renderPlainAssistantText = (value: string) => (
+    <div className="whitespace-pre-wrap leading-relaxed">
+      {String(value || "")
+        .split(/(\n)/)
+        .map((part, partIdx) =>
+          part === "\n" ? <br key={`br-${partIdx}`} /> : renderInlineMarkdown(part)
+        )}
+    </div>
+  );
+
   const renderMessageContent = (content: string) => {
     const lines = content.split(/\n+/).filter((line) => line.trim().length > 0);
     const hasBullets = lines.some((line) => /^[-*]\s+/.test(line.trim()));
     if (!hasBullets) {
-      return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+      return renderPlainAssistantText(content);
     }
 
     return (
@@ -975,13 +1000,14 @@ const AIRagChat = ({
         {lines.map((line, lineIdx) => {
           const trimmed = line.trim();
           const bulletMatch = trimmed.match(/^[-*]\s+(.*)/);
-          const labelMatch = trimmed.match(/^([A-Za-z][A-Za-z ]{1,24}):\s*(.*)$/);
+          const markdownLabelMatch = trimmed.match(/^\*\*([A-Za-z][A-Za-z ]{1,24}):\*\*\s*(.*)$/);
+          const labelMatch = markdownLabelMatch || trimmed.match(/^([A-Za-z][A-Za-z ]{1,24}):\s*(.*)$/);
 
           if (bulletMatch) {
             return (
               <div key={`bullet-${lineIdx}`} className="flex items-start gap-2">
                 <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary/70" />
-                <span className="flex-1">{bulletMatch[1]}</span>
+                <span className="flex-1">{renderInlineMarkdown(bulletMatch[1])}</span>
               </div>
             );
           }
@@ -992,14 +1018,14 @@ const AIRagChat = ({
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
                   {labelMatch[1]}
                 </span>
-                <span className="flex-1">{labelMatch[2]}</span>
+                <span className="flex-1">{renderInlineMarkdown(labelMatch[2])}</span>
               </div>
             );
           }
 
           return (
             <div key={`line-${lineIdx}`} className="whitespace-pre-wrap leading-relaxed">
-              {trimmed}
+              {renderInlineMarkdown(trimmed)}
             </div>
           );
         })}
