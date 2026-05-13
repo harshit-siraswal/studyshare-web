@@ -1,31 +1,52 @@
 {
+    "id": "/",
     "name": "StudyShare",
     "short_name": "StudyShare",
     "description": "AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
+    "display_override": [
+        "standalone",
+        "minimal-ui",
+        "browser"
+    ],
     "background_color": "#0a0a0f",
-    "theme_color": "#2563eb",
+    "theme_color": "#0a0a0f",
     "orientation": "portrait-primary",
     "icons": [
         {
             "src": "/icons/icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any"
+            "purpose": "any maskable"
         },
         {
             "src": "/icons/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any"
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/brand/app-icon.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ],
     "categories": [
         "education",
         "productivity"
     ],
-    "screenshots": [],
+    "screenshots": [
+        {
+            "src": "/studyshare-screenshot.png",
+            "sizes": "1920x989",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "StudyShare college learning dashboard"
+        }
+    ],
     "prefer_related_applications": false
 }
