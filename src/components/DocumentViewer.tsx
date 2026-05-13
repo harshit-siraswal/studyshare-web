@@ -22,6 +22,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const WEBODF_SCRIPT_URL = "/vendor/webodf.js";
 let webOdfScriptPromise: Promise<void> | null = null;
 const API_BASE = getApiBaseUrl();
+const PDF_RENDER_PIXEL_RATIO =
+    typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+const PDF_DEFAULT_OPTIONS = Object.freeze({
+    rangeChunkSize: 512 * 1024,
+});
+const PDF_NO_RANGE_OPTIONS = Object.freeze({
+    disableRange: true,
+    disableStream: true,
+});
 
 const ensureWebOdf = () => {
     if (typeof window === 'undefined') {
@@ -326,6 +335,12 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
     const odfContainerRef = useRef<HTMLDivElement>(null);
     const odfCanvasRef = useRef<any>(null);
+    const pdfFile = useMemo(
+        () => (pdfLoadMode === 'data' && pdfData ? { data: pdfData } : proxiedDocumentUrl),
+        [pdfLoadMode, pdfData, proxiedDocumentUrl]
+    );
+    const pdfOptions = pdfLoadMode === 'no-range' ? PDF_NO_RANGE_OPTIONS : PDF_DEFAULT_OPTIONS;
+    const shouldRenderTextLayer = searchQuery.trim().length > 0;
 
     // --- DOCX Loading Logic ---
     const loadDocx = useCallback(async (signal?: AbortSignal) => {
@@ -795,25 +810,25 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
     // Text renderer for highlighting
     const makeTextRenderer = useCallback((searchText: string) => (textItem: { str: string }) => {
-        if (!searchText) return textItem.str;
+        if (!searchText) return escapeHtml(textItem.str);
         const str = textItem.str;
         const lowerStr = str.toLowerCase();
         const lowerSearch = searchText.toLowerCase();
-        if (!lowerStr.includes(lowerSearch)) return str;
+        if (!lowerStr.includes(lowerSearch)) return escapeHtml(str);
 
-        const fragments: React.ReactNode[] = [];
+        const fragments: string[] = [];
         let lastIndex = 0;
         let matchIndex = lowerStr.indexOf(lowerSearch);
 
         while (matchIndex !== -1) {
-            if (matchIndex > lastIndex) fragments.push(str.slice(lastIndex, matchIndex));
+            if (matchIndex > lastIndex) fragments.push(escapeHtml(str.slice(lastIndex, matchIndex)));
             const matchText = str.slice(matchIndex, matchIndex + lowerSearch.length);
-            fragments.push(<span key={matchIndex} className="bg-yellow-300 text-black">{matchText}</span>);
+            fragments.push(`<mark class="bg-yellow-300 text-black">${escapeHtml(matchText)}</mark>`);
             lastIndex = matchIndex + lowerSearch.length;
             matchIndex = lowerStr.indexOf(lowerSearch, lastIndex);
         }
-        if (lastIndex < str.length) fragments.push(str.slice(lastIndex));
-        return <>{fragments}</>;
+        if (lastIndex < str.length) fragments.push(escapeHtml(str.slice(lastIndex)));
+        return fragments.join("");
     }, []);
 
     const textRenderer = useMemo(() => makeTextRenderer(searchQuery), [makeTextRenderer, searchQuery]);
@@ -1050,11 +1065,11 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                     ) : (
                         <Document
                             key={`${proxiedDocumentUrl}-${pdfRetryKey}-${pdfLoadMode}`}
-                            file={pdfLoadMode === 'data' ? { data: pdfData as ArrayBuffer } : proxiedDocumentUrl}
+                            file={pdfFile}
                             onLoadSuccess={onDocumentLoadSuccess}
                             onLoadError={handlePdfLoadError}
                             onSourceError={handlePdfLoadError}
-                            options={pdfLoadMode === 'no-range' ? { disableRange: true, disableStream: true } : undefined}
+                            options={pdfOptions}
                             loading={
                                 <div className="flex flex-col items-center justify-center p-12 h-full">
                                     <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
@@ -1067,7 +1082,7 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                 <Virtuoso
                                     ref={virtuosoRef}
                                     totalCount={numPages}
-                                    context={{ textRenderer, isDarkMode, scale, pageDimensions }}
+                                    context={{ textRenderer, isDarkMode, scale, pageDimensions, shouldRenderTextLayer }}
                                     className="h-full w-full custom-scrollbar"
                                     itemContent={(index, _, context) => {
                                         const cached = context.pageDimensions.get(index + 1);
@@ -1083,9 +1098,10 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
                                                     <Page
                                                         pageNumber={index + 1}
                                                         scale={context.scale}
-                                                        renderTextLayer={true}
+                                                        devicePixelRatio={PDF_RENDER_PIXEL_RATIO}
+                                                        renderTextLayer={context.shouldRenderTextLayer}
                                                         renderAnnotationLayer={true}
-                                                        customTextRenderer={context.textRenderer}
+                                                        customTextRenderer={context.shouldRenderTextLayer ? context.textRenderer : undefined}
                                                         onRenderSuccess={handlePageRenderSuccess}
                                                         className="bg-white"
                                                         loading={
