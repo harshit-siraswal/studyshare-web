@@ -12,6 +12,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CollegeProvider } from "@/context/CollegeContext";
 import { TimerProvider } from "@/context/TimerContext";
 import { cn } from "@/lib/utils";
+import InstallAppPrompt from "@/components/InstallAppPrompt";
 
 const createLazyPage = <T extends Record<string, unknown>>(
   loader: () => Promise<T>,
@@ -322,6 +323,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <InstallAppPrompt />
         <AppProviders enabled={!lightweightPublicRoute}>
           <div className={cn(shouldRenderMobileNav && "pb-16 md:pb-0")}>
             <Suspense fallback={<PageLoader />}>
