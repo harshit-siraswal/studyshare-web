@@ -38,6 +38,8 @@ const Explore = () => {
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [followingCount, setFollowingCount] = useState(0);
+    const DISCOVER_PAGE_SIZE = 100;
+    const DISCOVER_MAX_USERS = 1000;
 
     // Fetch users from same college domain ONLY
     useEffect(() => {
@@ -50,15 +52,34 @@ const Explore = () => {
     const fetchUsersFromSameDomain = async () => {
         if (!selectedCollege) return;
 
+        setLoading(true);
         try {
-            const response = await api.discoverUsers({
-                limit: 50,
-                collegeId: selectedCollege.collegeId || undefined,
-                college: selectedCollege.domain,
-            });
-            const filteredData = (response.users || [])
+            const discovered: api.UserProfile[] = [];
+            const seenEmails = new Set<string>();
+
+            for (let offset = 0; offset < DISCOVER_MAX_USERS; offset += DISCOVER_PAGE_SIZE) {
+                const response = await api.discoverUsers({
+                    limit: DISCOVER_PAGE_SIZE,
+                    offset,
+                    collegeId: selectedCollege.collegeId || undefined,
+                    college: selectedCollege.domain,
+                });
+                const page = response.users || [];
+                for (const candidate of page) {
+                    const email = (candidate.email || "").trim().toLowerCase();
+                    if (!email || seenEmails.has(email)) continue;
+                    seenEmails.add(email);
+                    discovered.push(candidate);
+                }
+                if (page.length < DISCOVER_PAGE_SIZE) break;
+            }
+
+            const filteredData = discovered
                 .filter(
-                    (candidate) => candidate.email && candidate.email !== authUser?.email,
+                    (candidate) =>
+                        candidate.email &&
+                        candidate.email.trim().toLowerCase() !==
+                        (authUser?.email || "").trim().toLowerCase(),
                 )
                 .map((candidate) => ({
                     id: candidate.id,

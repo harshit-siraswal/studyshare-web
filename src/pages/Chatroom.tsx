@@ -45,6 +45,11 @@ interface ChatRoom {
   expires_at?: string;
 }
 
+const isTeacherAccountRole = (role?: string | null) =>
+  ["TEACHER", "ADMIN", "MODERATOR", "SUPER_ADMIN"].includes(
+    String(role || "").trim().toUpperCase(),
+  );
+
 const Chatroom = () => {
   const navigate = useNavigate();
   const { roomId } = useParams();
@@ -75,6 +80,7 @@ const Chatroom = () => {
   const [isMember, setIsMember] = useState<boolean>(true);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const canModerateRoomMembers = isAdmin && isTeacherAccountRole(user?.role);
 
   // Pagination state for messages
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
@@ -524,7 +530,7 @@ const Chatroom = () => {
   // Policy: Hide chat for readonly users
   if (isReadOnly) {
     return (
-      <div className="min-h-screen-safe bg-background flex items-center justify-center">
+      <div className="min-h-screen-safe bg-black flex items-center justify-center">
         <div className="text-center p-8">
           <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-xl font-semibold mb-2">Rooms</h2>
@@ -541,13 +547,13 @@ const Chatroom = () => {
 
   if (!roomId) {
     return (
-      <div className="min-h-screen-safe bg-background">
+      <div className="min-h-screen-safe bg-black">
         <SEO
           title="Rooms"
           description="Join rooms and connect with your college community. Discuss topics, share ideas, and collaborate with fellow students."
           noIndex
         />
-        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
+        <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => navigate("/study")}>
@@ -618,7 +624,7 @@ const Chatroom = () => {
                   return (
                   <Card
                     key={msg.id}
-                    className="p-4 cursor-pointer transition-colors hover:bg-accent/20"
+                    className="p-4 cursor-pointer border-white/10 bg-[#070707] transition-colors hover:bg-[#101010]"
                     onClick={() => navigate(`/chatroom/${msg.room_id}/post/${msg.id}`)}
                   >
                     <div className="flex items-start gap-3">
@@ -646,7 +652,7 @@ const Chatroom = () => {
                         )}
                         {msg.image_url && (
                           <div
-                            className="mt-2 overflow-hidden rounded-lg border border-border/60 bg-muted/20"
+                            className="mt-2 overflow-hidden rounded-lg border border-white/10 bg-black"
                             onClick={(e) => {
                               e.stopPropagation();
                               setImageViewer({ isOpen: true, url: msg.image_url! });
@@ -701,8 +707,8 @@ const Chatroom = () => {
                   <Card
                     key={room.id}
                     className={cn(
-                      "p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors",
-                      pinnedRooms.has(room.id) && "border-primary/50 bg-primary/5"
+                      "p-3 sm:p-4 cursor-pointer border-white/10 bg-[#070707] hover:bg-[#101010] transition-colors",
+                      pinnedRooms.has(room.id) && "border-primary/50 bg-primary/10"
                     )}
                     onClick={() => navigate(`/chatroom/${room.id}`)}
                   >
@@ -798,15 +804,15 @@ const Chatroom = () => {
   }
 
   return (
-    <div className="min-h-screen-safe bg-background flex">
+    <div className="min-h-screen-safe bg-black flex">
       <SEO
         title={currentRoom?.name || "Room"}
         description={currentRoom?.description || "Join the conversation in this chat room."}
         noIndex
       />
       {/* Sidebar - Room list */}
-      <div className="w-64 border-r border-border hidden md:block sticky top-0 h-screen overflow-hidden">
-        <div className="p-4 border-b border-border">
+      <div className="w-64 border-r border-white/10 bg-black hidden md:block sticky top-0 h-screen overflow-hidden">
+        <div className="p-4 border-b border-white/10">
           <h2 className="font-semibold text-foreground">Your Rooms</h2>
         </div>
         <ScrollArea className="h-[calc(100vh-65px)]">
@@ -819,7 +825,7 @@ const Chatroom = () => {
                   "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
                   room.id === roomId
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 )}
               >
                 {room.is_private ? (
@@ -836,7 +842,7 @@ const Chatroom = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
-        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border px-4 py-3">
+        <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10 px-4 py-3">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -877,7 +883,7 @@ const Chatroom = () => {
           <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-4 pb-20">
             {/* New post - only for members */}
             {isMember ? (
-              <Card className="p-4">
+              <Card className="p-4 border-white/10 bg-[#070707]">
                 <Input
                   placeholder="Topic (optional)"
                   value={newPostTitle}
@@ -937,7 +943,7 @@ const Chatroom = () => {
                 </div>
               </Card>
             ) : (
-              <Card className="p-4 bg-muted/30 border-dashed">
+              <Card className="p-4 border-dashed border-white/10 bg-[#070707]">
                 <div className="text-center py-4">
                   <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-muted-foreground mb-3">Join this community to post</p>
@@ -970,12 +976,12 @@ const Chatroom = () => {
                   return (
                   <Card
                     key={message.id}
-                    className="overflow-hidden cursor-pointer transition-colors hover:bg-accent/20"
+                    className="overflow-hidden cursor-pointer border-white/10 bg-[#070707] transition-colors hover:bg-[#101010]"
                     onClick={() => navigate(`/chatroom/${roomId}/post/${message.id}`)}
                   >
                     <div className="flex">
                       {/* Vote sidebar */}
-                      <div className="flex flex-col items-center gap-1 p-3 bg-muted/30">
+                      <div className="flex flex-col items-center gap-1 p-3 bg-black/70">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1046,7 +1052,7 @@ const Chatroom = () => {
 
                         {message.image_url && (
                           <div
-                            className="mt-3 overflow-hidden rounded-lg border border-border/60 bg-muted/20"
+                            className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-black"
                             onClick={(e) => {
                               e.stopPropagation();
                               setImageViewer({ isOpen: true, url: message.image_url! });
@@ -1143,8 +1149,8 @@ const Chatroom = () => {
       </div>
 
       {/* Right Sidebar - Room Info (Reddit-style) */}
-      <div className="w-72 border-l border-border hidden lg:block sticky top-0 h-screen overflow-hidden">
-        <div className="p-4 border-b border-border bg-primary/5">
+      <div className="w-72 border-l border-white/10 bg-black hidden lg:block sticky top-0 h-screen overflow-hidden">
+        <div className="p-4 border-b border-white/10 bg-[#050505]">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             {currentRoom?.is_private ? <Lock className="w-4 h-4 text-amber-500" /> : <Hash className="w-4 h-4 text-primary" />}
             {currentRoom?.name}
@@ -1166,7 +1172,7 @@ const Chatroom = () => {
             </div>
           </div>
 
-          <div className="border-t border-border pt-4">
+          <div className="border-t border-white/10 pt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <Users className="w-4 h-4" />
               <span>Created by</span>
@@ -1179,7 +1185,7 @@ const Chatroom = () => {
             </button>
           </div>
 
-          <div className="border-t border-border pt-4">
+          <div className="border-t border-white/10 pt-4">
             <div className="text-sm text-muted-foreground">
               Created {currentRoom?.created_at ? new Date(currentRoom.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown'}
             </div>
@@ -1205,7 +1211,7 @@ const Chatroom = () => {
 
           {/* Member badge with settings */}
           {isMember && (
-            <div className="flex items-center justify-between p-2 bg-green-500/10 rounded-lg">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-[#070707] p-2">
               <div className="flex items-center gap-2 text-sm text-green-500">
                 <Users className="w-4 h-4" />
                 <span>You're a member</span>
@@ -1215,6 +1221,7 @@ const Chatroom = () => {
                 roomName={currentRoom?.name || 'Room'}
                 roomCode={roomCode}
                 isAdmin={isAdmin}
+                canModerateMembers={canModerateRoomMembers}
                 onCodeRegenerated={(newCode) => setRoomCode(newCode)}
                 trigger={
                   <Button variant="ghost" size="icon" className="h-8 w-8">

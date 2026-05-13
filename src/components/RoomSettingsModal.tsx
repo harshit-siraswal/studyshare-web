@@ -43,6 +43,7 @@ interface RoomSettingsModalProps {
     roomName: string;
     roomCode?: string;
     isAdmin: boolean;
+    canModerateMembers?: boolean;
     isMuted?: boolean;
     onRoomDeleted?: () => void;
     onCodeRegenerated?: (newCode: string) => void;
@@ -54,6 +55,7 @@ const RoomSettingsModal = ({
     roomName,
     roomCode,
     isAdmin,
+    canModerateMembers = false,
     isMuted = false,
     onRoomDeleted,
     onCodeRegenerated,
@@ -184,7 +186,7 @@ const RoomSettingsModal = ({
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg border-white/10 bg-[#050505] text-foreground shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Settings className="w-5 h-5" />
@@ -199,7 +201,7 @@ const RoomSettingsModal = ({
                     {/* User Settings */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium">Your Settings</h3>
-                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0a0a0a] p-3">
                             <div className="flex items-center gap-3">
                                 {muted ? <BellOff className="w-4 h-4 text-muted-foreground" /> : <Bell className="w-4 h-4 text-primary" />}
                                 <div>
@@ -265,10 +267,10 @@ const RoomSettingsModal = ({
 
                                 {/* Room Code */}
                                 {currentCode && (
-                                    <div className="p-3 bg-primary/5 rounded-lg space-y-2">
+                                    <div className="rounded-lg border border-white/10 bg-[#0a0a0a] p-3 space-y-2">
                                         <Label className="text-xs text-muted-foreground">Room Code</Label>
                                         <div className="flex items-center gap-2">
-                                            <code className="flex-1 text-lg font-mono bg-background px-3 py-2 rounded text-center">
+                                            <code className="flex-1 rounded border border-white/10 bg-black px-3 py-2 text-center font-mono text-lg">
                                                 {currentCode}
                                             </code>
                                             <Button variant="ghost" size="icon" onClick={copyCode}>
@@ -304,12 +306,12 @@ const RoomSettingsModal = ({
                                             <Loader2 className="w-5 h-5 animate-spin" />
                                         </div>
                                     ) : (
-                                        <ScrollArea className="h-[200px] rounded border">
+                                        <ScrollArea className="h-[200px] rounded border border-white/10 bg-black">
                                             <div className="p-2 space-y-1">
                                                 {members.map((member) => (
                                                     <div
                                                         key={member.user_email}
-                                                        className="flex items-center justify-between p-2 rounded hover:bg-muted"
+                                                        className="flex items-center justify-between rounded p-2 hover:bg-white/5"
                                                     >
                                                         <div className="flex items-center gap-2 min-w-0">
                                                             <span className="text-sm truncate">{member.user_name}</span>
@@ -317,7 +319,7 @@ const RoomSettingsModal = ({
                                                                 <Badge variant="destructive" className="text-xs">Banned</Badge>
                                                             )}
                                                         </div>
-                                                        {member.is_banned ? (
+                                                        {canModerateMembers && (member.is_banned ? (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
@@ -350,7 +352,7 @@ const RoomSettingsModal = ({
                                                                     </>
                                                                 )}
                                                             </Button>
-                                                        )}
+                                                        ))}
                                                     </div>
                                                 ))}
                                             </div>

@@ -292,7 +292,7 @@ const ChatPostDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen-safe bg-background flex items-center justify-center">
+      <div className="min-h-screen-safe bg-black flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -300,7 +300,7 @@ const ChatPostDetail = () => {
 
   if (!post || !roomId) {
     return (
-      <div className="min-h-screen-safe bg-background flex items-center justify-center">
+      <div className="min-h-screen-safe bg-black flex items-center justify-center">
         <p className="text-muted-foreground">Post not found.</p>
       </div>
     );
@@ -309,14 +309,14 @@ const ChatPostDetail = () => {
   const score = post.upvotes - post.downvotes;
 
   return (
-    <div className="min-h-screen-safe bg-background">
+    <div className="min-h-screen-safe bg-black">
       <SEO
         title={`${roomName || "Room"} Post`}
         description={contentParts.body || contentParts.title || "Chat post detail and comments."}
         noIndex
       />
 
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Button
             variant="ghost"
@@ -337,9 +337,9 @@ const ChatPostDetail = () => {
       </header>
 
       <main className="max-w-4xl mx-auto p-3 sm:p-4 space-y-4">
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-white/10 bg-[#070707]">
           <div className="flex">
-            <div className="flex flex-col items-center gap-1 p-3 bg-muted/30">
+            <div className="flex flex-col items-center gap-1 bg-black/70 p-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -408,7 +408,7 @@ const ChatPostDetail = () => {
 
               {post.image_url && (
                 <div
-                  className="mt-3 overflow-hidden rounded-lg border border-border/60 bg-muted/20 cursor-pointer"
+                  className="mt-3 cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-black"
                   onClick={() => setImageViewer({ isOpen: true, url: post.image_url! })}
                 >
                   <img
@@ -451,7 +451,7 @@ const ChatPostDetail = () => {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="border-white/10 bg-[#070707] p-4">
           <h3 className="text-sm font-semibold mb-3">Comments</h3>
 
           {!isReadOnly && (
@@ -493,7 +493,7 @@ const ChatPostDetail = () => {
       </main>
 
       <Dialog open={imageViewer.isOpen} onOpenChange={(open) => !open && setImageViewer({ isOpen: false, url: "" })}>
-        <DialogContent className="max-w-4xl p-0">
+        <DialogContent className="max-w-4xl border-white/10 bg-black p-0">
           <div className="relative">
             <img
               src={imageViewer.url}

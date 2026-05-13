@@ -600,6 +600,7 @@ export async function getUserResources(
 export async function discoverUsers(params?: {
   query?: string;
   limit?: number;
+  offset?: number;
   collegeId?: string | null;
   college?: string | null;
 }): Promise<{ users: UserProfile[] }> {
@@ -609,6 +610,9 @@ export async function discoverUsers(params?: {
   }
   if (typeof params?.limit === "number" && Number.isFinite(params.limit)) {
     query.set("limit", String(params.limit));
+  }
+  if (typeof params?.offset === "number" && Number.isFinite(params.offset)) {
+    query.set("offset", String(params.offset));
   }
   appendCollegeScopeParams(query, params?.collegeId || params?.college);
   return apiRequest(`/api/users/discover?${query.toString()}`);
@@ -1304,6 +1308,15 @@ export interface RoomMember {
   joined_at: string;
 }
 
+export interface RoomInviteCandidate {
+  email: string;
+  display_name: string;
+  username: string;
+  profile_photo_url: string | null;
+  already_in_room: boolean;
+  invite_sent: boolean;
+}
+
 /**
  * Toggle mute notifications for a room
  */
@@ -1329,7 +1342,7 @@ export async function regenerateRoomCode(
 }
 
 /**
- * Ban a member from room (admin only)
+ * Ban a member from room (teacher/staff room admin only)
  */
 export async function banRoomMember(
   roomId: string,
@@ -1342,7 +1355,7 @@ export async function banRoomMember(
 }
 
 /**
- * Unban a member (admin only)
+ * Unban a member (teacher/staff room admin only)
  */
 export async function unbanRoomMember(
   roomId: string,
@@ -1381,6 +1394,40 @@ export async function getRoomMembers(
   roomId: string,
 ): Promise<{ members: RoomMember[] }> {
   return apiRequest(`/api/chat/rooms/${roomId}/members`);
+}
+
+export async function getRoomInviteCandidates(
+  roomId: string,
+  params?: {
+    query?: string;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<{ candidates: RoomInviteCandidate[] }> {
+  const query = new URLSearchParams();
+  if (params?.query?.trim()) {
+    query.set("query", params.query.trim());
+  }
+  if (typeof params?.limit === "number" && Number.isFinite(params.limit)) {
+    query.set("limit", String(params.limit));
+  }
+  if (typeof params?.offset === "number" && Number.isFinite(params.offset)) {
+    query.set("offset", String(params.offset));
+  }
+  const queryString = query.toString();
+  return apiRequest(
+    `/api/chat/rooms/${roomId}/invite-candidates${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+export async function createRoomInvite(
+  roomId: string,
+  inviteeEmail: string,
+): Promise<{ inviteId: string; status: string; alreadySent: boolean }> {
+  return apiRequest(`/api/chat/rooms/${roomId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ inviteeEmail }),
+  });
 }
 
 // ============================================
