@@ -26,9 +26,12 @@ import { useCollege } from "@/context/CollegeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+  type AiResponse,
+  type AiStudyJobResponse,
   ApiError,
   formatAiTokenQuotaMessage,
   getAiFlashcards,
+  getAiStudyJobStatus,
   getAiQuiz,
   getAiSummary,
   isAiTokenQuotaExceededPayload,
@@ -48,6 +51,13 @@ type AiOptions = {
   videoUrl?: string;
 };
 
+type AiJobProgress = {
+  type: Exclude<OutputType, "chat">;
+  progress?: number;
+  stage?: string;
+  statusReason?: string;
+};
+
 type ClientTranscriptPayload = {
   sourceText?: string;
   sourceType?: "transcript";
@@ -63,6 +73,9 @@ interface Flashcard {
   front: string;
   back: string;
 }
+
+const AI_STUDY_JOB_POLL_INTERVAL_MS = 2000;
+const AI_STUDY_JOB_MAX_POLLS = 180;
 
 interface AIStudyToolsProps {
   resourceId: string;
@@ -280,6 +293,45 @@ function extractSummaryThemes(parsed: ParsedSummary | null) {
   return themes;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isAiStudyJobResponse<T>(
+  response: AiResponse<T> | AiStudyJobResponse<T>,
+): response is AiStudyJobResponse<T> {
+  return typeof (response as AiStudyJobResponse<T>)?.job_id === "string";
+}
+
+function buildAiClientRequestId(
+  type: Exclude<OutputType, "chat">,
+  resourceId: string,
+  force: boolean,
+  videoUrl?: string,
+) {
+  const videoKey = videoUrl ? extractYouTubeId(videoUrl) || "video" : "resource";
+  const mode = force ? `fresh:${Date.now().toString(36)}` : "cache-first";
+  return `phase1:${type}:${resourceId}:${videoKey}:${mode}`.slice(0, 180);
+}
+
+function readCompletedJobResult<T>(job: AiStudyJobResponse<T>): AiResponse<T> {
+  const snapshot = job.data;
+  if (!snapshot || snapshot.data === undefined) {
+    throw new Error("AI generation finished without a usable result. Please retry.");
+  }
+  return {
+    status: "ok",
+    cached: !!snapshot.cached,
+    data: snapshot.data,
+    source: snapshot.source || undefined,
+  };
+}
+
+function formatJobProgress(progress: AiJobProgress) {
+  const stage = progress.statusReason || progress.stage || "generation_queued";
+  return stage.replace(/_/g, " ");
+}
+
 const AIStudyTools = ({
   resourceId,
   className,
@@ -308,7 +360,8 @@ const AIStudyTools = ({
   const [summary, setSummary] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[] | null>(null);
-  const [freshRun, setFreshRun] = useState(true);
+  const [freshRun, setFreshRun] = useState(false);
+  const [jobProgress, setJobProgress] = useState<AiJobProgress | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [activeQuizIndex, setActiveQuizIndex] = useState(0);
@@ -333,6 +386,47 @@ const AIStudyTools = ({
     [summaryPlainText]
   );
 
+  const resolveAiStudyResponse = async <T,>(
+    type: Exclude<OutputType, "chat">,
+    response: AiResponse<T> | AiStudyJobResponse<T>,
+  ): Promise<AiResponse<T>> => {
+    if (!isAiStudyJobResponse(response)) {
+      return response;
+    }
+
+    setJobProgress({
+      type,
+      progress: response.progress,
+      stage: response.stage,
+      statusReason: response.status_reason,
+    });
+
+    if (response.status === "completed") {
+      return readCompletedJobResult(response);
+    }
+
+    for (let attempt = 0; attempt < AI_STUDY_JOB_MAX_POLLS; attempt += 1) {
+      await sleep(AI_STUDY_JOB_POLL_INTERVAL_MS);
+      const job = await getAiStudyJobStatus<T>(response.job_id);
+      setJobProgress({
+        type,
+        progress: job.progress,
+        stage: job.stage,
+        statusReason: job.status_reason,
+      });
+
+      if (job.status === "completed") {
+        return readCompletedJobResult(job);
+      }
+
+      if (job.status === "failed" || job.status === "blocked" || job.status === "cancelled") {
+        throw new Error(job.error || job.status_reason || "AI generation failed. Please retry.");
+      }
+    }
+
+    throw new Error("AI generation is still running. Please try again in a moment.");
+  };
+
   const handleGenerate = async (type: OutputType, override?: AiOptions) => {
     if (!user) {
       toast.error("Please login to use AI tools");
@@ -352,6 +446,7 @@ const AIStudyTools = ({
     setSourceType(null);
     setSourceProvider(null);
     setShowSource(false);
+    setJobProgress(null);
 
     try {
       const collegeId = selectedCollegeId || undefined;
@@ -374,16 +469,25 @@ const AIStudyTools = ({
           "This YouTube video transcript is not readable from the website browser path. The browser cannot reliably read YouTube's caption/watch endpoints for this video, so the request would fall back to the blocked server path. Use the Android app for this video or try a different link."
         );
       }
+      const forceFreshRequested = override?.force ?? freshRun;
       const options = {
         collegeId,
-        force: override?.force ?? freshRun,
+        force: forceFreshRequested,
         includeSource: override?.includeSource ?? false,
         videoUrl: shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
         sourceText: clientTranscript.sourceText,
         sourceType: clientTranscript.sourceType,
+        asyncRequested: true,
+        delivery: "background" as const,
+        clientRequestId: buildAiClientRequestId(
+          type,
+          resourceId,
+          forceFreshRequested,
+          shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
+        ),
       };
       if (type === "summary") {
-        const result = await getAiSummary(resourceId, options);
+        const result = await resolveAiStudyResponse("summary", await getAiSummary(resourceId, options));
         let summaryText = coerceSummaryText(result.data).trim();
         if (!summaryText) {
           throw new Error("No summary was returned for this resource.");
@@ -439,7 +543,7 @@ const AIStudyTools = ({
         }
         setCachedMap((prev) => ({ ...prev, summary: !!result.cached }));
       } else if (type === "quiz") {
-        const result = await getAiQuiz(resourceId, options);
+        const result = await resolveAiStudyResponse("quiz", await getAiQuiz(resourceId, options));
         setQuiz(Array.isArray(result.data) ? result.data : []);
         if (result.source?.text) {
           setSourceText(result.source.text);
@@ -451,7 +555,7 @@ const AIStudyTools = ({
         setActiveQuizIndex(0);
         setCachedMap((prev) => ({ ...prev, quiz: !!result.cached }));
       } else {
-        const result = await getAiFlashcards(resourceId, options);
+        const result = await resolveAiStudyResponse("flashcards", await getAiFlashcards(resourceId, options));
         setFlashcards(Array.isArray(result.data) ? result.data : []);
         if (result.source?.text) {
           setSourceText(result.source.text);
@@ -479,6 +583,7 @@ const AIStudyTools = ({
     } finally {
       setLoading(false);
       setLoadingType(null);
+      setJobProgress(null);
     }
   };
 
@@ -733,6 +838,25 @@ const AIStudyTools = ({
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {loading && jobProgress && active !== "chat" && (
+            <div className="mb-2 rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between gap-3">
+                <span className="capitalize">{formatJobProgress(jobProgress)}</span>
+                {typeof jobProgress.progress === "number" && (
+                  <span>{Math.round(Math.max(0, Math.min(100, jobProgress.progress)))}%</span>
+                )}
+              </div>
+              {typeof jobProgress.progress === "number" && (
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${Math.max(5, Math.min(100, jobProgress.progress))}%` }}
+                  />
+                </div>
+              )}
             </div>
           )}
 

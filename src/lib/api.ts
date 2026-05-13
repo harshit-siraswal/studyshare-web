@@ -1940,7 +1940,7 @@ export async function checkHealth(): Promise<HealthStatus> {
 // AI PHASE-1 ENDPOINTS
 // ============================================
 
-interface AiResponse<T> {
+export interface AiResponse<T> {
   status: "ok";
   cached?: boolean;
   data: T;
@@ -1951,78 +1951,107 @@ interface AiResponse<T> {
   };
 }
 
+type AiStudySourceType = "primary" | "ocr" | "transcript";
+
+interface AiStudyToolOptions {
+  collegeId?: string;
+  force?: boolean;
+  includeSource?: boolean;
+  videoUrl?: string;
+  sourceText?: string;
+  sourceType?: AiStudySourceType;
+  asyncRequested?: boolean;
+  delivery?: "background";
+  clientRequestId?: string;
+}
+
+export interface AiStudyJobSnapshot<T> {
+  studio_kind?: "summary" | "quiz" | "flashcards";
+  cached?: boolean;
+  data?: T;
+  source?: AiResponse<T>["source"] | null;
+  stage?: string;
+  status_reason?: string;
+  source_document?: string | null;
+  extraction_method?: string | null;
+  validation_errors?: string[];
+  quota_exceeded?: boolean;
+  retry_count?: number;
+}
+
+export interface AiStudyJobResponse<T> {
+  job_id: string;
+  run_id?: string;
+  type?: string;
+  status: "queued" | "processing" | "completed" | "failed" | "blocked" | "cancelled";
+  progress?: number;
+  stage?: string;
+  status_reason?: string;
+  source_document?: string | null;
+  extraction_method?: string | null;
+  validation_errors?: string[];
+  quota_exceeded?: boolean;
+  retry_count?: number;
+  elapsed_ms?: number;
+  estimated_total_ms?: number;
+  estimated_remaining_ms?: number;
+  data?: AiStudyJobSnapshot<T> | null;
+  error?: string | null;
+  artifact?: unknown;
+}
+
+type AiStudyToolResponse<T> = AiResponse<T> | AiStudyJobResponse<T>;
+
+function buildAiStudyToolBody(fileId: string, options?: AiStudyToolOptions) {
+  return {
+    file_id: fileId,
+    college_id: options?.collegeId,
+    force: options?.force,
+    include_source: options?.includeSource,
+    video_url: options?.videoUrl,
+    source_text: options?.sourceText,
+    source_type: options?.sourceType,
+    async_requested: options?.asyncRequested,
+    delivery: options?.delivery,
+    client_request_id: options?.clientRequestId,
+  };
+}
+
 export async function getAiSummary(
   fileId: string,
-  options?: {
-    collegeId?: string;
-    force?: boolean;
-    includeSource?: boolean;
-    videoUrl?: string;
-    sourceText?: string;
-    sourceType?: "primary" | "ocr" | "transcript";
-  },
-): Promise<AiResponse<string>> {
+  options?: AiStudyToolOptions,
+): Promise<AiStudyToolResponse<string>> {
   return apiRequest("/api/ai/summary", {
     method: "POST",
-    body: JSON.stringify({
-      file_id: fileId,
-      college_id: options?.collegeId,
-      force: options?.force,
-      include_source: options?.includeSource,
-      video_url: options?.videoUrl,
-      source_text: options?.sourceText,
-      source_type: options?.sourceType,
-    }),
+    body: JSON.stringify(buildAiStudyToolBody(fileId, options)),
   });
 }
 
 export async function getAiQuiz(
   fileId: string,
-  options?: {
-    collegeId?: string;
-    force?: boolean;
-    includeSource?: boolean;
-    videoUrl?: string;
-    sourceText?: string;
-    sourceType?: "primary" | "ocr" | "transcript";
-  },
-): Promise<AiResponse<any[]>> {
+  options?: AiStudyToolOptions,
+): Promise<AiStudyToolResponse<any[]>> {
   return apiRequest("/api/ai/quiz", {
     method: "POST",
-    body: JSON.stringify({
-      file_id: fileId,
-      college_id: options?.collegeId,
-      force: options?.force,
-      include_source: options?.includeSource,
-      video_url: options?.videoUrl,
-      source_text: options?.sourceText,
-      source_type: options?.sourceType,
-    }),
+    body: JSON.stringify(buildAiStudyToolBody(fileId, options)),
   });
 }
 
 export async function getAiFlashcards(
   fileId: string,
-  options?: {
-    collegeId?: string;
-    force?: boolean;
-    includeSource?: boolean;
-    videoUrl?: string;
-    sourceText?: string;
-    sourceType?: "primary" | "ocr" | "transcript";
-  },
-): Promise<AiResponse<any[]>> {
+  options?: AiStudyToolOptions,
+): Promise<AiStudyToolResponse<any[]>> {
   return apiRequest("/api/ai/flashcards", {
     method: "POST",
-    body: JSON.stringify({
-      file_id: fileId,
-      college_id: options?.collegeId,
-      force: options?.force,
-      include_source: options?.includeSource,
-      video_url: options?.videoUrl,
-      source_text: options?.sourceText,
-      source_type: options?.sourceType,
-    }),
+    body: JSON.stringify(buildAiStudyToolBody(fileId, options)),
+  });
+}
+
+export async function getAiStudyJobStatus<T>(
+  jobId: string,
+): Promise<AiStudyJobResponse<T>> {
+  return apiRequest(`/api/ai/jobs/${encodeURIComponent(jobId)}`, {
+    timeoutMs: 15000,
   });
 }
 
