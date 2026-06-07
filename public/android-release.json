@@ -1,0 +1,12 @@
+{
+  "platform": "android",
+  "version": "1.0.31",
+  "buildNumber": 2037,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260607-2037",
+  "releaseDate": "2026-06-07",
+  "mandatory": false,
+  "releaseNotes": [
+    "Adds an in-app update prompt when a newer StudyShare Android APK is available.",
+    "Keeps AI Studio, notices, attendance, and campus workflow updates on the latest mobile build."
+  ]
+}
