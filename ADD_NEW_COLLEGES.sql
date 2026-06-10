@@ -39,6 +39,11 @@ INSERT INTO colleges (name, domain, is_active)
 VALUES ('ABES Engineering College', 'abes.ac.in', true)
 ON CONFLICT (domain) DO UPDATE SET is_active = true;
 
+-- University School of Automation and Robotics, GGSIPU
+INSERT INTO colleges (name, domain, is_active)
+VALUES ('University School of Automation and Robotics, GGSIPU', 'ipu.ac.in', true)
+ON CONFLICT (domain) DO UPDATE SET is_active = true;
+
 -- Delhi University
 INSERT INTO colleges (name, domain, is_active)
 VALUES ('Delhi University', 'du.ac.in', true)

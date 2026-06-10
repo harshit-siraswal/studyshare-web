@@ -25,6 +25,7 @@ const initialColleges = [
     { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
     { id: 13, name: "IIIT Bhagalpur", location: "Bhagalpur, Bihar", students: 0, domain: "iiitbh.ac.in" },
     { id: 14, name: "IIIT Sonepat", location: "Sonepat, Haryana", students: 0, domain: "iiitsonepat.ac.in" },
+    { id: 17, name: "University School of Automation and Robotics, GGSIPU", location: "East Delhi Campus, Delhi", students: 0, domain: "ipu.ac.in" },
     { id: 15, name: "ABES Engineering College", location: "Ghaziabad", students: 0, domain: "abes.ac.in" },
     { id: 16, name: "Delhi University", location: "New Delhi", students: 0, domain: "du.ac.in" },
     { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 0, domain: "iitd.ac.in" },
