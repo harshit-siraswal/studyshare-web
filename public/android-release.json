@@ -1,12 +1,12 @@
 {
   "platform": "android",
-  "version": "1.0.32",
-  "buildNumber": 2038,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260607-2038",
-  "releaseDate": "2026-06-07",
+  "version": "1.0.33",
+  "buildNumber": 2039,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260610-2039",
+  "releaseDate": "2026-06-10",
   "mandatory": false,
   "releaseNotes": [
-    "Adds a persistent in-app banner when a newer StudyShare Android APK is available.",
-    "Keeps a one-time update notification dialog for each release, with direct APK download support."
+    "Adds University School of Automation and Robotics, GGSIPU with supported branches and semester subjects.",
+    "Updates the Android download metadata for the latest StudyShare APK."
   ]
 }
