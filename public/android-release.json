@@ -1,12 +1,15 @@
 {
   "platform": "android",
-  "version": "1.0.33",
-  "buildNumber": 2039,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260610-2039",
-  "releaseDate": "2026-06-10",
+  "version": "1.0.34",
+  "buildNumber": 2040,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260612-2040",
+  "releaseDate": "2026-06-12",
   "mandatory": false,
   "releaseNotes": [
-    "Adds University School of Automation and Robotics, GGSIPU with supported branches and semester subjects.",
-    "Updates the Android download metadata for the latest StudyShare APK."
+    "AI Chat accuracy overhaul: greetings & simple queries answered instantly without RAG pipeline.",
+    "AI Chat now gives detailed 3-5 paragraph answers with source citations instead of 2-3 line stubs.",
+    "Fixed 'No related local study material found' false negatives (lowered similarity threshold).",
+    "General knowledge queries (GD topics, current affairs) auto-use web search for better answers.",
+    "Web mode now synthesizes from multiple sources instead of returning single Wikipedia snippets."
   ]
 }
