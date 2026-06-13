@@ -1,12 +1,12 @@
 {
   "platform": "android",
-  "version": "1.0.35",
-  "buildNumber": 2041,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260613-2041",
+  "version": "1.0.36",
+  "buildNumber": 2042,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260613-2042",
   "releaseDate": "2026-06-13",
   "mandatory": false,
   "releaseNotes": [
-    "Fix follow requests for newly registered users by lazily creating profiles from Firebase Auth.",
-    "Automatically resolve college_id and college name on profile creation & updates for college discovery scoping."
+    "Fix explore students listing for legacy campus accounts with null college_id values.",
+    "Resolve follow requests and scoping errors for legacy campus users."
   ]
 }
