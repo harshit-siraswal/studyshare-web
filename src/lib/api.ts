@@ -2118,7 +2118,7 @@ export interface RagResponse {
   retrieval_count: number;
   query_hash: string;
   model: string;
-  intent?: "qa" | "summary" | "comparison" | "definition";
+  intent?: "qa" | "summary" | "comparison" | "definition" | "syllabus" | "resource_list";
   applied_filters?: RagFilters;
   retrieval_score?: number;
   llm_confidence_score?: number;
