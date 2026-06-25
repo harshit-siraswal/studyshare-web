@@ -302,7 +302,7 @@ const Bookmarks = () => {
 
                                                         {/* Media preview */}
                                                         {notice.file_url && notice.file_type === 'image' && (
-                                                            <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-48 object-cover border border-border/50" />
+                                                            <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-48 object-cover border border-border/50" loading="lazy" decoding="async" />
                                                         )}
 
                                                         {/* Action bar */}

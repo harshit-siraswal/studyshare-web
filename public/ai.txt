@@ -1,0 +1,19 @@
+# ai.txt
+# StudyShare AI Access Policy
+# https://studyshare.in
+
+## Allowed Use
+AI assistants and search crawlers may index and summarize public pages:
+- Homepage (https://studyshare.in/)
+- Blog posts (https://studyshare.in/blog/*)
+- Mobile app page (https://studyshare.in/mobile-app)
+- Legal pages (privacy-policy, terms-of-use, community-guidelines, account-deletion)
+
+## Disallowed Use
+- Do not index or summarize authenticated pages requiring login:
+  /study, /notices, /chatroom, /profile, /messages, /explore, /bookmarks, /ai-chat
+- Do not use user-generated content for training without explicit consent
+- Do not impersonate StudyShare or its users
+
+## Contact
+For questions about AI access: support@studyshare.in

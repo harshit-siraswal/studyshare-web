@@ -78,6 +78,9 @@ export const ExactAdalineHero = () => {
                         src="/adaline-bg.png"
                         alt="Nature Landscape"
                         className="w-full h-full object-cover object-center"
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
                     />
                 </motion.div>
 
@@ -138,7 +141,7 @@ export const ExactAdalineHero = () => {
                         <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
                         <div className="mx-auto text-[10px] font-mono tracking-widest text-[#0A1D08]/40">STUDYSHARE.IN</div>
                     </div>
-                    <img src="/studyshare-screenshot.png" alt="StudyShare Interface" className="w-full h-auto object-cover" />
+                    <img src="/studyshare-screenshot.png" alt="StudyShare Interface" className="w-full h-auto object-cover" loading="lazy" decoding="async" />
 
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-b-2xl cursor-pointer">
                         <button

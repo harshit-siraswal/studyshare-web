@@ -31,6 +31,9 @@ export const AdalineHero = () => {
                         src="/adaline-bg.png"
                         alt="Nature Landscape"
                         className="w-full h-full object-cover object-center"
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
                     />
                 </motion.div>
 

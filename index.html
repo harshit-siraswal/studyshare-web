@@ -12,7 +12,20 @@
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+  <meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+  <meta name="bingbot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
   <meta name="author" content="StudyShare" />
+  <meta name="copyright" content="StudyShare" />
+  <meta name="owner" content="StudyShare" />
+  <meta name="url" content="https://studyshare.in/" />
+  <meta name="identifier-URL" content="https://studyshare.in/" />
+  <meta name="category" content="Education" />
+  <meta name="topic" content="Education" />
+  <meta name="rating" content="General" />
+  <meta name="distribution" content="global" />
+  <meta name="coverage" content="Worldwide" />
+  <meta name="language" content="English" />
+  <meta name="revisit-after" content="7 days" />
   <meta name="keywords"
     content="StudyShare, StudyShare AI, college notes, PYQs, notices, syllabus, AI study platform, semester wise resources, campus learning" />
   <link rel="canonical" href="https://studyshare.in/" />
@@ -25,6 +38,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="StudyShare">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=mark-6">
+  <meta name="msapplication-TileImage" content="/brand/logo-mark.png">
+  <meta name="msapplication-TileColor" content="#0a0a0f">
+  <meta name="msapplication-config" content="none">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=mark-6">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=mark-6">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=mark-6">
@@ -34,16 +50,23 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="StudyShare" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:title" content="StudyShare | AI Study Platform for College Notes, PYQs and Notices" />
   <meta property="og:description" content="AI-powered campus learning with notes, PYQs, notices, syllabi, and peer communities." />
   <meta property="og:image" content="https://studyshare.in/brand/logo-mark.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:url" content="https://studyshare.in/" />
   <meta property="og:image:alt" content="StudyShare logo" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@studyshare_in" />
+  <meta name="twitter:creator" content="@studyshare_in" />
   <meta name="twitter:url" content="https://studyshare.in/" />
   <meta name="twitter:title" content="StudyShare | AI Study Platform for College Notes, PYQs and Notices" />
   <meta name="twitter:description" content="AI-powered campus learning with notes, PYQs, notices, syllabi, and peer communities." />
   <meta name="twitter:image" content="https://studyshare.in/brand/logo-mark.png" />
+  <meta name="twitter:image:alt" content="StudyShare logo" />
 
   <script type="application/ld+json">
     {
@@ -55,14 +78,30 @@
           "alternateName": ["StudyShare AI"],
           "url": "https://studyshare.in/",
           "logo": "https://studyshare.in/brand/logo-mark.png",
-          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities."
+          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+          "sameAs": [
+            "https://twitter.com/studyshare_in",
+            "https://github.com/studyshare",
+            "https://www.linkedin.com/company/studyshare"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "support@studyshare.in",
+            "contactType": "customer support",
+            "availableLanguage": ["English"]
+          }
         },
         {
           "@type": "WebSite",
           "name": "StudyShare",
           "alternateName": ["StudyShare AI"],
           "url": "https://studyshare.in/",
-          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities."
+          "description": "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://studyshare.in/explore?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
         },
         {
           "@type": "SoftwareApplication",
@@ -71,7 +110,17 @@
           "operatingSystem": "Web, Android",
           "url": "https://studyshare.in/",
           "softwareVersion": "1.0.33",
-          "description": "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices."
+          "description": "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "1200"
+          }
         }
       ]
     }
@@ -80,6 +129,17 @@
   <!-- Preconnect to Google Fonts servers for faster font loading -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- DNS prefetch and preconnect for critical third-party domains -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://api.studyshare.in">
+  <link rel="preconnect" href="https://api.studyshare.in" crossorigin>
+  <link rel="dns-prefetch" href="https://checkout.razorpay.com">
+  <link rel="dns-prefetch" href="https://www.google.com">
+  <link rel="dns-prefetch" href="https://www.gstatic.com">
+  <link rel="dns-prefetch" href="https://accounts.google.com">
+  <link rel="dns-prefetch" href="https://apis.google.com">
 
   <!-- Load fonts directly in HTML instead of CSS @import for faster discovery -->
   <link

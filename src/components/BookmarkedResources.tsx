@@ -221,7 +221,7 @@ const BookmarkedResources = () => {
 
                                             {/* Media preview */}
                                             {notice.file_url && notice.file_type === 'image' && (
-                                                <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-64 object-cover border border-border/50 w-full" />
+                                                <img src={notice.file_url} alt="" className="mt-3 rounded-xl max-h-64 object-cover border border-border/50 w-full" loading="lazy" decoding="async" />
                                             )}
 
                                             {/* Action bar */}

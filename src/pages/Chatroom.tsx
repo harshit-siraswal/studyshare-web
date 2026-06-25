@@ -898,7 +898,7 @@ const Chatroom = () => {
                 />
                 {postImage && (
                   <div className="relative mb-3 inline-block">
-                    <img src={postImage} alt="Preview" className="h-32 rounded-lg object-cover" />
+                    <img src={postImage} alt="Preview" className="h-32 rounded-lg object-cover" loading="eager" decoding="sync" />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -1242,6 +1242,8 @@ const Chatroom = () => {
               src={imageViewer.url}
               alt="Full size"
               className="w-full h-auto max-h-[90vh] object-contain"
+              loading="eager"
+              decoding="sync"
             />
           </div>
         </DialogContent>

@@ -6,6 +6,10 @@ const APP_SHELL = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/brand/app-icon.png",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
+  "/ai.txt",
 ];
 
 self.addEventListener("install", (event) => {
@@ -59,7 +63,12 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/icons/") ||
     url.pathname.startsWith("/brand/") ||
     url.pathname === "/manifest.json" ||
-    url.pathname === "/favicon.ico"
+    url.pathname === "/favicon.ico" ||
+    url.pathname === "/robots.txt" ||
+    url.pathname === "/sitemap.xml" ||
+    url.pathname === "/llms.txt" ||
+    url.pathname === "/ai.txt" ||
+    url.pathname === "/security.txt"
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {

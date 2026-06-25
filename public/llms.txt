@@ -1,0 +1,34 @@
+# llms.txt
+# StudyShare — AI-powered college learning platform
+# https://studyshare.in
+
+## Overview
+StudyShare is an AI-powered college learning platform for notes, PYQs, notices, syllabi, and campus communities.
+Students join their college, find semester-wise resources, ask AI questions, and study faster.
+
+## Key Features
+- AI Study Assistant — ask questions from notes, PDFs, and web fallback
+- Semester-wise Resources — notes, PYQs, videos, and downloads organized by branch and subject
+- Department Notices — official updates from department accounts with search and date filters
+- College Chatrooms — public rooms, join-by-code spaces, and community threads
+- Study Timer — Pomodoro-style timer integration for focused study sessions
+- Attendance Tracking — ERP sync for supported colleges (e.g., KIET)
+- Mobile App — Android APK available for download
+
+## Public Pages
+- Homepage: https://studyshare.in/ — college selection and landing
+- Blog: https://studyshare.in/blog — study tips, product updates, and college guides
+- Mobile App: https://studyshare.in/mobile-app — Android app showcase and download
+- Privacy Policy: https://studyshare.in/privacy-policy
+- Terms of Use: https://studyshare.in/terms-of-use
+- Community Guidelines: https://studyshare.in/community-guidelines
+- Account Deletion: https://studyshare.in/account-deletion
+
+## Content Policy
+- All user-generated content is college-verified (email domain validation)
+- Content moderation includes automated scanning and community reporting
+- Copyright infringement reports handled via support@studyshare.in
+
+## Contact
+- Support: support@studyshare.in
+- Security: security@studyshare.in

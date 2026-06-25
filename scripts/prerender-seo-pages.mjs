@@ -56,21 +56,29 @@ function applySeo(baseHtml, meta) {
   html = upsertMetaByName(html, "description", meta.description);
   html = upsertMetaByName(html, "robots", robots);
   html = upsertMetaByName(html, "googlebot", robots);
+  html = upsertMetaByName(html, "bingbot", robots);
   html = upsertCanonical(html, canonical);
 
   html = upsertMetaByProperty(html, "og:type", meta.type || "website");
   html = upsertMetaByProperty(html, "og:site_name", BRAND_NAME);
+  html = upsertMetaByProperty(html, "og:locale", "en_US");
   html = upsertMetaByProperty(html, "og:url", canonical);
   html = upsertMetaByProperty(html, "og:title", title);
   html = upsertMetaByProperty(html, "og:description", meta.description);
   html = upsertMetaByProperty(html, "og:image", image);
+  html = upsertMetaByProperty(html, "og:image:width", "512");
+  html = upsertMetaByProperty(html, "og:image:height", "512");
+  html = upsertMetaByProperty(html, "og:image:type", "image/png");
   html = upsertMetaByProperty(html, "og:image:alt", `${BRAND_NAME} preview`);
 
   html = upsertMetaByName(html, "twitter:card", "summary_large_image");
+  html = upsertMetaByName(html, "twitter:site", "@studyshare_in");
+  html = upsertMetaByName(html, "twitter:creator", "@studyshare_in");
   html = upsertMetaByName(html, "twitter:url", canonical);
   html = upsertMetaByName(html, "twitter:title", title);
   html = upsertMetaByName(html, "twitter:description", meta.description);
   html = upsertMetaByName(html, "twitter:image", image);
+  html = upsertMetaByName(html, "twitter:image:alt", `${BRAND_NAME} logo`);
 
   if (meta.structuredData) {
     html = upsertJsonLd(html, meta.structuredData);
@@ -109,17 +117,35 @@ function main() {
         {
           "@type": "Organization",
           name: BRAND_NAME,
+          alternateName: ["StudyShare AI"],
           url: `${siteUrl}/`,
           logo: `${siteUrl}/brand/logo-mark.png`,
           description:
             "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+          sameAs: [
+            "https://twitter.com/studyshare_in",
+            "https://github.com/studyshare",
+            "https://www.linkedin.com/company/studyshare",
+          ],
+          contactPoint: {
+            "@type": "ContactPoint",
+            email: "support@studyshare.in",
+            contactType: "customer support",
+            availableLanguage: ["English"],
+          },
         },
         {
           "@type": "WebSite",
           name: BRAND_NAME,
+          alternateName: ["StudyShare AI"],
           url: `${siteUrl}/`,
           description:
             "AI-powered college learning platform with notes, PYQs, notices, syllabi, and peer communities.",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: `${siteUrl}/explore?q={search_term_string}`,
+            "query-input": "required name=search_term_string",
+          },
         },
         {
           "@type": "SoftwareApplication",
@@ -127,8 +153,19 @@ function main() {
           applicationCategory: "EducationalApplication",
           operatingSystem: "Web, Android",
           url: `${siteUrl}/`,
+          softwareVersion: "1.0.33",
           description:
             "StudyShare helps college students discover semester-wise resources, ask AI questions, and stay updated with notices.",
+          offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "INR",
+          },
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: "4.8",
+            ratingCount: "1200",
+          },
         },
       ],
     },

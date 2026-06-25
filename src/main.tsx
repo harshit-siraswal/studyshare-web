@@ -37,8 +37,8 @@ createRoot(document.getElementById("root")!).render(
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
-      console.error("StudyShare service worker registration failed", error);
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Silently ignore service worker registration failures in production
     });
   });
 }
