@@ -2125,6 +2125,55 @@ export interface RagResponse {
   combined_confidence?: number;
 }
 
+export interface V2QueryResponse {
+  answer: string;
+  sources: any[];
+  primary_source: { file_id: string; page: number } | null;
+  follow_up_suggestions: string[];
+  intent: string;
+  resolved_subject: string | null;
+  subject_code: string | null;
+  confidence: number;
+  latency_ms: number;
+  graph_traversal_ms?: number;
+  needs_syllabus_clarification?: boolean;
+}
+
+export async function queryV2(
+  query: string,
+  options?: {
+    collegeId?: string;
+    sessionId?: string;
+  },
+): Promise<V2QueryResponse> {
+  return apiRequest("/api/v2/query", {
+    method: "POST",
+    timeoutMs: RAG_QUERY_REQUEST_TIMEOUT_MS,
+    body: JSON.stringify({
+      query,
+      college_id: options?.collegeId,
+      session_id: options?.sessionId,
+    }),
+  });
+}
+
+export async function clarifySyllabusV2(
+  subjectCode: string,
+  unitExamMap: Record<string, string>,
+): Promise<{ success: boolean; message: string }> {
+  return apiRequest("/api/v2/clarify-syllabus", {
+    method: "POST",
+    body: JSON.stringify({
+      subject_code: subjectCode,
+      unit_exam_map: unitExamMap,
+    }),
+  });
+}
+
+// ============================================
+// V2 BACKWARD-COMPATIBLE WRAPPER
+// ============================================
+
 export async function queryRag(
   question: string,
   options?: {
@@ -2137,20 +2186,58 @@ export async function queryRag(
     videoUrl?: string;
   },
 ): Promise<RagResponse> {
-  return apiRequest("/api/rag/query", {
-    method: "POST",
-    timeoutMs: RAG_QUERY_REQUEST_TIMEOUT_MS,
-    body: JSON.stringify({
-      question,
-      college_id: options?.collegeId,
-      top_k: options?.topK,
-      min_score: options?.minScore,
-      allow_web: options?.allowWeb,
-      filters: options?.filters,
-      history: options?.history,
-      video_url: options?.videoUrl,
-    }),
-  });
+  // Try v2 first; if it fails, fall back to v1
+  try {
+    const v2 = await queryV2(question, {
+      collegeId: options?.collegeId,
+      sessionId: options?.history?.[0]?.content, // use first message as session id hint
+    });
+
+    // Convert v2 response to old RagResponse shape
+    return {
+      answer: v2.answer,
+      sources: (v2.sources || []).map((s: any) => ({
+        id: s.id || s.file_id || s.source?.file_id || "",
+        file_id: s.file_id || s.source?.file_id || "",
+        file_name: s.file_name || s.source?.file_name || "",
+        page: s.page || s.source?.page || 0,
+        subject: s.subject || s.source?.subject || v2.subject_code || "",
+        score: s.score || s.similarity || 0,
+        content: s.content || "",
+        unit: s.unit || s.unit_number || 0,
+      })),
+      follow_ups: (v2.follow_up_suggestions || []).map((label: string) => ({
+        action: "ask_followup" as const,
+        label,
+      })),
+      answer_origin: v2.sources?.length > 0 ? "notes_only" : "insufficient_notes",
+      cached: false,
+      no_local: false,
+      top_score: v2.sources?.[0]?.score || 0,
+      retrieval_count: v2.sources?.length || 0,
+      query_hash: "",
+      model: "v2",
+      intent: v2.intent as RagResponse["intent"],
+      retrieval_score: v2.confidence,
+      combined_confidence: v2.confidence,
+    };
+  } catch (err) {
+    // Fallback to v1 RAG endpoint
+    return apiRequest("/api/rag/query", {
+      method: "POST",
+      timeoutMs: RAG_QUERY_REQUEST_TIMEOUT_MS,
+      body: JSON.stringify({
+        question,
+        college_id: options?.collegeId,
+        top_k: options?.topK,
+        min_score: options?.minScore,
+        allow_web: options?.allowWeb,
+        filters: options?.filters,
+        history: options?.history,
+        video_url: options?.videoUrl,
+      }),
+    });
+  }
 }
 
 // ============================================
