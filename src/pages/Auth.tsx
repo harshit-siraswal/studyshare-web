@@ -110,10 +110,7 @@ const Auth = () => {
         error?.code === "auth/unauthorized-continue-uri" ||
         error?.code === "auth/invalid-continue-uri"
       ) {
-        console.error(
-          "Firebase rejected the verification redirect URL. Retrying without a custom continue URL.",
-          error,
-        );
+        // Silently retry without a custom continue URL
         await sendEmailVerification(targetUser);
         return;
       }
@@ -171,7 +168,6 @@ const Auth = () => {
       await sendVerificationEmailLink(firebaseUser);
       toast.success("Verification email sent! Check your inbox.");
     } catch (error: any) {
-      console.error("Resend error:", error);
       if (error.code === "auth/too-many-requests") {
         toast.error("Too many requests. Please wait a few minutes.");
       } else {
@@ -195,7 +191,6 @@ const Auth = () => {
         toast.info("Email not verified yet. Check your inbox.");
       }
     } catch (error) {
-      console.error("Reload error:", error);
       toast.error("Please try again");
     }
   };
@@ -236,8 +231,7 @@ const Auth = () => {
 
       toast.success("Signed in with Google");
     } catch (err) {
-      console.error(err);
-      // Only show error if user wasn't actually signed in
+      // Silently handle; only show error if user wasn't actually signed in
       if (!auth?.currentUser) {
         toast.error("Google sign-in failed");
       }
@@ -325,10 +319,8 @@ const Auth = () => {
             { merge: true },
           );
         } catch (profileSyncError) {
-          console.error(
-            "Account created and verification mail sent, but profile sync failed:",
-            profileSyncError,
-          );
+          // Account created and verification mail sent, but profile sync failed
+          // Silently ignore — the user can retry profile sync on next login
         }
 
         setVerificationEmail(user.email || formData.email);
@@ -337,7 +329,6 @@ const Auth = () => {
         setIsLogin(true);
       }
     } catch (error: any) {
-      console.error("Auth error:", error);
       if (error.code === "auth/email-already-in-use") {
         toast.error("Email is already registered");
       } else if (error.code === "auth/wrong-password") {
@@ -550,6 +541,7 @@ const Auth = () => {
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Full name"
+                    autoComplete="name"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
@@ -564,6 +556,7 @@ const Auth = () => {
                 <Input
                   type="email"
                   placeholder="Email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
@@ -577,6 +570,7 @@ const Auth = () => {
                 <Input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
@@ -628,7 +622,6 @@ const Auth = () => {
                         );
                         setForgotPasswordMode(false);
                       } catch (error: any) {
-                        console.error("Reset error:", error);
                         if (error.code === "auth/user-not-found") {
                           toast.error("No account found with this email");
                         } else if (error.code === "auth/too-many-requests") {

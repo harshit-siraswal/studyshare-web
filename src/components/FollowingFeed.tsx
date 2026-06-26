@@ -2,6 +2,7 @@
 // Feed showing resources from users you follow
 // Policy: Filter resources by college_id for data isolation
 
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import ResourceCard, { ResourceType } from './ResourceCard';
@@ -44,6 +45,7 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
   const { user: authUser } = useAuth();
   const { selectedCollegeId } = useCollege();
   const { isReadOnly } = usePermissions();
+  const navigate = useNavigate();
 
   const collegeId = useMemo(() => selectedCollegeId || '', [selectedCollegeId]);
 
@@ -137,7 +139,7 @@ const FollowingFeed = ({ searchQuery = '' }: FollowingFeedProps) => {
         <p className="text-slate-600 mb-4">
           Follow other users to see their contributions here
         </p>
-        <Button onClick={() => window.location.href = '/explore'}>
+        <Button onClick={() => navigate('/explore')}>
           Discover Users
         </Button>
       </Card>

@@ -15,24 +15,23 @@ if (!rawSupabaseUrl) missingSupabaseVars.push('VITE_SUPABASE_URL');
 if (!rawSupabaseKey) missingSupabaseVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
 
 if (missingSupabaseVars.length > 0) {
-  const message =
-    `[Supabase] Missing env config entries: ${missingSupabaseVars.join(', ')}. ` +
-    'Falling back to configured defaults.';
-
-  if (import.meta.env.MODE === 'production') {
-    console.error(message);
-  } else {
+  // Silently handle in production; never leak config state in browser console
+  if (import.meta.env.MODE !== 'production') {
+    const message =
+      `[Supabase] Missing env config entries: ${missingSupabaseVars.join(', ')}. ` +
+      'Falling back to configured defaults.';
+    // eslint-disable-next-line no-console
     console.warn(message);
   }
 }
 
-// Development-only fallback defaults (do not use in production!)
+// Development-only fallback defaults (NEVER used in production)
 const DEV_FALLBACK_URL = 'https://iayuwsvguwfqjgjsvjiy.supabase.co';
 const DEV_FALLBACK_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV3c3ZndXdmcWpnanN2aml5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTE5MTEsImV4cCI6MjA4MTYyNzkxMX0.EQhiq-yv9QLBNL_kmT5P59AZPykQkEZwbNbilxquYOA';
 
-const SUPABASE_URL = rawSupabaseUrl || DEV_FALLBACK_URL;
-const SUPABASE_PUBLISHABLE_KEY = rawSupabaseKey || DEV_FALLBACK_KEY;
+const SUPABASE_URL = rawSupabaseUrl || (import.meta.env.MODE !== 'production' ? DEV_FALLBACK_URL : '');
+const SUPABASE_PUBLISHABLE_KEY = rawSupabaseKey || (import.meta.env.MODE !== 'production' ? DEV_FALLBACK_KEY : '');
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

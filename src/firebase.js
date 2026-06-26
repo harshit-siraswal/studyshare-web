@@ -33,13 +33,12 @@ const missingEnvVars = Object.entries(rawConfig)
   .map(([key]) => key);
 
 if (missingEnvVars.length > 0) {
-  const message =
-    `[Firebase] Missing env config entries: ${missingEnvVars.join(", ")}. ` +
-    "Falling back to DEFAULT_FIREBASE_CONFIG.";
-
-  if (import.meta.env.MODE === "production") {
-    console.error(message);
-  } else {
+  // Silently use defaults in production; never leak config state in browser console
+  if (import.meta.env.MODE !== "production") {
+    const message =
+      `[Firebase] Missing env config entries: ${missingEnvVars.join(", ")}. ` +
+      "Falling back to DEFAULT_FIREBASE_CONFIG.";
+    // eslint-disable-next-line no-console
     console.warn(message);
   }
 }

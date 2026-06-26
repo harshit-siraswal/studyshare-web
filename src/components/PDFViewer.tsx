@@ -185,6 +185,7 @@ const PDFViewer = ({ isOpen, onClose, title, pdfUrl, videoUrl, resourceId }: PDF
                 referrerPolicy="strict-origin-when-cross-origin"
                 title={title || "Video"}
                 loading="lazy"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
               />
             ) : isLikelyYouTube ? (
               <div className="flex h-full w-full items-center justify-center p-6 text-center">

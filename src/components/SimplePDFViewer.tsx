@@ -302,6 +302,9 @@ const SimplePDFViewer = ({ pdfUrl, title, onDownload, onOpenInNewTab }: SimplePD
             src={googleDocsUrl}
             className="w-full h-full border-none"
             title="Document Viewer"
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            loading="lazy"
           />
         </div>
       </div>
