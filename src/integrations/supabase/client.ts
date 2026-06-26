@@ -25,13 +25,13 @@ if (missingSupabaseVars.length > 0) {
   }
 }
 
-// Development-only fallback defaults (NEVER used in production)
+// Fallback defaults used if environment variables are not configured/injected
 const DEV_FALLBACK_URL = 'https://iayuwsvguwfqjgjsvjiy.supabase.co';
 const DEV_FALLBACK_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV3c3ZndXdmcWpnanN2aml5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTE5MTEsImV4cCI6MjA4MTYyNzkxMX0.EQhiq-yv9QLBNL_kmT5P59AZPykQkEZwbNbilxquYOA';
 
-const SUPABASE_URL = rawSupabaseUrl || (import.meta.env.MODE !== 'production' ? DEV_FALLBACK_URL : '');
-const SUPABASE_PUBLISHABLE_KEY = rawSupabaseKey || (import.meta.env.MODE !== 'production' ? DEV_FALLBACK_KEY : '');
+const SUPABASE_URL = rawSupabaseUrl || DEV_FALLBACK_URL;
+const SUPABASE_PUBLISHABLE_KEY = rawSupabaseKey || DEV_FALLBACK_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
