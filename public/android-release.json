@@ -1,12 +1,12 @@
 {
   "platform": "android",
-  "version": "1.0.36",
-  "buildNumber": 2042,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260613-2042",
-  "releaseDate": "2026-06-13",
+  "version": "1.0.37",
+  "buildNumber": 2043,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260626-2043",
+  "releaseDate": "2026-06-26",
   "mandatory": false,
   "releaseNotes": [
-    "Fix explore students listing for legacy campus accounts with null college_id values.",
-    "Resolve follow requests and scoping errors for legacy campus users."
+    "Fix compilation issues in study screen and sticker picker.",
+    "General UI improvements and bug fixes."
   ]
 }
