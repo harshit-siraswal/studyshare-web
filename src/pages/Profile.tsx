@@ -1017,6 +1017,28 @@ const Profile = () => {
           (response.users || [])[0];
 
         if (!otherProfile) {
+          // Fallback: query Supabase users_safe directly by username or email
+          try {
+            const { data: fallbackUsers } = await supabase
+              .from("users_safe")
+              .select(USER_PROFILE_SELECT)
+              .or(`username.ilike.${normalizedUsername},email.ilike.${normalizedUsername}@%`)
+              .limit(1);
+
+            if (fallbackUsers && fallbackUsers.length > 0) {
+              const fallbackProfile = fallbackUsers[0];
+              setViewingOtherProfile({
+                ...fallbackProfile,
+                college: extractCollegeName(fallbackProfile.college),
+                profile_photo_url: resolveProfilePhotoUrl(fallbackProfile) || undefined,
+                role: fallbackProfile.role || "student",
+              });
+              return;
+            }
+          } catch (fallbackError) {
+            console.error("Fallback profile fetch failed:", fallbackError);
+          }
+
           setViewingOtherProfile(null);
           return;
         }

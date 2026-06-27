@@ -18,7 +18,6 @@ import { CommentThread } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -36,6 +35,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { LinkPreview } from "@/components/LinkPreview";
 
 interface Message {
   id: string;
@@ -377,7 +377,7 @@ const ChatPostDetail = () => {
                     )
                   }
                 >
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs flex items-center justify-center">
                     {post.author_name[0]}
                   </AvatarFallback>
                 </Avatar>
@@ -419,6 +419,8 @@ const ChatPostDetail = () => {
                 </div>
               )}
 
+              <LinkPreview content={post.content} />
+
               <div className="mt-3 flex items-center gap-3">
                 <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={handleShare}>
                   <Share className="w-4 h-4 mr-1" />
@@ -455,25 +457,30 @@ const ChatPostDetail = () => {
           <h3 className="text-sm font-semibold mb-3">Comments</h3>
 
           {!isReadOnly && (
-            <div className="flex gap-2 mb-4">
-              <Input
-                placeholder="Add a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && commentText.trim()) {
-                    e.preventDefault();
-                    handleReply(commentText);
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={() => handleReply(commentText)}
-                disabled={!commentText.trim() || postingComment}
-              >
-                {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-4 py-2 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                <input
+                  type="text"
+                  placeholder="Post your reply..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && commentText.trim()) {
+                      e.preventDefault();
+                      handleReply(commentText);
+                    }
+                  }}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0 text-foreground"
+                />
+                <button
+                  type="button"
+                  className="shrink-0 text-primary disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
+                  onClick={() => handleReply(commentText)}
+                  disabled={!commentText.trim() || postingComment}
+                >
+                  {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           )}
 

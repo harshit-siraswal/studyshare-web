@@ -19,6 +19,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { uploadChatImage } from "@/lib/uploadChatImage";
 import CreateChatRoomDialog from "@/components/CreateChatRoomDialog";
 import JoinChatRoomDialog from "@/components/JoinChatRoomDialog";
+import { LinkPreview } from "@/components/LinkPreview";
 import RoomSettingsModal from "@/components/RoomSettingsModal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -1023,7 +1024,7 @@ const Chatroom = () => {
                               navigate(`/profile/${encodeURIComponent(message.author_email?.split('@')[0] || message.author_name.toLowerCase().replace(/\s+/g, ''))}`);
                             }}
                           >
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs flex items-center justify-center">
                               {message.author_name[0]}
                             </AvatarFallback>
                           </Avatar>
@@ -1049,6 +1050,8 @@ const Chatroom = () => {
                         ) : (
                           <p className="text-foreground mb-3 whitespace-pre-wrap">{message.content}</p>
                         )}
+
+                        <LinkPreview content={message.content} />
 
                         {message.image_url && (
                           <div

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Trash2, MessageCircle, CornerDownRight, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -127,9 +126,9 @@ function CommentItem({
 
   return (
     <div className="group">
-      <div className={cn("flex gap-3", depth > 0 && "mt-3")}>
+      <div className={cn("flex gap-3 items-start", depth > 0 && "mt-3")}>
         <Avatar className="w-8 h-8 shrink-0">
-          <AvatarFallback className="bg-secondary text-xs">
+          <AvatarFallback className="bg-secondary text-xs flex items-center justify-center">
             {authorName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -179,15 +178,16 @@ function CommentItem({
 
           {canReply && isReplying && (
             <div className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-2">
-              <div className="w-8 shrink-0 flex justify-center">
+              <div className="w-8 shrink-0 flex justify-center pt-2">
                 <CornerDownRight className="w-4 h-4 text-muted-foreground/50" />
               </div>
-              <div className="flex-1 flex gap-2">
-                <Input
+              <div className="flex-1 flex items-center gap-2 rounded-full border border-border/60 bg-secondary/30 px-3 py-1.5 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                <input
+                  type="text"
                   placeholder={`Reply to ${authorName}...`}
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
-                  className="h-9 text-sm"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -196,14 +196,14 @@ function CommentItem({
                   }}
                   autoFocus
                 />
-                <Button
-                  size="icon"
-                  className="h-9 w-9"
+                <button
+                  type="button"
+                  className="shrink-0 text-primary disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
                   onClick={handleSubmitReply}
                   disabled={!replyContent.trim() || submitting}
                 >
                   <Send className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
             </div>
           )}

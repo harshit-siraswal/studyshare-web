@@ -37,6 +37,7 @@ import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
 import { getDepartmentList, getDepartmentMeta } from "@/lib/departmentMeta";
 import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+import { LinkPreview } from "@/components/LinkPreview";
 import NoticeContent, {
   getNoticePreview,
 } from "@/components/notices/NoticeContent";
@@ -83,8 +84,7 @@ const Notices = () => {
     title: "",
   });
 
-  // Expandable Comments State
-  const [expandedNotice, setExpandedNotice] = useState<string | null>(null);
+  // Comments State
   const [comments, setComments] = useState<Record<string, api.NoticeComment[]>>(
     {},
   );
@@ -135,6 +135,37 @@ const Notices = () => {
     };
   }, [user?.email, collegeId]);
 
+  // Auto-fetch comments for all displayed notices
+  useEffect(() => {
+    if (!displayedNotices.length) return;
+
+    let isCancelled = false;
+    const loadComments = async () => {
+      for (const notice of displayedNotices) {
+        if (isCancelled) break;
+        if (comments[notice.id]) continue;
+        try {
+          const { comments: fetchedComments } = await api.getNoticeComments(notice.id);
+          if (isCancelled) break;
+          setComments((prev) => ({
+            ...prev,
+            [notice.id]: fetchedComments,
+          }));
+        } catch (error) {
+          if (!isCancelled) {
+            console.error("Failed to fetch comments for", notice.id, error);
+          }
+        }
+      }
+    };
+
+    void loadComments();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [displayedNotices.map((n) => n.id).join("-")]);
+
   // Auto-fetch comments when notice modal opens
   useEffect(() => {
     if (!selectedNotice?.id || comments[selectedNotice.id]) return;
@@ -170,33 +201,6 @@ const Notices = () => {
       isCancelled = true;
     };
   }, [selectedNotice?.id, comments]);
-
-  // Expand/collapse comments for a notice
-  const toggleComments = async (noticeId: string) => {
-    if (expandedNotice === noticeId) {
-      // Collapse
-      setExpandedNotice(null);
-      return;
-    }
-
-    // Expand and fetch comments
-    setExpandedNotice(noticeId);
-
-    // Only fetch if not already loaded
-    if (!comments[noticeId]) {
-      setLoadingComments(noticeId);
-      try {
-        const { comments: fetchedComments } =
-          await api.getNoticeComments(noticeId);
-        setComments((prev) => ({ ...prev, [noticeId]: fetchedComments }));
-      } catch (error) {
-        console.error("Failed to fetch comments:", error);
-        toast.error("Failed to load comments");
-      } finally {
-        setLoadingComments(null);
-      }
-    }
-  };
 
   // Submit a new comment
   // Submit a new comment or reply
@@ -566,6 +570,8 @@ const Notices = () => {
                             content={previewText}
                             className="space-y-2"
                           />
+
+                          <LinkPreview content={previewText} />
                           {preview.truncated && (
                             <button
                               type="button"
@@ -645,21 +651,13 @@ const Notices = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={cn(
-                              "gap-2 rounded-full px-2 hover:text-blue-400 hover:bg-blue-400/10",
-                              expandedNotice === notice.id && "text-blue-400",
-                            )}
+                            className="gap-2 rounded-full px-2 hover:text-blue-400 hover:bg-blue-400/10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleComments(notice.id);
+                              navigate(`/notices/post/${notice.id}`);
                             }}
                           >
-                            <MessageCircle
-                              className={cn(
-                                "w-4 h-4",
-                                expandedNotice === notice.id && "fill-current",
-                              )}
-                            />
+                            <MessageCircle className="w-4 h-4" />
                             <span className="text-xs font-medium">
                               {commentCount}
                             </span>
@@ -697,23 +695,23 @@ const Notices = () => {
                           </Button>
                         </div>
 
-                        {/* Expandable Comments Section */}
-                        {expandedNotice === notice.id && (
+                        {/* Comments Section */}
                           <div
                             className="mt-4 pt-3 border-t border-border/50"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {canCommentOnNotices ? (
-                              <div className="flex gap-2 mb-4">
+                              <div className="flex gap-2 mb-4 items-center">
                                 <Avatar className="w-8 h-8 shrink-0">
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs flex items-center justify-center">
                                     {user?.email?.charAt(0).toUpperCase() ||
                                       "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1 flex gap-2">
-                                  <Input
-                                    placeholder="Add a comment..."
+                                <div className="flex-1 flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1.5 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                                  <input
+                                    type="text"
+                                    placeholder="Post your reply..."
                                     value={draft}
                                     onChange={(e) =>
                                       setCommentDrafts((prev) => ({
@@ -721,16 +719,16 @@ const Notices = () => {
                                         [notice.id]: e.target.value,
                                       }))
                                     }
-                                    className="flex-1 h-9 text-sm"
+                                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
                                     onKeyDown={(e) =>
                                       e.key === "Enter" &&
                                       !e.shiftKey &&
                                       handleReply(notice.id, draft)
                                     }
                                   />
-                                  <Button
-                                    size="icon"
-                                    className="h-9 w-9 shrink-0"
+                                  <button
+                                    type="button"
+                                    className="shrink-0 text-primary disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
                                     onClick={() =>
                                       handleReply(notice.id, draft)
                                     }
@@ -741,7 +739,7 @@ const Notices = () => {
                                     ) : (
                                       <Send className="w-4 h-4" />
                                     )}
-                                  </Button>
+                                  </button>
                                 </div>
                               </div>
                             ) : (
@@ -765,7 +763,7 @@ const Notices = () => {
                                 {(comments[notice.id] || []).map((comment) => (
                                   <div
                                     key={comment.id}
-                                    className="flex gap-2 group"
+                                    className="flex gap-2 items-start group"
                                   >
                                     <Avatar className="w-7 h-7 shrink-0">
                                       <AvatarFallback className="bg-secondary text-xs">
@@ -807,7 +805,6 @@ const Notices = () => {
                               </div>
                             )}
                           </div>
-                        )}
                       </div>
                     </div>
                   </Card>
@@ -975,20 +972,13 @@ const Notices = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={cn(
-                            "flex-1 gap-2",
-                            expandedNotice === selectedNotice.id &&
-                              "text-blue-400",
-                          )}
-                          onClick={() => toggleComments(selectedNotice.id)}
+                          className="flex-1 gap-2"
+                          onClick={() => {
+                            const el = document.querySelector('[data-modal-comment-input]');
+                            if (el) el.focus();
+                          }}
                         >
-                          <MessageCircle
-                            className={cn(
-                              "w-5 h-5",
-                              expandedNotice === selectedNotice.id &&
-                                "fill-current",
-                            )}
-                          />
+                          <MessageCircle className="w-5 h-5" />
                           Comment
                         </Button>
 
@@ -1022,14 +1012,15 @@ const Notices = () => {
                       </div>
 
                       {canCommentOnNotices ? (
-                        <div className="flex gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-4" data-modal-comment-input>
                           <Avatar className="w-10 h-10 shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary">
+                            <AvatarFallback className="bg-primary/10 text-primary flex items-center justify-center">
                               {user?.email?.charAt(0).toUpperCase() || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 flex gap-2">
-                            <Input
+                          <div className="flex-1 flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-4 py-2 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                            <input
+                              type="text"
                               placeholder="Post your reply..."
                               value={modalDraft}
                               onChange={(e) =>
@@ -1038,14 +1029,16 @@ const Notices = () => {
                                   [selectedNotice.id]: e.target.value,
                                 }))
                               }
-                              className="flex-1"
+                              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
                               onKeyDown={(e) =>
                                 e.key === "Enter" &&
                                 !e.shiftKey &&
                                 handleReply(selectedNotice.id, modalDraft)
                               }
                             />
-                            <Button
+                            <button
+                              type="button"
+                              className="shrink-0 text-primary disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
                               onClick={() =>
                                 handleReply(selectedNotice.id, modalDraft)
                               }
@@ -1054,9 +1047,9 @@ const Notices = () => {
                               {modalPosting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                "Reply"
+                                <Send className="w-4 h-4" />
                               )}
-                            </Button>
+                            </button>
                           </div>
                         </div>
                       ) : (

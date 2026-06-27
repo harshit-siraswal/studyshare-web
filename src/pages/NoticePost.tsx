@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CommentThread } from "@/components/CommentThread";
 import { SEO } from "@/components/SEO";
@@ -30,6 +29,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import NoticeContent from "@/components/notices/NoticeContent";
 import { getEffectiveNoticeDepartment } from "@/lib/noticeDepartment";
+import { LinkPreview } from "@/components/LinkPreview";
 import { useCollege } from "@/context/CollegeContext";
 
 const WHO_TO_FOLLOW_DEPARTMENTS = getDepartmentList(false);
@@ -356,6 +356,8 @@ const NoticePost = () => {
                     className="mt-3 text-[15px] leading-7"
                   />
 
+                  <LinkPreview content={notice.content} />
+
                   {notice.file_url ? (
                     <div className="mt-4 overflow-hidden rounded-2xl border border-border/60">
                       {notice.file_type === "image" ? (
@@ -465,18 +467,19 @@ const NoticePost = () => {
 
             <section className="px-4 py-4">
               {canCommentOnNotices ? (
-                <div className="mb-4 flex gap-2">
+                <div className="mb-4 flex items-center gap-2">
                   <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs flex items-center justify-center">
                       {user?.email?.charAt(0).toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-1 gap-2">
-                    <Input
+                  <div className="flex-1 flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1.5 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                    <input
+                      type="text"
                       value={draft}
                       onChange={(event) => setDraft(event.target.value)}
                       placeholder="Post your reply"
-                      className="h-9"
+                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
@@ -484,9 +487,9 @@ const NoticePost = () => {
                         }
                       }}
                     />
-                    <Button
-                      size="icon"
-                      className="h-9 w-9"
+                    <button
+                      type="button"
+                      className="shrink-0 text-primary disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
                       onClick={() => void handleReply(draft)}
                       disabled={!draft.trim() || posting}
                     >
@@ -495,7 +498,7 @@ const NoticePost = () => {
                       ) : (
                         <Send className="h-4 w-4" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ) : (
