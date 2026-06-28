@@ -1642,7 +1642,7 @@ export interface HealthStatus {
   // AI PHASE-1 ENDPOINTS
   // ============================================
 
-  interface AiResponse<T> {
+export interface AiResponse<T> {
       status: 'ok';
       cached?: boolean;
       data: T;
@@ -1652,6 +1652,20 @@ export interface HealthStatus {
           ocrProvider?: 'google' | 'google_vision' | 'sarvam' | null;
       };
   }
+
+/**
+ * Returned when an AI generation request is queued as an async job.
+ * Poll `getAiStudyJobStatus` with `job_id` until `status === 'completed'`.
+ */
+export interface AiStudyJobResponse<T> {
+    job_id: string;
+    status: 'queued' | 'running' | 'completed' | 'failed' | 'blocked' | 'cancelled';
+    progress?: number;
+    stage?: string;
+    status_reason?: string;
+    error?: string;
+    data?: AiResponse<T> | null;
+}
 
 export async function getAiSummary(
     fileId: string,
@@ -1708,6 +1722,12 @@ export async function getAiFlashcards(
             video_url: options?.videoUrl,
         }),
     });
+}
+
+export async function getAiStudyJobStatus<T>(
+    jobId: string,
+): Promise<AiStudyJobResponse<T>> {
+    return apiRequest(`/api/ai/job/${jobId}`);
 }
 
 // ============================================
