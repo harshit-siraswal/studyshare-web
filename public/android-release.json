@@ -1,12 +1,12 @@
 {
   "platform": "android",
-  "version": "1.0.37",
-  "buildNumber": 2043,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260626-2043",
-  "releaseDate": "2026-06-26",
+  "version": "1.0.38",
+  "buildNumber": 2044,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260628-2044",
+  "releaseDate": "2026-06-28",
   "mandatory": false,
   "releaseNotes": [
-    "Fix compilation issues in study screen and sticker picker.",
-    "General UI improvements and bug fixes."
+    "Add CBSE school support for classes 9-12 with syllabus data.",
+    "General stability improvements and bug fixes."
   ]
 }

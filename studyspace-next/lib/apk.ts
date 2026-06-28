@@ -1,7 +1,5 @@
-const DEFAULT_APK_URL = "/downloads/studyshare-android.apk?v=20260610-2039";
-const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
-const DEFAULT_HOSTED_APK_URL = "/downloads/studyshare-android.apk";
-const LEGACY_HOSTED_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
 const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
 const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
@@ -68,10 +66,7 @@ async function probeApkUrl(url: string): Promise<boolean | null> {
 
 const configuredPrimaryApkUrl = normalizeConfiguredApkUrl(process.env.NEXT_PUBLIC_ANDROID_APK_URL);
 const configuredFallbackApkUrl = normalizeConfiguredApkUrl(process.env.NEXT_PUBLIC_ANDROID_APK_FALLBACK_URL);
-const hostedFallbackApkUrls = [
-  normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL),
-  normalizeConfiguredApkUrl(LEGACY_HOSTED_APK_URL),
-].filter(Boolean);
+const hostedFallbackApkUrl = normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL);
 
 const STATIC_APK_CANDIDATE_URLS = [configuredPrimaryApkUrl, configuredFallbackApkUrl].filter(Boolean);
 
@@ -79,11 +74,8 @@ let bundledApkValidationPromise: Promise<boolean> | null = null;
 let configuredApkValidationPromise: Promise<string | null> | null = null;
 
 async function isBundledApkUsable(): Promise<boolean> {
-  const primaryProbe = await probeApkUrl(DEFAULT_APK_URL);
-  if (primaryProbe === true) return true;
-
-  const legacyProbe = await probeApkUrl(LEGACY_APK_URL);
-  return legacyProbe === true;
+  const probe = await probeApkUrl(DEFAULT_APK_URL);
+  return probe === true;
 }
 
 async function resolveConfiguredApkUrl(): Promise<string | null> {
@@ -116,15 +108,9 @@ export async function resolveAndroidApkDownloadUrl(): Promise<string | null> {
   }
 
   const isValid = await bundledApkValidationPromise;
-  if (isValid) {
-    const primaryProbe = await probeApkUrl(DEFAULT_APK_URL);
-    if (primaryProbe === true) return DEFAULT_APK_URL;
+  if (isValid) return DEFAULT_APK_URL;
 
-    const legacyProbe = await probeApkUrl(LEGACY_APK_URL);
-    if (legacyProbe === true || legacyProbe === null) return LEGACY_APK_URL;
-  }
-
-  for (const hostedFallbackApkUrl of hostedFallbackApkUrls) {
+  if (hostedFallbackApkUrl) {
     const hostedProbe = await probeApkUrl(hostedFallbackApkUrl);
     if (hostedProbe === true) {
       return hostedFallbackApkUrl;

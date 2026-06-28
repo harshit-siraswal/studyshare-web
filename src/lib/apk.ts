@@ -1,9 +1,7 @@
-const DEFAULT_APK_CACHE_KEY = "20260626-2043";
-const DEFAULT_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
-const LEGACY_APK_URL = "/downloads/studyshare-android.apk";
-const DEFAULT_HOSTED_APK_URL = `/downloads/studyshare-android.apk?v=${DEFAULT_APK_CACHE_KEY}`;
-const LEGACY_HOSTED_APK_URL = "https://file.studyshare.in/downloads/studyshare-android.apk";
-const DEFAULT_ANDROID_APP_VERSION = "1.0.37";
+const DEFAULT_APK_URL = "/downloads/studyshare-android.apk";
+const DEFAULT_HOSTED_APK_URL = "https://file.mystudyspace.me/downloads/studyshare-android.apk";
+const MIN_EXPECTED_APK_BYTES = 5 * 1024 * 1024;
+const LIKELY_TEXT_MIME_RE = /^text\/|application\/json/i;
 const PLACEHOLDER_HOST_MARKERS = ["your-domain.com", "example.com"];
 
 function normalizeConfiguredApkUrl(value: unknown): string {
@@ -27,42 +25,107 @@ function normalizeConfiguredApkUrl(value: unknown): string {
   }
 }
 
-function normalizeAndroidAppVersion(value: unknown): string {
-  const raw = typeof value === "string" ? value.trim() : "";
-  if (!raw) return DEFAULT_ANDROID_APP_VERSION;
+function isSameOriginUrl(url: string): boolean {
+  if (url.startsWith("/")) return true;
+  try {
+    const parsed = new URL(url, window.location.href);
+    return parsed.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
 
-  const withoutBuildSuffix = raw
-    .replace(/\s*\(build\s*\d+\)\s*/gi, "")
-    .replace(/\s*build\s*\d+\s*/gi, "")
-    .trim();
+function isLikelyApkResponse(response: Response): boolean {
+  const contentLength = Number(response.headers.get("content-length") || "0");
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
 
-  return withoutBuildSuffix || DEFAULT_ANDROID_APP_VERSION;
+  if (Number.isFinite(contentLength) && contentLength > 0 && contentLength < MIN_EXPECTED_APK_BYTES) {
+    return false;
+  }
+  if (LIKELY_TEXT_MIME_RE.test(contentType)) {
+    return false;
+  }
+  return true;
+}
+
+async function probeApkUrl(url: string): Promise<boolean | null> {
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      if (response.status === 405 || response.status === 501) return null;
+      return false;
+    }
+    return isLikelyApkResponse(response);
+  } catch {
+    return null;
+  }
 }
 
 const configuredPrimaryApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_URL);
 const configuredFallbackApkUrl = normalizeConfiguredApkUrl(import.meta.env.VITE_ANDROID_APK_FALLBACK_URL);
-const hostedFallbackApkUrl =
-  normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL) || normalizeConfiguredApkUrl(LEGACY_HOSTED_APK_URL);
+const hostedFallbackApkUrl = normalizeConfiguredApkUrl(DEFAULT_HOSTED_APK_URL);
 
-export const ANDROID_APK_URL =
-  configuredPrimaryApkUrl ||
-  configuredFallbackApkUrl ||
-  hostedFallbackApkUrl ||
-  DEFAULT_APK_URL ||
-  LEGACY_APK_URL;
-export const ANDROID_APP_VERSION =
-  normalizeAndroidAppVersion(import.meta.env.VITE_ANDROID_APP_VERSION);
+const STATIC_APK_CANDIDATE_URLS = [configuredPrimaryApkUrl, configuredFallbackApkUrl].filter(Boolean);
+
+let bundledApkValidationPromise: Promise<boolean> | null = null;
+let configuredApkValidationPromise: Promise<string | null> | null = null;
+
+async function isBundledApkUsable(): Promise<boolean> {
+  const probe = await probeApkUrl(DEFAULT_APK_URL);
+  return probe === true;
+}
+
+async function resolveConfiguredApkUrl(): Promise<string | null> {
+  for (const candidate of STATIC_APK_CANDIDATE_URLS) {
+    const probe = await probeApkUrl(candidate);
+    if (probe === true) return candidate;
+    if (probe === false) continue;
+    if (!isSameOriginUrl(candidate)) return candidate;
+  }
+  return null;
+}
+
+export const ANDROID_APK_URL = configuredPrimaryApkUrl || DEFAULT_APK_URL;
 
 export async function resolveAndroidApkDownloadUrl(): Promise<string | null> {
-  return ANDROID_APK_URL || null;
+  if (STATIC_APK_CANDIDATE_URLS.length > 0) {
+    if (!configuredApkValidationPromise) {
+      configuredApkValidationPromise = resolveConfiguredApkUrl();
+    }
+    const configuredUrl = await configuredApkValidationPromise;
+    if (configuredUrl) return configuredUrl;
+  }
+
+  if (import.meta.env.DEV) {
+    return DEFAULT_APK_URL;
+  }
+
+  if (!bundledApkValidationPromise) {
+    bundledApkValidationPromise = isBundledApkUsable();
+  }
+
+  const isValid = await bundledApkValidationPromise;
+  if (isValid) return DEFAULT_APK_URL;
+
+  if (hostedFallbackApkUrl) {
+    const hostedProbe = await probeApkUrl(hostedFallbackApkUrl);
+    if (hostedProbe === true) {
+      return hostedFallbackApkUrl;
+    }
+    if (hostedProbe === null && !isSameOriginUrl(hostedFallbackApkUrl)) {
+      return hostedFallbackApkUrl;
+    }
+  }
+
+  return null;
 }
 
 export async function openAndroidApkDownload(): Promise<boolean> {
   const url = await resolveAndroidApkDownloadUrl();
   if (!url) return false;
-  const popup = window.open(url, "_blank", "noopener,noreferrer");
-  if (!popup) {
-    window.location.assign(url);
-  }
+  window.open(url, "_blank", "noopener,noreferrer");
   return true;
 }

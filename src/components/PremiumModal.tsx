@@ -13,6 +13,7 @@ import {
   buildAiTokenBudgetSnapshot,
   estimateRechargeVisibleTokens,
   formatVisibleAiTokens,
+  VISIBLE_AI_TOKENS_PER_RUPEE,
 } from "@/lib/aiTokens";
 import { AI_RECHARGE_LIMITS, PLANS, SubscriptionService } from "@/lib/subscription";
 
@@ -22,7 +23,7 @@ interface PremiumModalProps {
   mode?: "premium" | "recharge";
 }
 
-const DEFAULT_BASE_BUDGET = 40160;
+const DEFAULT_BASE_BUDGET = 40000;
 const DEFAULT_BUDGET_INR = 1;
 
 const PremiumModal = ({
@@ -267,11 +268,14 @@ const PremiumModal = ({
                     <Wallet className="h-4 w-4 text-primary" />
                     <h3 className="text-lg font-semibold">Student AI Recharge</h3>
                   </div>
-                  <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                    Low-cost micro top-ups for students. Pick a pack below to see
-                    how many AI tokens you will receive.
-                  </p>
-                </div>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  Low-cost micro top-ups for students. Pick a pack below to see
+                  how many AI tokens you will receive.
+                </p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                  Recharge rate: INR 1 = {VISIBLE_AI_TOKENS_PER_RUPEE} AI tokens
+                </p>
+              </div>
                 <Badge variant="secondary" className="border border-primary/20 bg-primary/10 text-primary">
                   Starts from INR 19
                 </Badge>
