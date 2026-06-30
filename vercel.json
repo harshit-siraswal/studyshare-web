@@ -76,6 +76,10 @@
             "destination": "https://api.studyshare.in/:path*"
         },
         {
+            "source": "/downloads/studyshare-android.apk",
+            "destination": "https://file.mystudyspace.me/downloads/studyshare-android.apk"
+        },
+        {
             "source": "/blog",
             "destination": "/blog/index.html"
         },

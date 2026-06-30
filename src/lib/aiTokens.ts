@@ -1,6 +1,7 @@
-const DEFAULT_AI_BASE_BUDGET = 40160;
+const DEFAULT_AI_BASE_BUDGET = 40000;
 const DEFAULT_AI_BUDGET_INR = 1;
 const DEFAULT_AI_PREMIUM_MULTIPLIER = 10;
+export const VISIBLE_AI_TOKENS_PER_RUPEE = 20;
 
 export const RAW_AI_TOKENS_PER_VISIBLE_TOKEN = 2000;
 export const AI_RECHARGE_PACKS = [19, 29, 49, 99, 149, 199] as const;
@@ -61,13 +62,10 @@ export function formatVisibleAiTokens(rawTokenCount: number): string {
 }
 
 export function resolveTokensPerRupee(
-  baseBudget: number,
-  budgetInr: number,
+  _baseBudget: number,
+  _budgetInr: number,
 ): number {
-  return Math.max(
-    1,
-    Math.round(baseBudget / Math.max(0.01, budgetInr || DEFAULT_AI_BUDGET_INR)),
-  );
+  return VISIBLE_AI_TOKENS_PER_RUPEE * RAW_AI_TOKENS_PER_VISIBLE_TOKEN;
 }
 
 export function estimateRechargeRawTokens(

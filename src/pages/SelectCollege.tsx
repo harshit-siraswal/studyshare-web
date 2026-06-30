@@ -3,14 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon, Smartphone } from "lucide-react";
+import { Search, Users, BookOpen, Sparkles, Plus, Download, Sun, Moon } from "lucide-react";
 import RequestCollegeDialog from "@/components/RequestCollegeDialog";
 import { SEO } from "@/components/SEO";
 import { supabase } from "../supabase";
 import BrandMark from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
-import { ANDROID_APP_VERSION, openAndroidApkDownload } from "@/lib/apk";
-import { formatSupportMessage } from "@/lib/support";
+import { openAndroidApkDownload } from "@/lib/apk";
 import { toast } from "sonner";
 
 type CollegeCard = (typeof initialColleges)[number];
@@ -21,7 +20,6 @@ const initialColleges = [
     { id: 9, name: "Krishna Institute of Engineering and Technology", location: "Ghaziabad", students: 0, domain: "kiet.edu" },
     { id: 13, name: "IIIT Bhagalpur", location: "Bhagalpur, Bihar", students: 0, domain: "iiitbh.ac.in" },
     { id: 14, name: "IIIT Sonepat", location: "Sonepat, Haryana", students: 0, domain: "iiitsonepat.ac.in" },
-    { id: 17, name: "University School of Automation and Robotics, GGSIPU", location: "East Delhi Campus, Delhi", students: 0, domain: "ipu.ac.in" },
     { id: 15, name: "ABES Engineering College", location: "Ghaziabad", students: 0, domain: "abes.ac.in" },
     { id: 16, name: "Delhi University", location: "New Delhi", students: 0, domain: "du.ac.in" },
     { id: 1, name: "Indian Institute of Technology Delhi", location: "New Delhi", students: 0, domain: "iitd.ac.in" },
@@ -124,8 +122,8 @@ const SelectCollege = () => {
                         .filter((college) => college.domain)
                         .map(async (college) => {
                             const { count, error } = await supabase
-        .from('users_safe')
-        .select('id', { count: 'exact', head: true })
+                                .from('users')
+                                .select('id', { count: 'exact', head: true })
                                 .or(`email.ilike.%@${college.domain},email.ilike.%@%.${college.domain}`);
 
                             if (error || count === null) {
@@ -188,11 +186,7 @@ const SelectCollege = () => {
     const handleDownloadApk = async () => {
         const opened = await openAndroidApkDownload();
         if (!opened) {
-            toast.error(
-                formatSupportMessage(
-                    "APK download is temporarily unavailable. Please contact support",
-                ),
-            );
+            toast.error("APK download is temporarily unavailable. Please contact support.");
         }
     };
 
@@ -227,16 +221,6 @@ const SelectCollege = () => {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate("/mobile-app")}
-                        className="w-full justify-center sm:w-auto"
-                    >
-                        <Smartphone className="h-4 w-4" />
-                        App Gallery
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
                         onClick={toggleTheme}
                         className="w-full justify-center bg-card/70 backdrop-blur-sm sm:w-auto"
                     >
@@ -251,7 +235,7 @@ const SelectCollege = () => {
                         className="w-full justify-center sm:w-auto"
                     >
                         <Download className="h-4 w-4" />
-                        Download v{ANDROID_APP_VERSION}
+                        Download APK
                     </Button>
                 </div>
 
