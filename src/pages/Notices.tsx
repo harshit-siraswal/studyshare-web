@@ -102,6 +102,41 @@ const Notices = () => {
   // Selected notice for modal view
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
+  const getDeptInfo = (deptCode: string) => {
+    return getDepartmentMeta(deptCode);
+  };
+
+  // Filter notices by tab and search
+  const followedDepartmentSet = new Set(followedDeptIds);
+  const displayedNotices = notices
+    .filter((notice) =>
+      activeTab === "following"
+        ? followedDepartmentSet.has(
+            normalizeDepartmentValue(getEffectiveNoticeDepartment(notice)),
+          )
+        : true,
+    )
+    .filter((n) => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      const dept = getDeptInfo(n.department);
+      const content = n.content || "";
+      const department = n.department || "";
+      return (
+        n.title?.toLowerCase().includes(query) ||
+        content.toLowerCase().includes(query) ||
+        dept.label.toLowerCase().includes(query) ||
+        department.toLowerCase().includes(query)
+      );
+    });
+
+  const modalDraft = selectedNotice
+    ? commentDrafts[selectedNotice.id] || ""
+    : "";
+  const modalPosting = selectedNotice
+    ? !!postingByNotice[selectedNotice.id]
+    : false;
+
   // Fetch followed departments on mount
   useEffect(() => {
     if (!user?.email) {
@@ -257,10 +292,6 @@ const Notices = () => {
     }
   };
 
-  const getDeptInfo = (deptCode: string) => {
-    return getDepartmentMeta(deptCode);
-  };
-
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -277,37 +308,6 @@ const Notices = () => {
       return `${diffInDays}d`;
     }
   };
-
-  // Filter notices by tab and search
-  const followedDepartmentSet = new Set(followedDeptIds);
-  const displayedNotices = notices
-    .filter((notice) =>
-      activeTab === "following"
-        ? followedDepartmentSet.has(
-            normalizeDepartmentValue(getEffectiveNoticeDepartment(notice)),
-          )
-        : true,
-    )
-    .filter((n) => {
-      if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
-      const dept = getDeptInfo(n.department);
-      const content = n.content || "";
-      const department = n.department || "";
-      return (
-        n.title?.toLowerCase().includes(query) ||
-        content.toLowerCase().includes(query) ||
-        dept.label.toLowerCase().includes(query) ||
-        department.toLowerCase().includes(query)
-      );
-    });
-
-  const modalDraft = selectedNotice
-    ? commentDrafts[selectedNotice.id] || ""
-    : "";
-  const modalPosting = selectedNotice
-    ? !!postingByNotice[selectedNotice.id]
-    : false;
 
   return (
     <div className="h-screen overflow-hidden bg-background text-foreground flex justify-center">
