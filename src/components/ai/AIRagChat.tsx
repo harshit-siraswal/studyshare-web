@@ -488,45 +488,14 @@ const AIRagChat = ({
       source_type: mode === "notes" ? "pdf" : filters.source_type || "both",
     };
 
-    const firstResponse = await queryRag(prompt, {
+    const response = await queryRag(prompt, {
       collegeId: selectedCollegeId || undefined,
       allowWeb: mode === "web",
       filters: requestFilters,
       history,
     });
 
-    const shouldAutoFallbackToWeb =
-      mode === "notes" &&
-      (firstResponse.answer_origin === "insufficient_notes" || firstResponse.no_local);
-
-    if (!shouldAutoFallbackToWeb) {
-      return { response: firstResponse, usedAutoWebFallback: false };
-    }
-
-    try {
-      const webResponse = await queryRag(prompt, {
-        collegeId: selectedCollegeId || undefined,
-        allowWeb: true,
-        filters: {
-          ...filters,
-          source_type: filters.source_type || "both",
-        },
-        history,
-      });
-
-      const webImprovedAnswer =
-        webResponse.answer_origin !== "insufficient_notes" ||
-        !webResponse.no_local ||
-        (webResponse.sources?.length || 0) > (firstResponse.sources?.length || 0);
-
-      if (webImprovedAnswer) {
-        return { response: webResponse, usedAutoWebFallback: true };
-      }
-    } catch {
-      // Keep the notes-only response if web supplementation fails.
-    }
-
-    return { response: firstResponse, usedAutoWebFallback: false };
+    return { response, usedAutoWebFallback: false };
   };
 
   const buildQueryFromFollowUp = (action: RagFollowUpAction) => {
