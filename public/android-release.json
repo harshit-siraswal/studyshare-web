@@ -1,13 +1,11 @@
 {
   "platform": "android",
-  "version": "1.0.39",
-  "buildNumber": 2045,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260630-2045",
-  "releaseDate": "2026-06-30",
+  "version": "1.0.40",
+  "buildNumber": 2046,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260706-2046",
+  "releaseDate": "2026-07-06",
   "mandatory": false,
   "releaseNotes": [
-    "Redesigned comment box to match Twitter/X style.",
-    "Posts and comments now show real display names instead of usernames.",
-    "Fixed 'No members online' bug in room presence tracking."
+    "Fix chat room creation validation and error handling."
   ]
 }
