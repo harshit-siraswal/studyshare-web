@@ -32,3 +32,10 @@ dist-ssr
 public/vendor/webodf*
 public/downloads/*.apk
 !public/downloads/studyshare-android.apk
+
+# Temporary files and directories
+tmp/
+tmp_*
+**/tmp/
+**/tmp_*
+
