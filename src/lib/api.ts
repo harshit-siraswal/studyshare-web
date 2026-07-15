@@ -1991,3 +1991,51 @@ export async function toggleCommentLike(
         method: 'POST',
     });
 }
+
+// ============================================
+// NOTEBOOK SOURCE LINK (WP-1/WP-2)
+// ============================================
+
+export interface NotebookSourceLinkResponse {
+    source_id: string;
+    job_id: string | null;
+    status: 'pending' | 'ready';
+    title: string;
+    deduped?: boolean;
+}
+
+export interface NotebookSourceStatusResponse {
+    source_id: string;
+    status: 'pending' | 'processing' | 'ready' | 'failed';
+    error_code?: string;
+    error_message?: string;
+}
+
+/**
+ * WP-2: Submit a YouTube URL as a notebook source for async ingestion.
+ * Returns 202 with job_id for new sources, 200 with deduped=true if already ready.
+ */
+export async function addNotebookSourceLink(
+    url: string,
+    opts?: { title?: string; subject?: string; notebookId?: string }
+): Promise<NotebookSourceLinkResponse> {
+    return apiRequest('/api/notebook-sources/link', {
+        method: 'POST',
+        body: JSON.stringify({
+            url,
+            title: opts?.title,
+            subject: opts?.subject,
+            notebook_id: opts?.notebookId,
+        }),
+    });
+}
+
+/**
+ * WP-2: Poll the ingestion status of a notebook source.
+ * Typical usage: poll every 3 s until status is 'ready' or 'failed'.
+ */
+export async function getNotebookSourceStatus(
+    sourceId: string
+): Promise<NotebookSourceStatusResponse> {
+    return apiRequest(`/api/notebook-sources/${sourceId}/status`);
+}
