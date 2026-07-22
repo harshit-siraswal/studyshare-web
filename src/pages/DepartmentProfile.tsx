@@ -12,6 +12,8 @@ import {
   Bookmark,
   Send,
   Trash2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { CommentThread } from "@/components/CommentThread";
 import { Button } from "@/components/ui/button";
@@ -101,6 +103,32 @@ const DepartmentProfile = () => {
 
   // Bookmarks hook
   const { isBookmarked, toggleBookmark } = useBookmarks();
+
+  // Collapsible profile header state & scroll handler
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+
+  const handleNoticesScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    if (scrollTop > 30) {
+      setIsHeaderCollapsed(true);
+    } else if (scrollTop <= 5) {
+      setIsHeaderCollapsed(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollY = window.scrollY;
+      if (scrollY > 30) {
+        setIsHeaderCollapsed(true);
+      } else if (scrollY <= 5) {
+        setIsHeaderCollapsed(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleWindowScroll);
+  }, []);
   useEffect(() => {
     if (!departmentValue || collegeScopes.length === 0) return;
 
@@ -337,79 +365,146 @@ const DepartmentProfile = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/notices")}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex flex-1 items-center gap-3">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border shadow-xs transition-all duration-300">
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/notices")}
+                className="shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <DepartmentAvatar
                 meta={department}
                 size="lg"
-                className="h-11 w-11"
+                className="h-10 w-10 sm:h-11 sm:w-11 shrink-0"
               />
-              <div>
-                <h1 className="text-xl font-bold">{department.label}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {notices.length} notices
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl font-bold truncate">{department.label}</h1>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "uppercase tracking-wide text-[10px] sm:text-xs shrink-0",
+                      department.badgeClassName,
+                    )}
+                  >
+                    {department.handle}
+                  </Badge>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {notices.length} notices • {followerCount} followers
                 </p>
               </div>
+            </div>
+
+            {/* Header Controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                onClick={handleFollow}
+                variant={isFollowing ? "outline" : "default"}
+                size="sm"
+                className="h-8 sm:h-9 px-3 text-xs sm:text-sm transition-all"
+              >
+                {isFollowing ? "Following" : "Follow"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsHeaderCollapsed((prev) => !prev)}
+                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground"
+                title={
+                  isHeaderCollapsed
+                    ? "Expand department profile"
+                    : "Collapse department profile"
+                }
+              >
+                {isHeaderCollapsed ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronUp className="w-4 h-4" />
+                )}
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Department Header Card */}
-        <Card className="p-6 mb-6">
-          <div className="flex items-start gap-6">
-            <DepartmentAvatar meta={department} size="hero" />
-            <div className="flex-1">
-              <div className="mb-2 flex items-center gap-2 flex-wrap">
-                <h2 className="text-2xl font-bold">{department.label}</h2>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "uppercase tracking-wide",
-                    department.badgeClassName,
-                  )}
+      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+        {/* Department Header Card - Collapsible */}
+        <div
+          className={cn(
+            "transition-all duration-300 ease-in-out transform origin-top overflow-hidden",
+            isHeaderCollapsed
+              ? "max-h-0 opacity-0 mb-0 py-0 scale-95 pointer-events-none"
+              : "max-h-[600px] opacity-100 mb-6 scale-100"
+          )}
+        >
+          <Card className="p-6">
+            <div className="flex items-start gap-6">
+              <DepartmentAvatar meta={department} size="hero" />
+              <div className="flex-1">
+                <div className="mb-2 flex items-center gap-2 flex-wrap">
+                  <h2 className="text-2xl font-bold">{department.label}</h2>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "uppercase tracking-wide",
+                      department.badgeClassName,
+                    )}
+                  >
+                    {department.handle}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  {department.description ||
+                    `Official department account for ${department.label}`}
+                </p>
+                <div className="flex items-center gap-6 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{notices.length}</span>
+                    <span className="text-sm text-muted-foreground">Notices</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{followerCount}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Followers
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleFollow}
+                  variant={isFollowing ? "outline" : "default"}
+                  className="w-full sm:w-auto"
                 >
-                  {department.handle}
-                </Badge>
+                  {isFollowing ? "Following" : "Follow"}
+                </Button>
               </div>
-              <p className="text-muted-foreground mb-4">
-                {department.description ||
-                  `Official department account for ${department.label}`}
-              </p>
-              <div className="flex items-center gap-6 mb-4">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-semibold">{notices.length}</span>
-                  <span className="text-sm text-muted-foreground">Notices</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-semibold">{followerCount}</span>
-                  <span className="text-sm text-muted-foreground">
-                    Followers
-                  </span>
-                </div>
-              </div>
-              <Button
-                onClick={handleFollow}
-                variant={isFollowing ? "outline" : "default"}
-                className="w-full sm:w-auto"
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </Button>
             </div>
+          </Card>
+        </div>
+
+        {/* Collapsed State Bar */}
+        {isHeaderCollapsed && (
+          <div className="mb-3 flex items-center justify-between px-2 py-1 text-xs text-muted-foreground border-b border-border/40 pb-2 animate-in fade-in duration-200">
+            <span className="font-medium text-foreground/80 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              Notices Box ({filteredNotices.length} notices)
+            </span>
+            <button
+              onClick={() => setIsHeaderCollapsed(false)}
+              className="text-primary hover:underline font-medium transition-colors flex items-center gap-1"
+            >
+              Show Profile Details
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </Card>
+        )}
 
         {/* Search */}
         <div className="mb-4">
@@ -427,7 +522,15 @@ const DepartmentProfile = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <ScrollArea className="h-[calc(100vh-28rem)]">
+          <ScrollArea
+            className={cn(
+              "transition-all duration-300 ease-in-out",
+              isHeaderCollapsed
+                ? "h-[calc(100vh-12rem)] sm:h-[calc(100vh-11rem)]"
+                : "h-[calc(100vh-27rem)] sm:h-[calc(100vh-28rem)]"
+            )}
+            onScrollCapture={handleNoticesScroll}
+          >
             <div className="space-y-4 pr-4">
               {filteredNotices.map((notice) => (
                 <Card
