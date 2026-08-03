@@ -1,11 +1,11 @@
 {
   "platform": "android",
-  "version": "1.0.40",
-  "buildNumber": 2046,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260706-2046",
-  "releaseDate": "2026-07-06",
+  "version": "1.0.42",
+  "buildNumber": 2048,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260803-2048",
+  "releaseDate": "2026-08-03",
   "mandatory": false,
   "releaseNotes": [
-    "Fix chat room creation validation and error handling."
+    "Free PDF note downloads and unlocked GIF sticker features."
   ]
 }

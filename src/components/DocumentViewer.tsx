@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search, Moon, Sun, X, ChevronDown, ChevronUp, FileText, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, Maximize2, Minimize2, Search, Moon, Sun, X, ChevronDown, ChevronUp, FileText, AlertTriangle, Download } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { getApiBaseUrl } from "@/lib/runtimeConfig";
@@ -537,6 +538,44 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
         setRichDocScale(1.0);
     }, [normalizedUrl, proxiedDocumentUrl, fileType]);
 
+    const handleDownloadDocument = useCallback(async () => {
+        if (!url) return;
+        try {
+            toast.info("Starting document download...");
+            const response = await fetch(proxiedDocumentUrl);
+            if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+
+            let ext = fileType !== "unknown" ? `.${fileType}` : ".pdf";
+            if (url.includes(".")) {
+                const rawExt = url.split(".").pop()?.split("?")[0];
+                if (rawExt && rawExt.length <= 5) ext = `.${rawExt}`;
+            }
+
+            const fileName = title ? `${title.replace(/[^a-zA-Z0-9_\-]/g, "_")}${ext}` : `document${ext}`;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(downloadUrl);
+            toast.success("Download started");
+        } catch (err) {
+            console.error("Document download failed:", err);
+            const link = document.createElement("a");
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.download = title || "document";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success("Opened download link");
+        }
+    }, [url, proxiedDocumentUrl, fileType, title]);
+
 
     // --- PDF Logic ---
     const onDocumentLoadSuccess = (pdf: pdfjs.PDFDocumentProxy) => {
@@ -985,6 +1024,17 @@ const DocumentViewer = ({ url, title, type, fullscreenTargetRef, toolbarActions 
 
                 <div className="flex items-center gap-1 md:gap-2">
                     {toolbarActions}
+
+                    {/* Download Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleDownloadDocument}
+                        className="h-8 w-8"
+                        title="Download Document"
+                    >
+                        <Download className="h-4 w-4" />
+                    </Button>
 
                     {/* Dark Mode Toggle */}
                     <Button
