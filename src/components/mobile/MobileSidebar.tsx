@@ -14,6 +14,9 @@ import {
   Download,
   Sparkles,
   Smartphone,
+  Globe,
+  Github,
+  Instagram,
 } from "lucide-react";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { Button } from "@/components/ui/button";
@@ -255,6 +258,52 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               <span className="font-medium">Logout</span>
             </button>
           )}
+
+          {/* Creator Info & Social Links */}
+          <div className="pt-3 mt-1 border-t border-border text-xs">
+            <p className="text-muted-foreground font-medium mb-2 flex items-center gap-1">
+              Made by{" "}
+              <a
+                href="https://harshitpal.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary hover:underline"
+              >
+                Harshit Pal
+              </a>
+            </p>
+            <div className="flex items-center gap-2.5 text-muted-foreground flex-wrap">
+              <a
+                href="https://harshitpal.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors font-medium"
+              >
+                <Globe className="w-3.5 h-3.5 text-primary" />
+                <span>Portfolio</span>
+              </a>
+              <span className="text-muted-foreground/40">•</span>
+              <a
+                href="https://github.com/harshit-siraswal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span>GitHub</span>
+              </a>
+              <span className="text-muted-foreground/40">•</span>
+              <a
+                href="https://instagram.com/harshit_siraswal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
+              >
+                <Instagram className="w-3.5 h-3.5" />
+                <span>Instagram</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </>

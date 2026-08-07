@@ -21,6 +21,9 @@ import {
   Moon,
   Sun,
   Smartphone,
+  Github,
+  Instagram,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -534,6 +537,55 @@ const StudySidebar = ({ isOpen, onToggle }: StudySidebarProps) => {
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
           </Button>
+
+          {/* Creator Info & Socials */}
+          <div className="pt-2.5 mt-1 border-t border-sidebar-border/60">
+            <p className="text-[11px] font-medium text-muted-foreground px-2 mb-1.5">
+              Made by{" "}
+              <a
+                href="https://harshitpal.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary hover:underline"
+              >
+                Harshit Pal
+              </a>
+            </p>
+            <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground flex-wrap">
+              <a
+                href="https://harshitpal.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors font-medium"
+                title="Portfolio (harshitpal.in)"
+              >
+                <Globe className="w-3.5 h-3.5 text-primary" />
+                <span>Portfolio</span>
+              </a>
+              <span className="text-muted-foreground/30">•</span>
+              <a
+                href="https://github.com/harshit-siraswal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
+                title="GitHub (harshit-siraswal)"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span>GitHub</span>
+              </a>
+              <span className="text-muted-foreground/30">•</span>
+              <a
+                href="https://instagram.com/harshit_siraswal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
+                title="Instagram (harshit_siraswal)"
+              >
+                <Instagram className="w-3.5 h-3.5" />
+                <span>Insta</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

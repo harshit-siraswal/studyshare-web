@@ -18,6 +18,10 @@ import {
   Sparkles,
   Workflow,
   X,
+  Link2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,7 +40,12 @@ import {
   type RagFollowUpAction,
   type RagResponse,
   type RagSource,
+  addNotebookSourceLink,
+  getNotebookSourceStatus,
+  type NotebookSourceStatusResponse,
 } from "@/lib/api";
+import { extractYouTubeId } from "@/lib/youtube";
+import { mapAiErrorCode } from "@/lib/aiErrors";
 import BrandLoader from "@/components/BrandLoader";
 import BrandMark from "@/components/BrandMark";
 import AILivePlanCard, {
@@ -71,6 +80,15 @@ interface SourceWebPreview {
   isOpen: boolean;
   title: string;
   url: string;
+}
+
+interface YouTubePendingSource {
+  sourceId: string;
+  title: string;
+  url: string;
+  status: NotebookSourceStatusResponse['status'];
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 const LONG_TASK_HINTS = [
@@ -422,6 +440,9 @@ const AIRagChat = ({
     url: "",
   });
   const [webPreviewMode, setWebPreviewMode] = useState<"direct" | "reader">("direct");
+  const [ytLinkInput, setYtLinkInput] = useState("");
+  const [ytLinkLoading, setYtLinkLoading] = useState(false);
+  const [ytPendingSources, setYtPendingSources] = useState<YouTubePendingSource[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -731,6 +752,68 @@ const AIRagChat = ({
 
   const handleRemoveAttachment = (id: string) => {
     setAttachments((prev) => prev.filter((entry) => entry.id !== id));
+  };
+
+  const handleAddYouTubeLink = async () => {
+    const url = ytLinkInput.trim();
+    if (!url) return;
+    const videoId = extractYouTubeId(url);
+    if (!videoId) {
+      toast.error("Please enter a valid YouTube link.");
+      return;
+    }
+    setYtLinkLoading(true);
+    try {
+      const result = await addNotebookSourceLink(url);
+      const newSource: YouTubePendingSource = {
+        sourceId: result.source_id,
+        title: result.title || "YouTube Video",
+        url,
+        status: result.status,
+      };
+      setYtPendingSources((prev) => [
+        ...prev.filter((s) => s.sourceId !== result.source_id),
+        newSource,
+      ]);
+      setYtLinkInput("");
+      if (result.status === "ready") {
+        toast.success(`"${result.title}" is ready.`);
+      } else {
+        toast.info(`"${result.title}" is being processed. We'll notify you when it's ready.`);
+        // Poll until ready or failed
+        const pollInterval = window.setInterval(async () => {
+          try {
+            const status = await getNotebookSourceStatus(result.source_id);
+            setYtPendingSources((prev) =>
+              prev.map((s) =>
+                s.sourceId === result.source_id
+                  ? {
+                      ...s,
+                      status: status.status,
+                      errorCode: status.error_code,
+                      errorMessage: status.error_message,
+                    }
+                  : s
+              )
+            );
+            if (status.status === "ready") {
+              window.clearInterval(pollInterval);
+              toast.success(`"${newSource.title}" is ready to use in chat.`);
+            } else if (status.status === "failed") {
+              window.clearInterval(pollInterval);
+              toast.error(mapAiErrorCode(status.error_code));
+            }
+          } catch {
+            // Non-fatal polling error; keep trying
+          }
+        }, 3000);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to add link.";
+      toast.error(message);
+    } finally {
+      setYtLinkLoading(false);
+    }
   };
 
   const latestAssistantIndex = (() => {
@@ -2032,6 +2115,83 @@ const AIRagChat = ({
                   </button>
                 </div>
               </div>
+
+              {/* YouTube Link Input Row */}
+              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs">
+                <Link2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <input
+                  type="url"
+                  className="flex-1 bg-transparent py-0.5 outline-none placeholder:text-muted-foreground"
+                  placeholder="Paste YouTube video URL..."
+                  value={ytLinkInput}
+                  onChange={(e) => setYtLinkInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleAddYouTubeLink();
+                    }
+                  }}
+                  disabled={ytLinkLoading}
+                  id="yt-link-input"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleAddYouTubeLink}
+                  disabled={ytLinkLoading || !ytLinkInput.trim()}
+                  className="h-6 px-2 rounded-full hover:bg-primary/10 hover:text-primary shrink-0"
+                  id="yt-link-add-btn"
+                >
+                  {ytLinkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add Video"}
+                </Button>
+              </div>
+
+              {/* Pending YouTube sources */}
+              {ytPendingSources.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {ytPendingSources.map((src) => (
+                    <span
+                      key={src.sourceId}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] transition",
+                        src.status === "ready"
+                          ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
+                          : src.status === "failed"
+                          ? "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                          : "border-border/60 bg-background/70 text-muted-foreground"
+                      )}
+                    >
+                      {src.status === "ready" ? (
+                        <CheckCircle className="h-3 w-3 shrink-0 text-green-500" />
+                      ) : src.status === "failed" ? (
+                        <AlertCircle className="h-3 w-3 shrink-0 text-red-500" />
+                      ) : (
+                        <Clock className="h-3 w-3 shrink-0 animate-pulse" />
+                      )}
+                      <span className="max-w-[150px] truncate" title={src.title}>
+                        {src.title}
+                      </span>
+                      {src.status === "failed" && src.errorCode && (
+                        <span className="text-[10px] opacity-70 ml-1">
+                          ({mapAiErrorCode(src.errorCode)})
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground shrink-0 ml-1"
+                        onClick={() =>
+                          setYtPendingSources((prev) =>
+                            prev.filter((s) => s.sourceId !== src.sourceId)
+                          )
+                        }
+                        aria-label="Dismiss"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {attachments.map((attachment) => (

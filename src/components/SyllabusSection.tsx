@@ -79,17 +79,30 @@ const SyllabusSection = ({
 
   const handleDownload = async (url: string, title: string) => {
     try {
+      toast.info('Starting download...');
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Fetch failed with status ${response.status}`);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `${title}.pdf`;
-      link.target = '_blank';
+      link.href = downloadUrl;
+      link.download = `${title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
       toast.success('Download started');
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download');
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = `${title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Opened file link');
     }
   };
 

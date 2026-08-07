@@ -1,5 +1,6 @@
 {
   "platform": "android",
+<<<<<<< HEAD
   "version": "1.0.43",
   "buildNumber": 2049,
   "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260807-2049",
@@ -13,5 +14,14 @@
     "Optimized room post loading speed with fast timeout fallback.",
     "Polished comment section UI with dynamic sticker sizing.",
     "Notion-style clean redesign for Room Details and Create Room pages."
+=======
+  "version": "1.0.42",
+  "buildNumber": 2048,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260803-2048",
+  "releaseDate": "2026-08-03",
+  "mandatory": false,
+  "releaseNotes": [
+    "Free PDF note downloads and unlocked GIF sticker features."
+>>>>>>> 590237c4819ed7128eb7f80cacb2f4544dbdede2
   ]
 }

@@ -40,7 +40,6 @@ import {
 import BrandLoader from "@/components/BrandLoader";
 import AIRagChat from "@/components/ai/AIRagChat";
 import { extractYouTubeId } from "@/lib/youtube";
-import { fetchYouTubeTranscriptClient } from "@/lib/youtubeTranscriptClient";
 
 type OutputType = "summary" | "quiz" | "flashcards" | "chat";
 
@@ -58,10 +57,6 @@ type AiJobProgress = {
   statusReason?: string;
 };
 
-type ClientTranscriptPayload = {
-  sourceText?: string;
-  sourceType?: "transcript";
-};
 
 interface QuizQuestion {
   question: string;
@@ -176,16 +171,6 @@ function coerceSummaryText(value: unknown): string {
   return String(value ?? "");
 }
 
-async function resolveClientTranscript(videoUrl?: string): Promise<ClientTranscriptPayload> {
-  const normalizedUrl = normalizeVideoSummaryUrl(videoUrl);
-  if (!normalizedUrl) return {};
-
-  const transcript = await fetchYouTubeTranscriptClient(normalizedUrl);
-  return {
-    sourceText: transcript.text,
-    sourceType: "transcript",
-  };
-}
 
 const SUMMARY_BULLET_PREFIX_RE = /^([-*\u2022]|\d+[.)])\s+/;
 
@@ -453,30 +438,12 @@ const AIStudyTools = ({
       const resolvedVideoUrl = normalizeVideoSummaryUrl(override?.videoUrl ?? videoUrl);
       const hasVideoUrl = Boolean(resolvedVideoUrl && resolvedVideoUrl.trim().length > 0);
       const shouldUseVideoTranscript = usesTranscript && hasVideoUrl;
-      let clientTranscript: ClientTranscriptPayload = {};
-      if (shouldUseVideoTranscript && resolvedVideoUrl) {
-        try {
-          clientTranscript = await resolveClientTranscript(resolvedVideoUrl);
-        } catch (transcriptError) {
-          console.warn(
-            "[AI Study Tools] Client transcript fetch failed:",
-            transcriptError instanceof Error ? transcriptError.message : transcriptError
-          );
-        }
-      }
-      if (shouldUseVideoTranscript && !clientTranscript.sourceText) {
-        throw new Error(
-          "This YouTube video transcript is not readable from the website browser path. The browser cannot reliably read YouTube's caption/watch endpoints for this video, so the request would fall back to the blocked server path. Use the Android app for this video or try a different link."
-        );
-      }
       const forceFreshRequested = override?.force ?? freshRun;
       const options = {
         collegeId,
         force: forceFreshRequested,
         includeSource: override?.includeSource ?? false,
         videoUrl: shouldUseVideoTranscript ? resolvedVideoUrl : undefined,
-        sourceText: clientTranscript.sourceText,
-        sourceType: clientTranscript.sourceType,
         asyncRequested: true,
         delivery: "background" as const,
         clientRequestId: buildAiClientRequestId(
