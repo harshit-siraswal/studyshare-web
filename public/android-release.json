@@ -1,11 +1,17 @@
 {
   "platform": "android",
-  "version": "1.0.40",
-  "buildNumber": 2046,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260706-2046",
-  "releaseDate": "2026-07-06",
+  "version": "1.0.43",
+  "buildNumber": 2049,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260807-2049",
+  "releaseDate": "2026-08-07",
   "mandatory": false,
   "releaseNotes": [
-    "Fix chat room creation validation and error handling."
+    "Dismissible app update banner with Horizontal swipe-to-dismiss.",
+    "Free unlimited meme, sticker, and GIF sending in comments (up to 10MB).",
+    "Updated free AI credit budget to 100 credits (200,000 raw tokens).",
+    "Periodic non-blocking premium upgrade prompt with 24h cooldown.",
+    "Optimized room post loading speed with fast timeout fallback.",
+    "Polished comment section UI with dynamic sticker sizing.",
+    "Notion-style clean redesign for Room Details and Create Room pages."
   ]
 }
