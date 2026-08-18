@@ -10,13 +10,7 @@ const nextConfig = {
     root: projectRoot,
   },
   async redirects() {
-    return [
-      {
-        source: "/downloads/studyshare-android.apk",
-        destination: "https://file.mystudyspace.me/downloads/studyshare-android.apk",
-        permanent: false,
-      },
-    ];
+    return [];
   },
   images: {
     remotePatterns: [
