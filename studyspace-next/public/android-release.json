@@ -1,0 +1,11 @@
+{
+  "platform": "android",
+  "version": "1.0.46",
+  "buildNumber": 2052,
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260819-2052",
+  "releaseDate": "2026-08-19",
+  "mandatory": false,
+  "releaseNotes": [
+    "Redesigned CyberVidya automated attendance sync and email OTP retrieval."
+  ]
+}
