@@ -2,8 +2,8 @@
   "platform": "android",
   "version": "1.0.47",
   "buildNumber": 2053,
-  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260819-2053",
-  "releaseDate": "2026-08-19",
+  "apkUrl": "https://studyshare.in/downloads/studyshare-android.apk?v=20260821-2053",
+  "releaseDate": "2026-08-21",
   "mandatory": false,
   "releaseNotes": [
     "Integrated Gmail OAuth authorization and automated CyberVidya email OTP reading.",
